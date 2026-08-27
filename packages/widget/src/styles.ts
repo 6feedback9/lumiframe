@@ -56,8 +56,8 @@ export const WIDGET_CSS = `
   min-height: 220px; display: flex; align-items: center; justify-content: center;
   position: relative; overflow: hidden; transition: border-color .15s, background .15s;
 }
-.lf-zone:hover { border-color: #999; background: #f5f5f5; }
-.lf-zone.has-photo { border-style: solid; border-color: #111; min-height: unset; background: #fff; }
+.lf-zone:hover { border-color: #73b7ff; background: #f5f5f5; }
+.lf-zone.has-photo { border-style: solid; border-color: #73b7ff; min-height: unset; background: #fff; }
 .lf-finput { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .lf-preview { width: 100%; max-height: 300px; object-fit: contain; display: none; }
 .lf-zone.has-photo .lf-preview { display: block; }
@@ -76,13 +76,13 @@ export const WIDGET_CSS = `
   font-family: inherit;
 }
 .lf-btn:disabled { opacity: .5; cursor: default; }
-.lf-btn-primary { background: #111; color: #fff; }
-.lf-btn-primary:hover:not(:disabled) { background: #2a2a2a; }
+.lf-btn-primary { background: linear-gradient(135deg, #73b7ff, #9f8cff); color: #071224; }
+.lf-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
 .lf-btn-secondary { background: #f2f2f2; color: #111; }
 .lf-btn-secondary:hover:not(:disabled) { background: #e6e6e6; }
 
 .lf-generating { text-align: center; padding: 54px 18px 46px; }
-.lf-spinner { width: 38px; height: 38px; margin: 0 auto 20px; border: 2.5px solid #eee; border-top-color: #111; border-radius: 50%; animation: lfSpin .8s linear infinite; }
+.lf-spinner { width: 38px; height: 38px; margin: 0 auto 20px; border: 2.5px solid #eee; border-top-color: #73b7ff; border-radius: 50%; animation: lfSpin .8s linear infinite; }
 @keyframes lfSpin { to { transform: rotate(360deg) } }
 .lf-gen-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .lf-gen-sub { font-size: 12px; color: #aaa; }

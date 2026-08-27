@@ -9,8 +9,11 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="logo">
-        Lumi Frame
-        <span className="tag">Platform Admin</span>
+        <span className="mark">Ú</span>
+        <span>
+          <span className="word">Lumi Frame</span>
+          <span className="tag">Platform Admin</span>
+        </span>
       </div>
       <nav>
         <a href="/" className={pathname === "/" || pathname.startsWith("/tenants") ? "active" : ""}>
