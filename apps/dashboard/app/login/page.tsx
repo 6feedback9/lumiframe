@@ -50,6 +50,9 @@ export default function LoginPage() {
           {loading ? "Signing in…" : "Sign in"}
         </button>
         {error && <div className="error-text">{error}</div>}
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: "var(--mist)" }}>
+          New here? <a href="/register" style={{ color: "var(--sky)" }}>Create a store account</a>
+        </div>
       </form>
     </div>
   );

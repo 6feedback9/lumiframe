@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "Overview" },
   { href: "/tryons", label: "Try-ons" },
+  { href: "/integration", label: "Integration" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname === "/register") return null;
 
   return (
     <aside className="sidebar">
