@@ -86,3 +86,26 @@ export async function authenticateMerchant(request: FastifyRequest, reply: Fasti
 
   request.merchant = payload;
 }
+
+/**
+ * Gates the internal admin API (apps/admin) — every route behind this
+ * requires the JWT to carry `isPlatformAdmin: true`, which only
+ * `apps/api/scripts/createPlatformAdmin.mjs` can ever mint (no HTTP path
+ * creates one). A merchant's own valid token is correctly rejected here.
+ */
+export async function authenticateAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const header = request.headers.authorization;
+  const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : undefined;
+  if (!token) {
+    reply.code(401).send({ error: "Missing Authorization: Bearer <token>" });
+    return reply;
+  }
+
+  const payload = verifyMerchantToken(token);
+  if (!payload || !payload.isPlatformAdmin) {
+    reply.code(403).send({ error: "Platform admin access required" });
+    return reply;
+  }
+
+  request.merchant = payload;
+}

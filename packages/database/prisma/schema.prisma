@@ -119,6 +119,14 @@ model User {
   passwordHash String
   name         String?
   role         UserRole  @default(OWNER)
+  // A platform-owner account (you, the Lumi Frame operator), not a
+  // merchant. Set only by an operator-run script (apps/api/scripts/
+  // createPlatformAdmin.mjs) — never via a public API, so there is no
+  // HTTP path that can mint one. Still belongs to a Tenant row (the
+  // reserved "lumiframe-platform" tenant the script creates) purely to
+  // satisfy the existing User->Tenant relation; it does not mean this
+  // account is scoped to that tenant's data the way a merchant is.
+  isPlatformAdmin Boolean @default(false)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

@@ -10,7 +10,8 @@
     "start": "tsx src/server.ts",
     "worker:start": "tsx src/worker/run.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "create-admin": "node scripts/createPlatformAdmin.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
