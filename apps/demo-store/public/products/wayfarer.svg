@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#ece7df"/>
+  <g stroke="#111" stroke-width="10" fill="#1c1c1c" stroke-linejoin="round">
+    <path d="M55 120 L200 110 L200 175 Q200 195 175 195 L80 195 Q55 195 55 170 Z"/>
+    <path d="M210 110 L345 120 L345 170 Q345 195 320 195 L225 195 Q200 195 200 175 Z"/>
+    <path d="M200 140 L210 140" stroke="#111" stroke-width="8"/>
+    <path d="M55 140 L20 130" stroke-linecap="round" fill="none"/>
+    <path d="M345 140 L380 130" stroke-linecap="round" fill="none"/>
+  </g>
+  <text x="200" y="270" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#999">Wayfarer Bold</text>
+</svg>

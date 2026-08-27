@@ -38,6 +38,13 @@ export interface StoredImageRef {
   /** Object key in private storage (packages/storage), not a public URL. */
   key: string;
   mimeType: string;
+  /**
+   * A signed URL the provider can fetch the bytes from directly, resolved
+   * by the worker immediately before calling generateTryOn (short-lived —
+   * providers must not persist it). Optional because MockTryOnProvider
+   * never needs to fetch anything; a real vendor adapter will require it.
+   */
+  url?: string;
   width?: number;
   height?: number;
 }

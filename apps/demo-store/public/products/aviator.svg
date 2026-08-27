@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#f4f1ec"/>
+  <g stroke="#2b2b2b" stroke-width="6" fill="none" stroke-linejoin="round">
+    <path d="M60 150 Q60 105 130 105 Q195 105 195 150 Q195 195 130 195 Q60 195 60 150Z"/>
+    <path d="M205 150 Q205 105 270 105 Q340 105 340 150 Q340 195 270 195 Q205 195 205 150Z"/>
+    <path d="M195 140 Q200 128 205 140"/>
+    <path d="M60 150 L20 140" stroke-linecap="round"/>
+    <path d="M340 150 L380 140" stroke-linecap="round"/>
+  </g>
+  <text x="200" y="270" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#999">Aviator Classic</text>
+</svg>

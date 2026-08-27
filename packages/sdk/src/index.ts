@@ -65,7 +65,12 @@ class TryOnSdkImpl implements TryOnSdk {
   }
 
   attach(product: AttachProductInput): void {
-    this.assertInitialized();
+    // Deliberately does NOT require init() to have run first. On a
+    // component-based storefront (React/Next/Vue), a product page's own
+    // mount effect can legitimately fire before an "afterInteractive"-style
+    // init script has — attach() only records state, so there is nothing
+    // here that actually depends on { storeId, apiBaseUrl }. open() is what
+    // needs both and asserts accordingly.
     if (!product.productImageUrl) {
       throw new Error("TryOn.attach requires at least { productId, productImageUrl }");
     }

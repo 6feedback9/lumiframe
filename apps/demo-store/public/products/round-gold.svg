@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#f7f3ec"/>
+  <g stroke="#b8892f" stroke-width="6" fill="none">
+    <circle cx="135" cy="150" r="62"/>
+    <circle cx="265" cy="150" r="62"/>
+    <path d="M197 150 L203 150"/>
+    <path d="M73 150 L25 135" stroke-linecap="round"/>
+    <path d="M327 150 L375 135" stroke-linecap="round"/>
+  </g>
+  <text x="200" y="270" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#999">Round Gold</text>
+</svg>

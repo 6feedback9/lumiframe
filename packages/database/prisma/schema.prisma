@@ -281,8 +281,15 @@ model TryOnGeneration {
 
   // Private-storage object keys, never public URLs. Resolved to signed
   // URLs by packages/storage at read time.
-  customerImageKey String?
-  resultImageKey   String?
+  customerImageKey      String?
+  customerImageMimeType String?
+  // Processed product/eyewear asset used for this generation. Phase 1
+  // reprocesses on every generation (no content-hash cache yet — that
+  // lands with the real ProductImageProcessor in Phase 2).
+  productAssetKey       String?
+  productAssetMimeType  String?
+  resultImageKey        String?
+  resultImageMimeType   String?
 
   status TryOnStatus @default(CREATED)
 

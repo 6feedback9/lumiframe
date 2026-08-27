@@ -1,0 +1,23 @@
+{
+  "name": "@lumiframe/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Merchant-facing SaaS dashboard. Phase 1: Overview + Try-ons (ARCHITECTURE.md §16).",
+  "scripts": {
+    "dev": "next dev -p 3200",
+    "build": "next build",
+    "start": "next start -p 3200",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.4"
+  }
+}

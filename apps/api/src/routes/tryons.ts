@@ -1,0 +1,311 @@
+import { randomUUID } from "node:crypto";
+import type { FastifyInstance } from "fastify";
+import { BUCKETS, fetchImageBytes } from "@lumiframe/storage";
+import type { Store } from "@lumiframe/database";
+import { prisma, queue, storage } from "../context";
+import { env } from "../env";
+import { authenticateMerchant, authenticateStorePublic } from "../plugins/auth";
+import { isAllowedProductUrl } from "../domain/allowedDomains";
+import { createTryOnSchema, retryPhotoSchema } from "../schemas";
+
+const MAX_CUSTOMER_IMAGE_BYTES = 10 * 1024 * 1024;
+
+function resultRetentionMs(store: Store): number {
+  return (store.tryonResultRetentionHours ?? env.TRYON_RESULT_RETENTION_HOURS) * 3600_000;
+}
+
+function extensionForMime(mimeType: string): string {
+  const map: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+  return map[mimeType.toLowerCase()] ?? "bin";
+}
+
+async function storeCustomerImage(
+  store: Store,
+  sessionId: string,
+  generationId: string,
+  dataUri: string
+): Promise<{ key: string; mimeType: string }> {
+  const { buffer, mimeType } = await fetchImageBytes(dataUri, MAX_CUSTOMER_IMAGE_BYTES);
+  if (!mimeType.startsWith("image/")) throw new ValidationError("customerImage must decode to an image");
+  const key = `${store.id}/${sessionId}/${generationId}.${extensionForMime(mimeType)}`;
+  await storage.putObject(BUCKETS.customerPhotos, key, buffer, mimeType);
+  return { key, mimeType };
+}
+
+class ValidationError extends Error {}
+
+export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
+  // ── Public: create a try-on session + first generation ──────────────
+  app.post("/api/v1/tryons", { preHandler: authenticateStorePublic }, async (request, reply) => {
+    const parsed = createTryOnSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+    }
+    const input = parsed.data;
+    const store = request.store!;
+
+    if (!isAllowedProductUrl(store.allowedDomains, input.product.imageUrl)) {
+      return reply.code(403).send({ error: "product.imageUrl is not on an allowed domain for this store" });
+    }
+    if (input.product.url && !isAllowedProductUrl(store.allowedDomains, input.product.url)) {
+      return reply.code(403).send({ error: "product.url is not on an allowed domain for this store" });
+    }
+
+    const visitorId = input.visitorId ?? randomUUID();
+    const expiresAt = new Date(Date.now() + resultRetentionMs(store));
+
+    const session = await prisma.tryOnSession.create({
+      data: {
+        tenantId: store.tenantId,
+        storeId: store.id,
+        externalProductId: input.product.id,
+        productTitle: input.product.title,
+        productUrl: input.product.url,
+        productImageUrl: input.product.imageUrl,
+        sku: input.product.sku,
+        price: input.product.price,
+        currency: input.product.currency,
+        visitorId,
+        browserSessionId: input.browserSessionId,
+        utmSource: input.utm?.source,
+        utmMedium: input.utm?.medium,
+        utmCampaign: input.utm?.campaign,
+        utmTerm: input.utm?.term,
+        utmContent: input.utm?.content,
+        gclid: input.utm?.gclid,
+        fbclid: input.utm?.fbclid,
+        ttclid: input.utm?.ttclid,
+        referrer: input.referrer,
+        device: input.device,
+        status: "CREATED",
+        expiresAt,
+      },
+    });
+
+    const generation = await prisma.tryOnGeneration.create({
+      data: { tryOnSessionId: session.id, tenantId: store.tenantId, storeId: store.id, status: "CREATED", expiresAt },
+    });
+
+    let imageRef: { key: string; mimeType: string };
+    try {
+      imageRef = await storeCustomerImage(store, session.id, generation.id, input.customerImage);
+    } catch (error) {
+      await prisma.tryOnGeneration.update({
+        where: { id: generation.id },
+        data: { status: "FAILED", errorCode: "INVALID_CUSTOMER_IMAGE", errorMessage: (error as Error).message },
+      });
+      await prisma.tryOnSession.update({ where: { id: session.id }, data: { status: "FAILED" } });
+      return reply.code(400).send({ error: "Could not process customerImage", message: (error as Error).message });
+    }
+
+    await prisma.tryOnGeneration.update({
+      where: { id: generation.id },
+      data: { customerImageKey: imageRef.key, customerImageMimeType: imageRef.mimeType, status: "UPLOADING" },
+    });
+    await prisma.tryOnSession.update({ where: { id: session.id }, data: { status: "UPLOADING" } });
+
+    await prisma.event.create({
+      data: {
+        tenantId: store.tenantId,
+        storeId: store.id,
+        type: "TRYON_STARTED",
+        tryOnSessionId: session.id,
+        externalProductId: session.externalProductId,
+        visitorId,
+        utm: input.utm ?? undefined,
+        referrer: input.referrer,
+        device: input.device,
+      },
+    });
+
+    await queue.enqueue({ tryOnGenerationId: generation.id });
+
+    return reply.code(202).send({
+      tryOnId: session.id,
+      generationId: generation.id,
+      status: "UPLOADING",
+      visitorId,
+    });
+  });
+
+  // ── Public: "try another photo" — new generation, same session ──────
+  app.post("/api/v1/tryons/:id/retry", { preHandler: authenticateStorePublic }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = retryPhotoSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const store = request.store!;
+    const session = await prisma.tryOnSession.findFirst({ where: { id, storeId: store.id } });
+    if (!session) return reply.code(404).send({ error: "Try-on session not found" });
+
+    const expiresAt = new Date(Date.now() + resultRetentionMs(store));
+    const generation = await prisma.tryOnGeneration.create({
+      data: { tryOnSessionId: session.id, tenantId: store.tenantId, storeId: store.id, status: "CREATED", expiresAt },
+    });
+
+    let imageRef: { key: string; mimeType: string };
+    try {
+      imageRef = await storeCustomerImage(store, session.id, generation.id, parsed.data.customerImage);
+    } catch (error) {
+      await prisma.tryOnGeneration.update({
+        where: { id: generation.id },
+        data: { status: "FAILED", errorCode: "INVALID_CUSTOMER_IMAGE", errorMessage: (error as Error).message },
+      });
+      return reply.code(400).send({ error: "Could not process customerImage", message: (error as Error).message });
+    }
+
+    await prisma.tryOnGeneration.update({
+      where: { id: generation.id },
+      data: { customerImageKey: imageRef.key, customerImageMimeType: imageRef.mimeType, status: "UPLOADING" },
+    });
+    // The session tracks its latest generation's status; retrying moves it
+    // back out of a terminal state.
+    await prisma.tryOnSession.update({ where: { id: session.id }, data: { status: "UPLOADING" } });
+
+    await queue.enqueue({ tryOnGenerationId: generation.id });
+
+    return reply.code(202).send({ tryOnId: session.id, generationId: generation.id, status: "UPLOADING" });
+  });
+
+  // ── Public: poll status / fetch result ───────────────────────────────
+  app.get("/api/v1/tryons/:id", { preHandler: authenticateStorePublic }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const store = request.store!;
+
+    const session = await prisma.tryOnSession.findFirst({
+      where: { id, storeId: store.id },
+      include: { generations: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    if (!session) return reply.code(404).send({ error: "Try-on session not found" });
+
+    const latest = session.generations[0];
+    if (!latest) return reply.send({ tryOnId: session.id, status: session.status });
+
+    if (latest.status === "COMPLETED" && latest.resultImageKey) {
+      const resultUrl = await storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600);
+      return reply.send({
+        tryOnId: session.id,
+        generationId: latest.id,
+        status: latest.status,
+        resultUrl,
+        generationDurationMs: latest.generationDurationMs,
+        product: {
+          id: session.externalProductId,
+          title: session.productTitle,
+          url: session.productUrl,
+          price: session.price ? Number(session.price) : undefined,
+          currency: session.currency,
+        },
+      });
+    }
+
+    if (latest.status === "FAILED") {
+      return reply.send({
+        tryOnId: session.id,
+        generationId: latest.id,
+        status: latest.status,
+        errorCode: latest.errorCode,
+        errorMessage: latest.errorMessage,
+      });
+    }
+
+    if (latest.status === "EXPIRED") {
+      return reply.send({
+        tryOnId: session.id,
+        generationId: latest.id,
+        status: "EXPIRED",
+        message: "Customer image expired according to privacy policy.",
+      });
+    }
+
+    return reply.send({ tryOnId: session.id, generationId: latest.id, status: latest.status });
+  });
+
+  // ── Merchant dashboard: list try-ons for the authenticated tenant ────
+  app.get("/api/v1/tryons", { preHandler: authenticateMerchant }, async (request, reply) => {
+    const { tenantId } = request.merchant!;
+    const query = request.query as { page?: string; limit?: string; storeId?: string };
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+
+    const where = { tenantId, ...(query.storeId ? { storeId: query.storeId } : {}) };
+    const [items, total] = await Promise.all([
+      prisma.tryOnSession.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { generations: { orderBy: { createdAt: "desc" }, take: 1 } },
+      }),
+      prisma.tryOnSession.count({ where }),
+    ]);
+
+    return reply.send({
+      items: items.map((session) => ({
+        id: session.id,
+        productTitle: session.productTitle,
+        productImageUrl: session.productImageUrl,
+        status: session.generations[0]?.status ?? session.status,
+        generationDurationMs: session.generations[0]?.generationDurationMs ?? null,
+        utmSource: session.utmSource,
+        utmCampaign: session.utmCampaign,
+        createdAt: session.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    });
+  });
+
+  // ── Merchant dashboard: one try-on's full detail ─────────────────────
+  app.get("/api/v1/tryons/:id/detail", { preHandler: authenticateMerchant }, async (request, reply) => {
+    const { tenantId } = request.merchant!;
+    const { id } = request.params as { id: string };
+
+    const session = await prisma.tryOnSession.findFirst({
+      where: { id, tenantId },
+      include: { generations: { orderBy: { createdAt: "desc" } }, attribution: { include: { order: true } } },
+    });
+    if (!session) return reply.code(404).send({ error: "Try-on session not found" });
+
+    const latest = session.generations[0];
+    const resultUrl =
+      latest?.status === "COMPLETED" && latest.resultImageKey
+        ? await storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600)
+        : null;
+
+    return reply.send({
+      id: session.id,
+      product: {
+        id: session.externalProductId,
+        title: session.productTitle,
+        url: session.productUrl,
+        imageUrl: session.productImageUrl,
+        sku: session.sku,
+        price: session.price ? Number(session.price) : undefined,
+        currency: session.currency,
+      },
+      status: latest?.status ?? session.status,
+      resultUrl,
+      generationDurationMs: latest?.generationDurationMs ?? null,
+      generationsCount: session.generations.length,
+      utm: {
+        source: session.utmSource,
+        medium: session.utmMedium,
+        campaign: session.utmCampaign,
+        term: session.utmTerm,
+        content: session.utmContent,
+      },
+      attribution: session.attribution
+        ? {
+            orderId: session.attribution.order.externalOrderId,
+            revenue: Number(session.attribution.order.totalAmount),
+            currency: session.attribution.order.currency,
+            minutesBetween: session.attribution.minutesBetween,
+          }
+        : null,
+      createdAt: session.createdAt,
+      completedAt: latest?.completedAt ?? null,
+    });
+  });
+}

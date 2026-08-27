@@ -1,8 +1,11 @@
 # Lumi Frame — Architecture
 
-Status: **Phase 0 — design baseline.** This document is the source of truth for
-the platform's shape. Anything that contradicts it should be raised before
-being implemented, not silently diverged from.
+Status: **Phase 1 — core loop implemented.** SDK → widget → async API →
+queue/worker → MockTryOnProvider → result → dashboard is built, tested
+(unit + a real end-to-end integration test + a real-browser smoke test
+through `apps/demo-store`), and running. This document is the source of
+truth for the platform's shape. Anything that contradicts it should be
+raised before being implemented, not silently diverged from.
 
 ## 1. What this is (and isn't)
 
@@ -286,9 +289,21 @@ and there's a full funnel trail per session for debugging.
 - Every table that isn't global carries `tenantId`; every query in
   `packages/database` is written to require it (no "trust the caller"
   helpers that skip the filter).
-- Store API keys authenticate `/api/v1/tryons` and friends; keys are
-  server-side only. The SDK never embeds a provider or storage credential —
-  it only ever talks to our own `/api/v1/*`.
+- **Public try-on/event endpoints** (`/api/v1/tryons`, `/api/v1/events` —
+  called directly from the customer's browser by `@lumiframe/widget`)
+  authenticate via `storeId` + the request's Origin/Referer checked
+  against that store's `allowedDomains` — the same publishable-key pattern
+  Stripe/Shopify widgets use. `storeId` is not secret; abuse is bounded by
+  domain-restriction and rate limiting, not by hiding it. This was a
+  refinement made during Phase 1: `TryOn.init()` only ever took a
+  `storeId` (packages/sdk/src/types.ts, shipped in Phase 0), so the SDK
+  was never going to hold a real secret in the browser in the first place.
+- **Dashboard/server-to-server endpoints** (`/api/v1/store`,
+  `/api/v1/analytics`, the merchant-facing `/api/v1/tryons` list, …) use a
+  JWT from `/api/v1/auth/login` — these never run in a customer's browser.
+- `ApiKey` (packages/database schema) is a secret, tenant-issued credential
+  reserved for future server-to-server integrations (a merchant's own
+  backend calling our API) — not used by the public widget flow above.
 - `allowedDomains` per store gates which `productImageUrl` origins a store
   is permitted to submit (§ "important API security rule" in the product
   spec) — this is what stops the try-on API from being used as a free
@@ -359,10 +374,27 @@ error — never silently returns a broken image.
 
 ## 16. Roadmap
 
-- **Phase 0 (this doc + schema + interfaces)** — done in this commit.
-- **Phase 1** — multi-tenant DB live, `MockTryOnProvider`, queue + worker,
-  async `/api/v1/tryons`, universal SDK + widget, `demo-store` with an
-  eyewear catalog, minimal dashboard (Overview + Try-ons list).
+- **Phase 0 (architecture + schema + interfaces)** — done.
+- **Phase 1 (core loop) — done**: multi-tenant DB live, `MockTryOnProvider`,
+  queue + worker (`InMemoryTryOnQueue` for dev/CI, `BullMqTryOnQueue` for
+  real deployments — same env-driven pattern as storage/providers), async
+  `/api/v1/tryons` + `/api/v1/events` + `/api/v1/analytics`, the universal
+  SDK (`TryOn.init/attach/open/close/destroy` + `detectProduct()`'s
+  JSON-LD/OpenGraph/DOM-selector cascade), the real widget UI,
+  `apps/demo-store` (a 4-product eyewear catalog + cart, embedding the SDK
+  exactly like a real merchant would), and `apps/dashboard` (login,
+  Overview, Try-ons list). Verified with unit tests, a real-Postgres
+  integration test exercising the full create→worker→COMPLETED pipeline
+  including the `allowedDomains` security boundary, and a Playwright
+  smoke test driving an actual browser through
+  product page → widget → upload → result → add-to-cart → cart, plus the
+  dashboard's login → Overview → Try-ons list.
+  Not in Phase 1: `/api/v1/uploads` as a separate endpoint (the customer
+  photo is inlined as a data: URI in the create-tryon call instead —
+  packages/sdk/README.md explains why), the product image content-hash
+  cache (§12 — Phase 1 reprocesses the product image on every generation),
+  and any retention-sweep job (expiresAt is set at creation; nothing yet
+  deletes on it).
 - **Phase 2** — real AI provider behind `packages/providers/real`,
   `ProductImageProcessor` (eyewear detection, background handling,
   geometry extraction), product image cache.

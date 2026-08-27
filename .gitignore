@@ -11,3 +11,6 @@ build/
 coverage/
 prisma/dev.db
 .vercel/
+.data/
+*.tsbuildinfo
+

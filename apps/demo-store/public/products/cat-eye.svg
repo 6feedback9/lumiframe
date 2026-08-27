@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#f0ece6"/>
+  <g stroke="#7a2b2b" stroke-width="7" fill="none" stroke-linejoin="round">
+    <path d="M55 165 Q50 110 130 105 Q205 100 200 150 Q195 190 130 190 Q60 195 55 165Z"/>
+    <path d="M205 150 Q200 100 275 105 Q355 110 350 165 Q345 195 275 190 Q210 190 205 150Z"/>
+    <path d="M200 140 L205 140"/>
+    <path d="M55 155 L18 135" stroke-linecap="round"/>
+    <path d="M350 155 L385 135" stroke-linecap="round"/>
+  </g>
+  <text x="200" y="270" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#999">Cat-Eye Rouge</text>
+</svg>

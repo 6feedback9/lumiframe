@@ -1,0 +1,26 @@
+{
+  "name": "@lumiframe/demo-store",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fake eyewear ecommerce store embedding @lumiframe/sdk, for testing the full integration end-to-end (ARCHITECTURE.md §16, product spec §50).",
+  "scripts": {
+    "predev": "pnpm --filter @lumiframe/sdk build",
+    "dev": "next dev -p 3100",
+    "prebuild": "pnpm --filter @lumiframe/sdk build",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "typecheck": "tsc --noEmit",
+    "seed": "node scripts/seed-store.mjs"
+  },
+  "dependencies": {
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.4"
+  }
+}

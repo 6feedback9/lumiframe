@@ -2,13 +2,15 @@
   "name": "@lumiframe/widget",
   "version": "0.1.0",
   "private": true,
-  "description": "The try-on widget UI, lazy-loaded by @lumiframe/sdk on open(). Phase 1 delivers the real implementation (premium modal UI, ported from the LumiOn MVP's widget.js visual language) wired to the async /api/v1/tryons flow; this stub only fixes the contract so the SDK can be built against it now.",
+  "description": "The try-on widget UI, lazy-loaded by @lumiframe/sdk on open(). Talks to the async /api/v1/tryons flow (ARCHITECTURE.md §7); visual language ported from the LumiOn MVP's widget.js.",
+  "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^20.14.0",
     "typescript": "^5.5.4"
   }
 }

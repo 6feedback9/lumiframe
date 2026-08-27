@@ -1,13 +1,18 @@
-# apps/dashboard — Phase 1 (Overview + Try-ons), Phase 4 (rest)
+# apps/dashboard
 
-Next.js merchant-facing SaaS dashboard. Navigation per the product spec §22:
-Overview, Try-ons, Analytics, Orders, Integration, Appearance, Team,
-Settings. The primary object is the **try-on**, not a product catalog — see
-`ARCHITECTURE.md` §1.
+Merchant-facing SaaS dashboard. Phase 1 ships **Overview** and **Try-ons**
+only (reads `TryOnSession`/`TryOnGeneration`/`Event` via `apps/api`'s
+`/api/v1/analytics` and `/api/v1/tryons`) — the primary object is the
+try-on, not a product catalog (ARCHITECTURE.md §1/§22). Analytics detail,
+Orders, Integration, Appearance, Team, and Settings land in later phases.
 
-Phase 1 ships Overview + the Try-ons list/detail view only (reads
-`TryOnSession`/`TryOnGeneration`/`Event` via `@lumiframe/database`).
-Analytics/Orders/Integration/Appearance/Team/Settings land in later phases
-per `ARCHITECTURE.md` §16.
+## Running it
 
-Not yet implemented — this is a placeholder for Phase 1.
+```bash
+cp .env.example .env.local   # point NEXT_PUBLIC_API_BASE_URL at apps/api
+pnpm dev
+```
+
+Sign in with the account created by `apps/demo-store`'s seed script
+(`pnpm --filter @lumiframe/demo-store seed`), or register your own via
+`POST /api/v1/auth/register`.
