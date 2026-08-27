@@ -7,7 +7,8 @@ merchant's product database.
 
 Start here: **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — the source of
 truth for the domain model, the async try-on pipeline, provider
-abstraction, product detection strategy, and order attribution.
+abstraction, product detection strategy, and order attribution. Ready to
+put this live? See **[`DEPLOYMENT.md`](./DEPLOYMENT.md)**.
 
 ## Status
 
