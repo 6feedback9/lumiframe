@@ -1,0 +1,24 @@
+{
+  "name": "lumiframe",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lumi Frame — AI virtual try-on platform for eyewear ecommerce stores.",
+  "engines": {
+    "node": ">=18.18.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @lumiframe/database db:generate",
+    "db:migrate": "pnpm --filter @lumiframe/database db:migrate"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.4"
+  }
+}

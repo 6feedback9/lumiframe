@@ -1,0 +1,55 @@
+// Public SDK contract. Product spec §9/§42-44, ARCHITECTURE.md §8.
+
+export interface TryOnInitOptions {
+  storeId: string;
+  /** Defaults to the production API; override for local/staging. */
+  apiBaseUrl?: string;
+  locale?: "en" | "uk" | "ru";
+}
+
+/**
+ * Explicit product configuration — priority 1 in the detection order
+ * (ARCHITECTURE.md §8). Anything omitted here falls through to platform
+ * adapter → JSON-LD → OpenGraph → merchant-configured DOM selectors.
+ */
+export interface AttachProductInput {
+  productId: string;
+  productTitle?: string;
+  productImageUrl: string;
+  productUrl?: string;
+  price?: number;
+  currency?: string;
+  sku?: string;
+}
+
+export type SdkEventName =
+  | "tryon:open"
+  | "tryon:photo-selected"
+  | "tryon:started"
+  | "tryon:processing"
+  | "tryon:completed"
+  | "tryon:failed"
+  | "tryon:add-to-cart"
+  | "tryon:close";
+
+export interface SdkEventPayloads {
+  "tryon:open": { product: AttachProductInput };
+  "tryon:photo-selected": { product: AttachProductInput };
+  "tryon:started": { product: AttachProductInput; tryOnId: string };
+  "tryon:processing": { tryOnId: string };
+  "tryon:completed": { tryOnId: string; resultUrl: string };
+  "tryon:failed": { tryOnId?: string; errorCode: string; errorMessage?: string };
+  "tryon:add-to-cart": { product: AttachProductInput; tryOnId?: string };
+  "tryon:close": Record<string, never>;
+}
+
+export type SdkEventListener<E extends SdkEventName> = (payload: SdkEventPayloads[E]) => void;
+
+export interface TryOnSdk {
+  init(options: TryOnInitOptions): TryOnSdk;
+  attach(product: AttachProductInput): void;
+  open(product?: AttachProductInput): void;
+  close(): void;
+  destroy(): void;
+  on<E extends SdkEventName>(event: E, listener: SdkEventListener<E>): () => void;
+}

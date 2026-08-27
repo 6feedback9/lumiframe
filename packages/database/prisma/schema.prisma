@@ -1,0 +1,450 @@
+// ============================================================
+// Lumi Frame — Prisma schema
+// See ARCHITECTURE.md §4 for the rationale behind each entity.
+//
+// Design rules encoded here:
+//  - Every tenant-scoped table carries `tenantId` directly (not just via a
+//    join) so every query can filter on it without an extra hop.
+//  - There is no merchant Product/catalog table. Product identity is just
+//    `externalProductId` + a point-in-time snapshot on TryOnSession.
+//  - Money is Decimal, never Float.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ────────────────────────────────────────────────────────────
+// Enums
+// ────────────────────────────────────────────────────────────
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum PlatformType {
+  SHOPIFY
+  WOOCOMMERCE
+  GENERIC
+  CUSTOM
+}
+
+enum StoreStatus {
+  PENDING // created, integration not finished
+  ACTIVE
+  SUSPENDED
+}
+
+enum IntegrationStatus {
+  NOT_CONFIGURED
+  CONNECTED
+  ERROR
+}
+
+// Mirrors ARCHITECTURE.md §5 (TryOnSession lifecycle). TryOnGeneration
+// reuses the same enum for its own, per-attempt status.
+enum TryOnStatus {
+  CREATED
+  UPLOADING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+// Mirrors ARCHITECTURE.md §9 (Events), plus the two attribution-specific
+// event kinds named explicitly in the product spec (§26): TRYON_ADD_TO_CART
+// and TRYON_ORDER are recorded in addition to the generic ADD_TO_CART /
+// ORDER_COMPLETED so attribution queries don't have to infer "was this
+// cart/order tied to a try-on" from a join.
+enum EventType {
+  WIDGET_OPENED
+  PHOTO_SELECTED
+  TRYON_STARTED
+  TRYON_COMPLETED
+  TRYON_FAILED
+  RESULT_VIEWED
+  TRY_ANOTHER
+  BACK_TO_PRODUCT
+  ADD_TO_CART
+  TRYON_ADD_TO_CART
+  CHECKOUT_STARTED
+  ORDER_COMPLETED
+  TRYON_ORDER
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum AttributionModel {
+  LAST_TOUCH
+}
+
+// ────────────────────────────────────────────────────────────
+// Tenant / auth
+// ────────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  stores        Store[]
+  auditLogs     AuditLog[]
+  tryOnSessions TryOnSession[]
+  events        Event[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String
+  email        String    @unique
+  passwordHash String
+  name         String?
+  role         UserRole  @default(OWNER)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ────────────────────────────────────────────────────────────
+// Store / integration
+// ────────────────────────────────────────────────────────────
+
+model Store {
+  id           String       @id @default(cuid())
+  tenantId     String
+  name         String
+  storeUrl     String
+  platformType PlatformType @default(GENERIC)
+  status       StoreStatus  @default(PENDING)
+
+  // ARCHITECTURE.md §11 — which origins this store may submit
+  // `productImageUrl` from. Required non-empty before status can be ACTIVE.
+  allowedDomains String[]
+
+  // White-label knobs (product spec §54): logo, primaryColor, buttonText,
+  // language, showPoweredBy. Kept as JSON since it's presentation-only and
+  // grows without needing a migration.
+  widgetConfig Json @default("{}")
+
+  // Per-store overrides of the global env defaults; null = inherit env var.
+  customerImageRetentionHours Int?
+  tryonResultRetentionHours   Int?
+  attributionWindowHours      Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  apiKeys       ApiKey[]
+  integration   Integration?
+  tryOnSessions TryOnSession[]
+  events        Event[]
+  orders        Order[]
+  usageRecords  UsageRecord[]
+
+  @@index([tenantId])
+  @@map("stores")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  tenantId   String
+  storeId    String
+  label      String
+  // Only a salted hash is ever stored; the raw key is shown once at creation.
+  hashedKey  String    @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([storeId])
+  @@map("api_keys")
+}
+
+model Integration {
+  id           String            @id @default(cuid())
+  storeId      String            @unique
+  platformType PlatformType
+  status       IntegrationStatus @default(NOT_CONFIGURED)
+
+  // Platform-specific config: Shopify shop domain, WooCommerce site URL,
+  // or for `generic` — the merchant-configured DOM selectors described in
+  // ARCHITECTURE.md §8 step 5 (productIdSelector, productTitleSelector,
+  // productImageSelector, priceSelector, skuSelector, addToCartSelector).
+  config Json @default("{}")
+
+  // OAuth/webhook credentials, encrypted at rest by the application layer
+  // before being written here. Never returned by any API response.
+  encryptedCredentials String?
+
+  installedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("integrations")
+}
+
+// ────────────────────────────────────────────────────────────
+// Try-on core
+// ────────────────────────────────────────────────────────────
+
+// One row per "customer opened Try-On for this product". Holds the product
+// SNAPSHOT (never a catalog reference) and the attribution context captured
+// at open time. See ARCHITECTURE.md §4 and §10.
+model TryOnSession {
+  id       String @id @default(cuid())
+  tenantId String
+  storeId  String
+
+  // ── Product snapshot (source of truth = merchant's page, at this moment) ──
+  externalProductId String
+  productTitle       String?
+  productUrl         String?
+  productImageUrl    String
+  sku                String?
+  price              Decimal? @db.Decimal(12, 2)
+  currency           String?
+
+  // ── Visitor / session identity (anonymous, no customer account) ──
+  visitorId       String
+  browserSessionId String?
+
+  // ── Attribution context, captured once and never overwritten ──
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmTerm     String?
+  utmContent  String?
+  gclid       String?
+  fbclid      String?
+  ttclid      String?
+  referrer    String?
+  device      String?
+
+  // Denormalized convenience: mirrors the latest TryOnGeneration's status,
+  // kept in sync by the worker. Source of truth is still TryOnGeneration.
+  status TryOnStatus @default(CREATED)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime?
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store       Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  generations TryOnGeneration[]
+  events      Event[]
+  attribution Attribution?
+
+  @@index([tenantId, storeId, createdAt(sort: Desc)])
+  @@index([storeId, externalProductId])
+  @@index([visitorId])
+  @@map("tryon_sessions")
+}
+
+// One row per actual AI generation attempt within a session. "Try another
+// photo" appends a new row here rather than creating a new TryOnSession or
+// overwriting the previous attempt (ARCHITECTURE.md §5).
+model TryOnGeneration {
+  id             String @id @default(cuid())
+  tryOnSessionId String
+  tenantId       String
+  storeId        String
+
+  // Private-storage object keys, never public URLs. Resolved to signed
+  // URLs by packages/storage at read time.
+  customerImageKey String?
+  resultImageKey   String?
+
+  status TryOnStatus @default(CREATED)
+
+  provider           String? // e.g. "mock", set once a job is enqueued
+  providerJobId       String?
+  generationDurationMs Int?
+  errorCode           String?
+  errorMessage         String?
+
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime?
+
+  session TryOnSession @relation(fields: [tryOnSessionId], references: [id], onDelete: Cascade)
+  usage   UsageRecord?
+
+  @@index([tryOnSessionId])
+  @@index([tenantId, storeId, status])
+  @@index([providerJobId])
+  @@map("tryon_generations")
+}
+
+// Append-only funnel log, ARCHITECTURE.md §9. Deliberately flat so
+// dashboard aggregation queries stay cheap.
+model Event {
+  id       String    @id @default(cuid())
+  tenantId String
+  storeId  String
+  type     EventType
+
+  tryOnSessionId    String?
+  externalProductId String?
+  visitorId         String
+  browserSessionId  String?
+
+  // Structured UTM lives on TryOnSession (the attribution source of truth);
+  // here it's a lightweight copy for ad-hoc funnel analysis without a join.
+  utm Json?
+
+  referrer String?
+  device   String?
+
+  // Event-specific payload, e.g. { errorCode } for TRYON_FAILED,
+  // { cartToken } for ADD_TO_CART, { orderId } for ORDER_COMPLETED.
+  metadata Json?
+
+  occurredAt DateTime @default(now())
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  store   Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  session TryOnSession? @relation(fields: [tryOnSessionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, storeId, occurredAt(sort: Desc)])
+  @@index([tryOnSessionId])
+  @@index([type, occurredAt(sort: Desc)])
+  @@map("events")
+}
+
+// ────────────────────────────────────────────────────────────
+// Orders / attribution
+// ────────────────────────────────────────────────────────────
+
+model Order {
+  id               String      @id @default(cuid())
+  tenantId         String
+  storeId          String
+  externalOrderId  String // the merchant platform's own order number/id
+  visitorId        String?
+  currency         String
+  totalAmount      Decimal     @db.Decimal(12, 2)
+  status           OrderStatus @default(PAID)
+  placedAt         DateTime
+  createdAt        DateTime    @default(now())
+
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items       OrderItem[]
+  attribution Attribution?
+
+  @@unique([storeId, externalOrderId])
+  @@index([tenantId, storeId, placedAt(sort: Desc)])
+  @@index([visitorId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String  @id @default(cuid())
+  orderId           String
+  externalProductId String
+  title             String?
+  quantity          Int     @default(1)
+  unitPrice         Decimal @db.Decimal(12, 2)
+  totalPrice        Decimal @db.Decimal(12, 2)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([externalProductId])
+  @@map("order_items")
+}
+
+// Links one Order to the TryOnSession that (per the attribution model and
+// window — ARCHITECTURE.md §10) is credited for it. At most one
+// Attribution per Order.
+model Attribution {
+  id             String           @id @default(cuid())
+  tenantId       String
+  storeId        String
+  orderId        String           @unique
+  tryOnSessionId String           @unique
+  model          AttributionModel @default(LAST_TOUCH)
+  windowHours    Int
+  minutesBetween Int // time between try-on session creation and order placedAt
+  createdAt      DateTime         @default(now())
+
+  order   Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  session TryOnSession @relation(fields: [tryOnSessionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, storeId])
+  @@map("attributions")
+}
+
+// ────────────────────────────────────────────────────────────
+// Billing
+// ────────────────────────────────────────────────────────────
+
+// One row per completed try-on generation. Billing/pricing logic reads
+// this; no price is hardcoded here (product spec §55).
+model UsageRecord {
+  id                String   @id @default(cuid())
+  tenantId          String
+  storeId           String
+  tryOnGenerationId String   @unique
+  provider          String
+  units             Int      @default(1)
+  providerCostCents Int? // raw cost reported by the provider, if any
+  createdAt         DateTime @default(now())
+
+  store      Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  generation TryOnGeneration @relation(fields: [tryOnGenerationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, storeId, createdAt])
+  @@map("usage_records")
+}
+
+// ────────────────────────────────────────────────────────────
+// Audit
+// ────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  actorUserId  String?
+  action       String // e.g. "api_key.created", "integration.updated"
+  targetType   String?
+  targetId     String?
+  metadata     Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
