@@ -150,4 +150,24 @@ describe("try-on flow", () => {
     expect(body.total).toBeGreaterThanOrEqual(1);
     expect(body.items[0]).toHaveProperty("productTitle");
   });
+
+  it("filters the list by from/to (the dashboard's month filter)", async () => {
+    const future = new Date(Date.now() + 365 * 86_400_000).toISOString();
+    const empty = await app.inject({
+      method: "GET",
+      url: `/api/v1/tryons?from=${future}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json().total).toBe(0);
+
+    const past = new Date(Date.now() - 365 * 86_400_000).toISOString();
+    const all = await app.inject({
+      method: "GET",
+      url: `/api/v1/tryons?from=${past}&to=${future}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(all.statusCode).toBe(200);
+    expect(all.json().total).toBeGreaterThanOrEqual(1);
+  });
 });

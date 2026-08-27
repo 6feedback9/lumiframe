@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "../AuthGuard";
 import { apiFetch } from "@/lib/api";
 
@@ -19,25 +19,82 @@ function badgeClass(status: string): string {
   return `badge badge-${status.toLowerCase()}`;
 }
 
+const MONTH_FORMATTER = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" });
+
+/** Last 12 months (this one first), as { value: "2026-08", label: "August 2026" }. */
+function recentMonths(count = 12): { value: string; label: string }[] {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const value = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    months.push({ value, label: MONTH_FORMATTER.format(d) });
+  }
+  return months;
+}
+
+/** "2026-08" -> the UTC instants bounding that month, for the API's from/to. */
+function monthRange(value: string): { from: string; to: string } {
+  const [year, month] = value.split("-").map(Number);
+  const from = new Date(Date.UTC(year, month - 1, 1));
+  const to = new Date(Date.UTC(year, month, 1));
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 function TryOnsContent() {
   const [items, setItems] = useState<TryOnRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [month, setMonth] = useState(""); // "" = all time
   const [error, setError] = useState<string | null>(null);
   const limit = 10;
+  const monthOptions = useMemo(() => recentMonths(), []);
 
   useEffect(() => {
-    apiFetch<{ items: TryOnRow[]; total: number }>(`/api/v1/tryons?page=${page}&limit=${limit}`)
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (month) {
+      const { from, to } = monthRange(month);
+      params.set("from", from);
+      params.set("to", to);
+    }
+    apiFetch<{ items: TryOnRow[]; total: number }>(`/api/v1/tryons?${params.toString()}`)
       .then((res) => {
         setItems(res.items);
         setTotal(res.total);
       })
       .catch((err) => setError(err.message));
-  }, [page]);
+  }, [page, month]);
 
   return (
     <>
       <div className="page-title">Try-ons</div>
+
+      <div style={{ marginBottom: 16 }}>
+        <select
+          value={month}
+          onChange={(e) => {
+            setMonth(e.target.value);
+            setPage(1);
+          }}
+          style={{
+            padding: "9px 12px",
+            borderRadius: 10,
+            border: "1px solid var(--line-strong)",
+            background: "rgba(173,201,255,0.05)",
+            color: "var(--paper)",
+            fontSize: 13,
+            fontFamily: "inherit",
+          }}
+        >
+          <option value="">All time</option>
+          {monthOptions.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {error && <div className="empty-state">{error}</div>}
       <div className="panel">
         <table>
@@ -55,7 +112,7 @@ function TryOnsContent() {
             {items.length === 0 && !error ? (
               <tr>
                 <td colSpan={6} className="empty-state">
-                  No try-ons yet.
+                  {month ? "No try-ons in this month." : "No try-ons yet."}
                 </td>
               </tr>
             ) : (

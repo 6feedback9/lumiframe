@@ -224,11 +224,25 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
   // ── Merchant dashboard: list try-ons for the authenticated tenant ────
   app.get("/api/v1/tryons", { preHandler: authenticateMerchant }, async (request, reply) => {
     const { tenantId } = request.merchant!;
-    const query = request.query as { page?: string; limit?: string; storeId?: string };
+    const query = request.query as { page?: string; limit?: string; storeId?: string; from?: string; to?: string };
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
 
-    const where = { tenantId, ...(query.storeId ? { storeId: query.storeId } : {}) };
+    // `from`/`to` are ISO timestamps — the dashboard's month filter sends
+    // the first instant of the selected month and of the following month.
+    const from = query.from ? new Date(query.from) : undefined;
+    const to = query.to ? new Date(query.to) : undefined;
+    const createdAtFilter =
+      (from && !Number.isNaN(from.getTime())) || (to && !Number.isNaN(to.getTime()))
+        ? {
+            createdAt: {
+              ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
+              ...(to && !Number.isNaN(to.getTime()) ? { lt: to } : {}),
+            },
+          }
+        : {};
+
+    const where = { tenantId, ...(query.storeId ? { storeId: query.storeId } : {}), ...createdAtFilter };
     const [items, total] = await Promise.all([
       prisma.tryOnSession.findMany({
         where,
