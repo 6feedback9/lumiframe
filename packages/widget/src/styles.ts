@@ -35,18 +35,32 @@ export const WIDGET_CSS = `
 
 .lf-photo-panel {
   flex: 1; min-width: 0; background: #f6f6f5;
-  padding: 40px 22px 32px; display: flex; flex-direction: column; justify-content: center;
+  /* justify-content: flex-start, not center — on a viewport shorter than
+     the panel's content (a real, common case: this column alone can run
+     taller than 900px with the photo box + full tip list + button), centering
+     pushed the "upload photo" button below the fold instead of leaving it
+     reachable near the top. Top-aligned means the button is always visible
+     first, and only the tips below it need a scroll if anything does. */
+  padding: 40px 22px 32px; display: flex; flex-direction: column; justify-content: flex-start;
 }
-@media (min-width: 760px) { .lf-photo-panel { padding: 56px 48px; } }
+/* clamp(), not a flat 56px, on the vertical padding — shrinks it on a
+   shorter viewport instead of eating into the same fixed 112px no matter
+   how little vertical room there is. */
+@media (min-width: 760px) { .lf-photo-panel { padding: clamp(24px, 6vh, 56px) 48px; } }
 
 .lf-product-panel {
   flex: 1; min-width: 0; background: #fff;
-  padding: 28px 22px 40px; display: flex; flex-direction: column; justify-content: center;
+  padding: 28px 22px 40px; display: flex; flex-direction: column; justify-content: flex-start;
   border-top: 1px solid #ececec;
 }
-@media (min-width: 760px) { .lf-product-panel { padding: 56px 48px; border-top: none; border-left: 1px solid #ececec; } }
+@media (min-width: 760px) { .lf-product-panel { padding: clamp(24px, 6vh, 56px) 48px; border-top: none; border-left: 1px solid #ececec; } }
 
-.lf-col { width: 100%; max-width: 360px; margin: 0 auto; }
+/* margin: auto (not justify-content: center on the parent) — auto margins
+   on a flex item absorb free space when there's room, giving the same
+   vertically-centered look for short content, but collapse to 0 instead
+   of going negative when content is taller than the panel, so it starts
+   flush at the top rather than overflowing above the fold too. */
+.lf-col { width: 100%; max-width: 360px; margin: auto auto; }
 
 .lf-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #aaa; margin-bottom: 12px; }
 .lf-head { font-size: 21px; font-weight: 800; letter-spacing: -.01em; text-transform: uppercase; margin-bottom: 8px; color: #111; }
@@ -55,6 +69,12 @@ export const WIDGET_CSS = `
 .lf-zone {
   position: relative; border-radius: 18px; overflow: hidden;
   background: #e7e7e6; aspect-ratio: 3 / 4;
+  /* Caps how tall this gets on a short viewport — a plain 3:4 box at the
+     column's full 360px width runs to 480px alone, which is most of a
+     laptop-height window before the tips list or the upload button even
+     start. The image still crops to fill via object-fit below; this just
+     stops the placeholder box from dictating the whole panel's height. */
+  max-height: 46vh;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 18px;
 }
