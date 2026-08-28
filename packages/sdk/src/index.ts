@@ -239,6 +239,24 @@ class TryOnSdkImpl implements TryOnSdk {
     button.className = "lumiframe-tryon-button";
     button.setAttribute("data-lumiframe-tryon", "");
     button.textContent = this.options?.buttonLabel ?? "Try on";
+
+    // Per-store overrides (dashboard's "Button design" page) win over the
+    // default look via the same custom properties ensureButtonStylesInjected
+    // already wires the base CSS to — set inline so they beat the default
+    // rule's specificity without needing !important.
+    const { buttonColorStart, buttonColorEnd, buttonTextColor, buttonFont, buttonGlow } = this.options ?? {};
+    if (buttonColorStart || buttonColorEnd) {
+      const start = buttonColorStart ?? buttonColorEnd!;
+      const end = buttonColorEnd ?? buttonColorStart!;
+      button.style.setProperty("--lumiframe-accent", `linear-gradient(135deg, ${start}, ${end})`);
+    }
+    if (buttonTextColor) button.style.setProperty("--lumiframe-accent-contrast", buttonTextColor);
+    if (buttonFont) button.style.fontFamily = buttonFont;
+    if (buttonGlow) {
+      const glowColor = buttonColorStart ?? buttonColorEnd ?? "#73b7ff";
+      button.style.boxShadow = `0 0 18px 2px ${glowColor}`;
+    }
+
     button.addEventListener("click", (event) => {
       event.preventDefault();
       this.open();

@@ -22,6 +22,17 @@ export interface TryOnInitOptions {
    * storefront where those heuristics pick the wrong spot.
    */
   buttonAnchorSelector?: string;
+  /**
+   * Button appearance overrides (dashboard's "Button design" page writes
+   * these into the generated snippet from Store.widgetConfig). Any CSS
+   * color value works for the color fields (`#hex`, `rgb()`, a named
+   * color). `buttonGlow` adds a soft box-shadow in the accent color.
+   */
+  buttonColorStart?: string;
+  buttonColorEnd?: string;
+  buttonTextColor?: string;
+  buttonFont?: string;
+  buttonGlow?: boolean;
 }
 
 /**
