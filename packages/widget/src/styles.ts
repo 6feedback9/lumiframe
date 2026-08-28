@@ -147,6 +147,7 @@ export const WIDGET_CSS = `
 .lf-spinner { width: 34px; height: 34px; margin-bottom: 14px; border: 2.5px solid #e2e2e2; border-top-color: var(--lf-accent-1, #73b7ff); border-radius: 50%; animation: lfSpin .8s linear infinite; }
 .lf-gen-title { font-size: 13px; font-weight: 700; color: #222; margin-bottom: 4px; }
 .lf-gen-sub { font-size: 11px; color: #999; }
+.lf-gen-progress { font-size: 12px; font-weight: 700; color: var(--lf-accent-1, #73b7ff); margin-top: 10px; font-variant-numeric: tabular-nums; }
 
 .lf-privacy { font-size: 11px; color: #b8b8b8; margin-top: 10px; line-height: 1.45; }
 .lf-error { background: #fff2f2; color: #d00; border-radius: 10px; padding: 10px 14px; font-size: 12px; margin-top: 10px; }

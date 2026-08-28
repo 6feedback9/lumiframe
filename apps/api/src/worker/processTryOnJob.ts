@@ -63,6 +63,18 @@ export async function processTryOnJob({ tryOnGenerationId }: TryOnJobData): Prom
   }
   const { session } = generation;
 
+  // How long this job sat in the queue before a worker picked it up, as
+  // opposed to how long the generation itself took (that's `durationMs`
+  // in the provider's own logs/errors) — the two get conflated in a
+  // shopper-facing "it's slow" report otherwise. A large gap here on the
+  // first job after a period of no traffic points at the host spinning
+  // the worker down when idle (see DEPLOYMENT.md §3.7: Render's free
+  // tier does this — the fix is a paid always-on instance, not code).
+  const queueLatencyMs = Date.now() - generation.createdAt.getTime();
+  if (queueLatencyMs > 5_000) {
+    console.warn(`[worker] generation ${generation.id} waited ${queueLatencyMs}ms in queue before a worker picked it up`);
+  }
+
   try {
     await prisma.tryOnGeneration.update({
       where: { id: generation.id },

@@ -96,6 +96,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
               <div class="lf-spinner"></div>
               <div class="lf-gen-title">${escapeHtml(T.generating)}</div>
               <div class="lf-gen-sub">${escapeHtml(T.genSub)}</div>
+              <div class="lf-gen-progress" data-progress>0%</div>
             </div>
           </div>
 
@@ -180,6 +181,33 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   const preGenerate = q<HTMLElement>("[data-pre-generate]");
   const resultBlock = q<HTMLElement>("[data-result-block]");
 
+  // A fake-but-honest progress percentage during generation (product ask:
+  // the spinner alone gave no sense of whether it was almost done or
+  // stuck). There's no real progress signal from the provider mid-call —
+  // Gemini's generateContent() is one request/response, not a stream —
+  // so this eases toward 90% over the real generation's typical timeframe
+  // (providers/real's own comment: ~14-20s) and holds there; it never
+  // claims 100% on its own; the overlay itself disappears the instant a
+  // real result (or a real error) actually arrives.
+  let progressTimer: ReturnType<typeof setInterval> | null = null;
+  function stopProgressTimer(): void {
+    if (progressTimer) {
+      clearInterval(progressTimer);
+      progressTimer = null;
+    }
+  }
+  function startProgressTimer(): void {
+    stopProgressTimer();
+    const startedAt = Date.now();
+    const el = q<HTMLElement>("[data-progress]");
+    el.textContent = "0%";
+    progressTimer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const pct = Math.min(90, Math.round(90 * (1 - Math.exp(-elapsed / 9000))));
+      el.textContent = `${pct}%`;
+    }, 300);
+  }
+
   function setPhotoState(state: PhotoState): void {
     zone.classList.toggle("has-photo", state === "selected" || state === "processing");
     zone.classList.toggle("has-result", state === "result");
@@ -187,6 +215,8 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     preUpload.style.display = state === "empty" ? "block" : "none";
     preGenerate.style.display = state === "selected" ? "block" : "none";
     resultBlock.style.display = state === "result" ? "block" : "none";
+    if (state === "processing") startProgressTimer();
+    else stopProgressTimer();
     // Mobile only (see styles.ts): the product panel — photo, name, price,
     // "Add to cart" — is hidden until there's a result, so a shopper isn't
     // scrolling past the product they already know they're on before ever
@@ -314,6 +344,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
 
   function close(): void {
     if (pollHandle) clearTimeout(pollHandle);
+    stopProgressTimer();
     window.removeEventListener("resize", syncShellHeight);
     window.visualViewport?.removeEventListener("resize", syncShellHeight);
     backdrop.remove();
