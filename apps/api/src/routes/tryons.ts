@@ -314,29 +314,35 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
     // Product ask: the list itself should show the result thumbnail, not
     // just the row you click into. Never the customer's raw photo here
     // either — same privacy split as buildTryOnDetailPayload below.
-    const rows = await Promise.all(
-      items.map(async (session) => {
-        const latest = session.generations[0];
-        const resultUrl =
-          latest?.status === "COMPLETED" && latest.resultImageKey
-            ? await storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600).catch(() => null)
-            : null;
-        return {
-          id: session.id,
-          productTitle: session.productTitle,
-          productImageUrl: session.productImageUrl,
-          resultUrl,
-          status: latest?.status ?? session.status,
-          errorCode: latest?.errorCode ?? null,
-          errorMessage: latest?.errorMessage ?? null,
-          generationDurationMs: latest?.generationDurationMs ?? null,
-          feedback: session.feedback,
-          utmSource: session.utmSource,
-          utmCampaign: session.utmCampaign,
-          createdAt: session.createdAt,
-        };
-      })
-    );
+    //
+    // One batched call for the whole page instead of one signed-url request
+    // per row — the Supabase adapter's getSignedUrl is a real network call,
+    // so this page was firing up to `limit` concurrent requests to Supabase
+    // Storage and feeling like it hangs (product-reported slowness).
+    const resultKeys = items
+      .map((s) => s.generations[0])
+      .filter((g): g is NonNullable<typeof g> => g?.status === "COMPLETED" && !!g.resultImageKey)
+      .map((g) => g.resultImageKey!);
+    const resultUrls = await storage.getSignedUrls(BUCKETS.tryonResults, resultKeys, 3600).catch(() => ({}) as Record<string, string>);
+
+    const rows = items.map((session) => {
+      const latest = session.generations[0];
+      const resultUrl = (latest?.resultImageKey && resultUrls[latest.resultImageKey]) ?? null;
+      return {
+        id: session.id,
+        productTitle: session.productTitle,
+        productImageUrl: session.productImageUrl,
+        resultUrl,
+        status: latest?.status ?? session.status,
+        errorCode: latest?.errorCode ?? null,
+        errorMessage: latest?.errorMessage ?? null,
+        generationDurationMs: latest?.generationDurationMs ?? null,
+        feedback: session.feedback,
+        utmSource: session.utmSource,
+        utmCampaign: session.utmCampaign,
+        createdAt: session.createdAt,
+      };
+    });
 
     return reply.send({ items: rows, total, page, limit });
   });

@@ -66,6 +66,17 @@ export class LocalFsStorageAdapter implements StorageAdapter {
     return `${this.publicBaseUrl}/internal/storage/${bucket}/${encodeURIComponent(key)}?${params.toString()}`;
   }
 
+  // Purely local HMAC signing — no network call either way, so a loop is
+  // just as fast as a real batch. Kept for interface parity with the
+  // Supabase adapter, where batching is what actually matters.
+  async getSignedUrls(bucket: string, keys: string[], expiresInSeconds: number): Promise<Record<string, string>> {
+    const result: Record<string, string> = {};
+    for (const key of [...new Set(keys)]) {
+      result[key] = await this.getSignedUrl(bucket, key, expiresInSeconds);
+    }
+    return result;
+  }
+
   async deleteObject(bucket: string, key: string): Promise<void> {
     await rm(this.pathFor(bucket, key), { force: true });
   }

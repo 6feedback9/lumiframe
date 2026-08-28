@@ -56,6 +56,21 @@ describe("LocalFsStorageAdapter", () => {
     expect(verifySignedPath("tryon-results", "x.png", exp, sig, "test-secret")).toBeNull();
   });
 
+  it("getSignedUrls returns one verifiable URL per key, deduped", async () => {
+    await adapter.putObject("tryon-results", "a.png", Buffer.from("a"), "image/png");
+    await adapter.putObject("tryon-results", "b.png", Buffer.from("b"), "image/png");
+
+    const urls = await adapter.getSignedUrls("tryon-results", ["a.png", "b.png", "a.png"], 60);
+    expect(Object.keys(urls).sort()).toEqual(["a.png", "b.png"]);
+
+    for (const key of ["a.png", "b.png"] as const) {
+      const parsed = new URL(urls[key]!);
+      const exp = Number(parsed.searchParams.get("exp"));
+      const sig = parsed.searchParams.get("sig")!;
+      expect(verifySignedPath("tryon-results", key, exp, sig, "test-secret")).toEqual({ bucket: "tryon-results", key });
+    }
+  });
+
   it("deleteObject removes the file", async () => {
     await adapter.putObject("tryon-results", "y.png", Buffer.from("y"), "image/png");
     await adapter.deleteObject("tryon-results", "y.png");

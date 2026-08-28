@@ -277,34 +277,41 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
     // Product ask: the platform owner should see the customer photo and
     // the result right in the list, not just after clicking through.
-    const rows = await Promise.all(
-      items.map(async (session) => {
-        const latest = session.generations[0];
-        const [resultUrl, customerImageUrl] = await Promise.all([
-          latest?.status === "COMPLETED" && latest.resultImageKey
-            ? storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600).catch(() => null)
-            : Promise.resolve(null),
-          latest?.customerImageKey
-            ? storage.getSignedUrl(BUCKETS.customerPhotos, latest.customerImageKey, 3600).catch(() => null)
-            : Promise.resolve(null),
-        ]);
-        return {
-          id: session.id,
-          tenantId: session.tenantId,
-          tenantName: session.tenant.name,
-          storeName: session.store.name,
-          productTitle: session.productTitle,
-          productImageUrl: session.productImageUrl,
-          customerImageUrl,
-          resultUrl,
-          feedback: session.feedback,
-          status: latest?.status ?? session.status,
-          errorCode: latest?.errorCode ?? null,
-          errorMessage: latest?.errorMessage ?? null,
-          createdAt: session.createdAt,
-        };
-      })
-    );
+    //
+    // Two batched calls (one per bucket) for the whole page instead of up
+    // to 2x`limit` individual signed-url requests — the Supabase adapter's
+    // getSignedUrl is a real network call each time, so this page was the
+    // worst offender for the "loading hangs" complaint.
+    const resultKeys: string[] = [];
+    const customerKeys: string[] = [];
+    for (const session of items) {
+      const latest = session.generations[0];
+      if (latest?.status === "COMPLETED" && latest.resultImageKey) resultKeys.push(latest.resultImageKey);
+      if (latest?.customerImageKey) customerKeys.push(latest.customerImageKey);
+    }
+    const [resultUrls, customerUrls] = await Promise.all([
+      storage.getSignedUrls(BUCKETS.tryonResults, resultKeys, 3600).catch(() => ({}) as Record<string, string>),
+      storage.getSignedUrls(BUCKETS.customerPhotos, customerKeys, 3600).catch(() => ({}) as Record<string, string>),
+    ]);
+
+    const rows = items.map((session) => {
+      const latest = session.generations[0];
+      return {
+        id: session.id,
+        tenantId: session.tenantId,
+        tenantName: session.tenant.name,
+        storeName: session.store.name,
+        productTitle: session.productTitle,
+        productImageUrl: session.productImageUrl,
+        customerImageUrl: (latest?.customerImageKey && customerUrls[latest.customerImageKey]) ?? null,
+        resultUrl: (latest?.resultImageKey && resultUrls[latest.resultImageKey]) ?? null,
+        feedback: session.feedback,
+        status: latest?.status ?? session.status,
+        errorCode: latest?.errorCode ?? null,
+        errorMessage: latest?.errorMessage ?? null,
+        createdAt: session.createdAt,
+      };
+    });
 
     return reply.send({ items: rows, total, page, limit });
   });
