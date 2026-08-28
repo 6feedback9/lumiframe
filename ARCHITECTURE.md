@@ -247,6 +247,18 @@ If nothing resolves a required field (at minimum: a product image), the
 incomplete/garbage product snapshot. The Integration Checker (dashboard)
 surfaces exactly which of these five layers succeeded, per §16.
 
+The button itself is auto-inserted by the SDK (`packages/sdk/src/index.ts`,
+`autoInject: true` by default) once detection succeeds — placed right after
+whatever matches a cart-button heuristic (`.add-to-cart`, `[name="add"]`,
+`.btn-cart`, `.product-form__submit`, `[data-add-to-cart]`, covering
+Shopify's default themes and generic/WooCommerce markup), falling back to
+right after the page's `<h1>`. This is what makes the one-line
+`<script>` snippet on the Integration page sufficient by itself — a
+merchant pasting it does not additionally hand-place a button anywhere. A
+merchant can opt out (`autoInject: false`), override the label
+(`buttonLabel`), or override placement (`buttonAnchorSelector`) — see
+`packages/sdk/README.md`.
+
 ## 9. Events
 
 Append-only, one row per event, always carrying

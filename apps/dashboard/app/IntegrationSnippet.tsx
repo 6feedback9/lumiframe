@@ -47,7 +47,12 @@ export function IntegrationSnippet({ storeId }: { storeId: string }) {
       <p style={{ fontSize: 12, color: "var(--mist)", marginTop: 10, lineHeight: 1.6 }}>
         Paste this once, near the bottom of your product page template. It
         detects the current product automatically (JSON-LD → OpenGraph → DOM
-        selectors you configure) and adds a &ldquo;Try on&rdquo; button — see the{" "}
+        selectors you configure) and inserts a &ldquo;Try on&rdquo; button next
+        to your add-to-cart button as soon as a product is detected — no
+        theme editing beyond this one snippet. If your theme needs the
+        button somewhere specific, pass{" "}
+        <code style={{ fontSize: 11 }}>buttonAnchorSelector</code> to{" "}
+        <code style={{ fontSize: 11 }}>TryOn.init(...)</code>. See the{" "}
         <a href="/integration" style={{ color: "var(--sky)" }}>
           Integration page
         </a>{" "}

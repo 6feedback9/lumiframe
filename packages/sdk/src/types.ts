@@ -5,6 +5,23 @@ export interface TryOnInitOptions {
   /** Defaults to the production API; override for local/staging. */
   apiBaseUrl?: string;
   locale?: "en" | "uk" | "ru";
+  /**
+   * Automatically insert a "Try on" button on the product page once a
+   * product can be resolved (ARCHITECTURE.md §8) — next to the page's
+   * add-to-cart button, or near the main heading as a fallback. Default
+   * `true`; this is what the dashboard's integration snippet promises
+   * merchants. Set `false` to place your own trigger element and call
+   * `TryOn.open()` from its click handler instead.
+   */
+  autoInject?: boolean;
+  /** Overrides the default "Try on" label on the auto-injected button. */
+  buttonLabel?: string;
+  /**
+   * CSS selector for where to insert the auto-injected button, instead of
+   * the built-in add-to-cart-button/heading heuristics. Useful on a
+   * storefront where those heuristics pick the wrong spot.
+   */
+  buttonAnchorSelector?: string;
 }
 
 /**

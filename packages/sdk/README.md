@@ -30,10 +30,46 @@ against the current page. If a platform adapter
 (`packages/integrations/shopify` etc.) is loaded, it takes priority over
 the generic cascade.
 
+## Auto-injected "Try on" button
+
+By default (`autoInject: true`), the SDK inserts a "Try on" button itself
+as soon as a product resolves — right after whatever looks like the page's
+add-to-cart control (`.add-to-cart`, `[name="add"]`, `.btn-cart`,
+`.product-form__submit`, `[data-add-to-cart]` — this list covers Shopify's
+default themes and generic/WooCommerce markup), or after the page's `<h1>`
+if none of those match. Clicking it calls `TryOn.open()`. This is what
+makes the one `<script>` snippet above sufficient on its own — no theme
+editing beyond pasting it.
+
+The default look is a small pill button styled via a `<style>` tag the SDK
+injects once; override it with your own CSS against `.lumiframe-tryon-button`,
+or just the `--lumiframe-accent` / `--lumiframe-radius` custom properties.
+
+Opt out (to place your own trigger element and call `TryOn.open()` from its
+click handler instead), override the label, or override where it's placed:
+
+```html
+<script>
+  TryOn.init({
+    storeId: "store_123",
+    autoInject: false,              // or:
+    buttonLabel: "Try it on",       // default: "Try on"
+    buttonAnchorSelector: "#hero",  // insert after this element instead of the auto-detected anchor
+  });
+</script>
+```
+
 ## API
 
 ```ts
-TryOn.init(options: { storeId: string; apiBaseUrl?: string; locale?: "en"|"uk"|"ru" }): TryOnSdk
+TryOn.init(options: {
+  storeId: string;
+  apiBaseUrl?: string;
+  locale?: "en"|"uk"|"ru";
+  autoInject?: boolean;             // default true — see "Auto-injected button" above
+  buttonLabel?: string;
+  buttonAnchorSelector?: string;
+}): TryOnSdk
 TryOn.attach(product: AttachProductInput): void
 TryOn.open(product?: AttachProductInput): void
 TryOn.close(): void
