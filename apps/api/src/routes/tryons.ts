@@ -306,19 +306,28 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!session) return reply.code(404).send({ error: "Try-on session not found" });
 
-    return reply.send(await buildTryOnDetailPayload(session));
+    // Merchants see the product photo + the result (customer already
+    // wearing it) — never the customer's raw uploaded photo. Only the
+    // platform admin sees all three (apps/api/src/routes/admin.ts) — a
+    // deliberate privacy split, not an oversight.
+    return reply.send(await buildTryOnDetailPayload(session, { includeCustomerImage: false }));
   });
 }
 
 // Product photo — customer's uploaded photo — generated result: what a
-// merchant (and, cross-tenant, the platform admin — apps/api/src/routes/
-// admin.ts) sees on a try-on's detail view. Shared so both routes stay in
-// sync on exactly what a "detail" response contains.
+// try-on's detail view can show. Shared by the merchant route above (with
+// `includeCustomerImage: false`, per the privacy split noted there) and,
+// cross-tenant, the platform admin (apps/api/src/routes/admin.ts, with
+// `includeCustomerImage: true`) — one function so both routes' shape stays
+// in sync on everything except that one field.
 type SessionWithGenerationsAndAttribution = Awaited<ReturnType<typeof prisma.tryOnSession.findFirstOrThrow<{
   include: { generations: true; attribution: { include: { order: true } } };
 }>>>;
 
-export async function buildTryOnDetailPayload(session: SessionWithGenerationsAndAttribution) {
+export async function buildTryOnDetailPayload(
+  session: SessionWithGenerationsAndAttribution,
+  options: { includeCustomerImage: boolean } = { includeCustomerImage: true }
+) {
   const generations = [...session.generations].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const latest = generations[0];
 
@@ -326,7 +335,7 @@ export async function buildTryOnDetailPayload(session: SessionWithGenerationsAnd
     latest?.status === "COMPLETED" && latest.resultImageKey
       ? storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600)
       : Promise.resolve(null),
-    latest?.customerImageKey
+    options.includeCustomerImage && latest?.customerImageKey
       ? storage.getSignedUrl(BUCKETS.customerPhotos, latest.customerImageKey, 3600).catch(() => null)
       : Promise.resolve(null),
   ]);

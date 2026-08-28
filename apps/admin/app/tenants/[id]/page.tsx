@@ -13,12 +13,21 @@ interface Plan {
   priceUsd: number;
 }
 
+interface WidgetConfig {
+  buttonText?: string;
+  buttonColorStart?: string;
+  buttonColorEnd?: string;
+  buttonTextColor?: string;
+  buttonFont?: string;
+  buttonGlow?: boolean;
+}
+
 interface TenantDetail {
   id: string;
   name: string;
   slug: string;
   createdAt: string;
-  stores: { id: string; name: string; storeUrl: string; status: string; allowedDomains: string[] }[];
+  stores: { id: string; name: string; storeUrl: string; status: string; allowedDomains: string[]; widgetConfig?: WidgetConfig }[];
   users: { id: string; email: string; role: string; lastLoginAt: string | null; createdAt: string }[];
   totalTryOns: number;
   totalUsageUnits: number;
@@ -132,6 +141,125 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
   );
 }
 
+const FONT_OPTIONS = [
+  { value: "", label: "buttonDesign.fontDefault" },
+  { value: "'Manrope', sans-serif", label: "Manrope" },
+  { value: "'Inter', sans-serif", label: "Inter" },
+  { value: "'Poppins', sans-serif", label: "Poppins" },
+  { value: "Georgia, serif", label: "Georgia" },
+] as const;
+
+const WIDGET_CONFIG_DEFAULTS: Required<Pick<WidgetConfig, "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor">> = {
+  buttonText: "Try on",
+  buttonColorStart: "#73b7ff",
+  buttonColorEnd: "#9f8cff",
+  buttonTextColor: "#ffffff",
+};
+
+/** Lets the platform owner edit a client's "Try on" button design directly, without needing the merchant's own dashboard (product ask: make changes to a client's store from my own console). */
+function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: TenantDetail; onUpdated: () => void }) {
+  const { t } = useI18n();
+  const store = tenant.stores[0];
+  const [config, setConfig] = useState<WidgetConfig>({ ...WIDGET_CONFIG_DEFAULTS, ...store?.widgetConfig });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setConfig({ ...WIDGET_CONFIG_DEFAULTS, ...store?.widgetConfig });
+  }, [store?.widgetConfig]);
+
+  if (!store) return null;
+
+  async function save() {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/widget-config`, { method: "PATCH", body: JSON.stringify(config) });
+      setSaved(true);
+      onUpdated();
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const previewStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0.75em 1.5em",
+    border: "none",
+    borderRadius: 999,
+    background: `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`,
+    color: config.buttonTextColor,
+    fontFamily: config.buttonFont || "inherit",
+    fontWeight: 600,
+    fontSize: 15,
+    boxShadow: config.buttonGlow ? `0 0 18px 2px ${config.buttonColorStart}` : "none",
+  };
+
+  return (
+    <div className="panel" style={{ padding: 24, marginBottom: 20, maxWidth: 720 }}>
+      <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("buttonDesign.title")}</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.label")}</label>
+            <input value={config.buttonText ?? ""} onChange={(e) => setConfig({ ...config, buttonText: e.target.value })} maxLength={60} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div className="field">
+              <label>{t("buttonDesign.color1")}</label>
+              <input type="color" value={config.buttonColorStart} onChange={(e) => setConfig({ ...config, buttonColorStart: e.target.value })} style={{ height: 38, padding: 4 }} />
+            </div>
+            <div className="field">
+              <label>{t("buttonDesign.color2")}</label>
+              <input type="color" value={config.buttonColorEnd} onChange={(e) => setConfig({ ...config, buttonColorEnd: e.target.value })} style={{ height: 38, padding: 4 }} />
+            </div>
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.textColor")}</label>
+            <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 38, padding: 4 }} />
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.font")}</label>
+            <select
+              value={config.buttonFont ?? ""}
+              onChange={(e) => setConfig({ ...config, buttonFont: e.target.value || undefined })}
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line-strong)", background: "rgba(173,201,255,0.05)", color: "var(--paper)", fontSize: 13 }}
+            >
+              {FONT_OPTIONS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.value ? f.label : t(f.label as "buttonDesign.fontDefault")}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
+            <input type="checkbox" id="admin-glow" checked={!!config.buttonGlow} onChange={(e) => setConfig({ ...config, buttonGlow: e.target.checked })} style={{ width: "auto" }} />
+            <label htmlFor="admin-glow" style={{ margin: 0 }}>
+              {t("buttonDesign.glow")}
+            </label>
+          </div>
+          <button className="btn" style={{ width: "auto", padding: "9px 18px" }} disabled={saving} onClick={save}>
+            {saving ? t("common.saving") : saved ? "✓" : t("common.save")}
+          </button>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--mist-dim)", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            {t("buttonDesign.preview")}
+          </div>
+          <div style={{ padding: 32, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center" }}>
+            <button type="button" style={previewStyle} disabled>
+              {config.buttonText || "Try on"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TenantDetailContent({ id }: { id: string }) {
   const { t } = useI18n();
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
@@ -175,6 +303,7 @@ function TenantDetailContent({ id }: { id: string }) {
       </div>
 
       <BillingPanel id={id} tenant={tenant} plans={plans} onUpdated={load} />
+      <ButtonDesignPanel id={id} tenant={tenant} onUpdated={load} />
 
       <div className="panel" style={{ marginBottom: 20 }}>
         <table>

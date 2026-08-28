@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthGuard } from "../AuthGuard";
 import { apiFetch } from "@/lib/api";
@@ -19,6 +19,12 @@ interface TryOnRow {
   createdAt: string;
 }
 
+interface TenantOption {
+  id: string;
+  name: string;
+  stores: { storeUrl: string }[];
+}
+
 function badgeClass(status: string): string {
   return `badge badge-${status.toLowerCase()}`;
 }
@@ -26,13 +32,22 @@ function badgeClass(status: string): string {
 function TryOnsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tenantId = searchParams.get("tenantId");
+  const tenantId = searchParams.get("tenantId") ?? "";
   const { t } = useI18n();
+  const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [items, setItems] = useState<TryOnRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const limit = 20;
+
+  useEffect(() => {
+    apiFetch<{ tenants: TenantOption[] }>("/api/v1/admin/tenants")
+      .then((res) => setTenants(res.tenants))
+      .catch(() => {
+        // Non-fatal — the store selector just shows only "All stores".
+      });
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
@@ -45,9 +60,53 @@ function TryOnsContent() {
       .catch((err) => setError(err.message));
   }, [page, tenantId]);
 
+  const selectedTenant = useMemo(() => tenants.find((tn) => tn.id === tenantId), [tenants, tenantId]);
+
+  function selectTenant(next: string) {
+    const params = new URLSearchParams();
+    if (next) params.set("tenantId", next);
+    router.push(`/tryons${params.toString() ? `?${params.toString()}` : ""}`);
+    setPage(1);
+  }
+
   return (
     <>
       <div className="page-title">{t("tryons.title")}</div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+        <label style={{ fontSize: 12, color: "var(--mist-dim)" }}>{t("tryons.selectStore")}</label>
+        <select
+          value={tenantId}
+          onChange={(e) => selectTenant(e.target.value)}
+          style={{
+            padding: "9px 12px",
+            borderRadius: 10,
+            border: "1px solid var(--line-strong)",
+            background: "rgba(173,201,255,0.05)",
+            color: "var(--paper)",
+            fontSize: 13,
+            minWidth: 260,
+          }}
+        >
+          <option value="">{t("common.allStores")}</option>
+          {tenants.map((tn) => (
+            <option key={tn.id} value={tn.id}>
+              {tn.name} {tn.stores[0]?.storeUrl ? `— ${tn.stores[0].storeUrl}` : ""}
+            </option>
+          ))}
+        </select>
+
+        {tenantId && (
+          <div className="stat-card" style={{ padding: "10px 20px" }}>
+            <div className="label">
+              {t("tryons.countLabel")}
+              {selectedTenant ? ` — ${selectedTenant.name}` : ""}
+            </div>
+            <div className="value">{total}</div>
+          </div>
+        )}
+      </div>
+
       {error && <div className="empty-state">{error}</div>}
       <div className="panel">
         <table>

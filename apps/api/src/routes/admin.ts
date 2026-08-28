@@ -11,6 +11,21 @@ import { buildTryOnDetailPayload } from "./tryons";
 const setPlanSchema = z.object({ planId: z.string().nullable() });
 const addCreditsSchema = z.object({ addCredits: z.number().int() });
 
+// Same shape as apps/api/src/routes/store.ts's own PATCH /api/v1/store —
+// duplicated rather than imported since that route's schema is merchant-
+// facing (allowedDomains + widgetConfig together) and this one is
+// deliberately narrower (button design only, admin-scoped, no
+// allowedDomains — the admin shouldn't casually change a merchant's
+// security boundary from this screen).
+const setWidgetConfigSchema = z.object({
+  buttonText: z.string().max(60).optional(),
+  buttonColorStart: z.string().max(20).optional(),
+  buttonColorEnd: z.string().max(20).optional(),
+  buttonTextColor: z.string().max(20).optional(),
+  buttonFont: z.string().max(80).optional(),
+  buttonGlow: z.boolean().optional(),
+});
+
 // The platform-owner's own view across every tenant (ARCHITECTURE.md §11
 // carves this out explicitly as the one place tenant isolation is
 // intentionally crossed — every route here is authenticateAdmin-gated,
@@ -161,6 +176,29 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ id: tenant.id, topUpCredits: tenant.topUpCredits });
   });
 
+  // ── Edit a tenant's store's button design directly (product ask: the
+  // platform owner should be able to make changes to a client's store —
+  // button design, plan — from her own console, not just the merchant's
+  // own dashboard). Applies to that tenant's first/only store, same
+  // convention as apps/api/src/routes/store.ts's firstStoreForTenant. ──
+  app.patch("/api/v1/admin/tenants/:id/widget-config", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = setWidgetConfigSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const store = await prisma.store.findFirst({ where: { tenantId: id }, orderBy: { createdAt: "asc" } });
+    if (!store) return reply.code(404).send({ error: "No store found for this tenant" });
+
+    const updated = await prisma.store.update({
+      where: { id: store.id },
+      data: { widgetConfig: { ...(store.widgetConfig as object), ...parsed.data } },
+    });
+    await prisma.auditLog.create({
+      data: { tenantId: id, action: "store.widgetConfig.updated_by_admin", targetType: "Store", targetId: store.id },
+    });
+    return reply.send({ storeId: updated.id, widgetConfig: updated.widgetConfig });
+  });
+
   // ── Cross-tenant try-on browsing (product ask: platform owner sees
   // every store's try-ons, photos included) ────────────────────────────
   app.get("/api/v1/admin/tryons", { preHandler: authenticateAdmin }, async (request, reply) => {
@@ -211,6 +249,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!session) return reply.code(404).send({ error: "Try-on session not found" });
 
-    return reply.send(await buildTryOnDetailPayload(session));
+    // The platform admin is the one place all three photos are shown —
+    // including the customer's raw uploaded photo (apps/api/src/routes/
+    // tryons.ts's merchant-facing route deliberately omits it).
+    return reply.send(await buildTryOnDetailPayload(session, { includeCustomerImage: true }));
   });
 }

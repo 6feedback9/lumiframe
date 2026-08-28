@@ -67,6 +67,16 @@ const DICT = {
     "tenantDetail.pendingRequestTitle": "Запит від клієнта",
     "tenantDetail.viewAllTryOns": "Переглянути всі примірки цього клієнта →",
 
+    "buttonDesign.title": "Оформлення кнопки клієнта",
+    "buttonDesign.label": "Текст кнопки",
+    "buttonDesign.color1": "Колір (початок)",
+    "buttonDesign.color2": "Колір (кінець)",
+    "buttonDesign.textColor": "Колір тексту",
+    "buttonDesign.font": "Шрифт",
+    "buttonDesign.glow": "Світіння",
+    "buttonDesign.preview": "Попередній перегляд",
+    "buttonDesign.fontDefault": "За замовчуванням",
+
     "tryons.title": "Усі примірки",
     "tryons.tenant": "Клієнт",
     "tryons.store": "Магазин",
@@ -74,6 +84,8 @@ const DICT = {
     "tryons.status": "Статус",
     "tryons.createdAt": "Створено",
     "tryons.empty": "Ще немає примірок.",
+    "tryons.selectStore": "Оберіть магазин",
+    "tryons.countLabel": "Кількість примірок",
 
     "detail.back": "← Назад",
     "detail.productPhoto": "Фото товару",
@@ -139,6 +151,16 @@ const DICT = {
     "tenantDetail.pendingRequestTitle": "Request from the merchant",
     "tenantDetail.viewAllTryOns": "View all of this tenant's try-ons →",
 
+    "buttonDesign.title": "Client's button design",
+    "buttonDesign.label": "Button label",
+    "buttonDesign.color1": "Color (start)",
+    "buttonDesign.color2": "Color (end)",
+    "buttonDesign.textColor": "Text color",
+    "buttonDesign.font": "Font",
+    "buttonDesign.glow": "Glow",
+    "buttonDesign.preview": "Live preview",
+    "buttonDesign.fontDefault": "Default",
+
     "tryons.title": "All try-ons",
     "tryons.tenant": "Tenant",
     "tryons.store": "Store",
@@ -146,6 +168,8 @@ const DICT = {
     "tryons.status": "Status",
     "tryons.createdAt": "Created At",
     "tryons.empty": "No try-ons yet.",
+    "tryons.selectStore": "Select a store",
+    "tryons.countLabel": "Try-on count",
 
     "detail.back": "← Back",
     "detail.productPhoto": "Product photo",

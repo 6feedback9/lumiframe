@@ -54,6 +54,27 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // Last 6 calendar months' completed try-ons (== billed units, since one
+  // UsageRecord is exactly one completed generation) — feeds the
+  // dashboard's Overview trend charts. Computed as 6 small count queries
+  // rather than a SQL date_trunc, matching this route's existing "bounded
+  // window, JS-side aggregation" style (see apps/api/src/routes/
+  // analytics.ts's top comment) — fine at Phase 1 data volumes.
+  app.get("/api/v1/billing/history", { preHandler: authenticateMerchant }, async (request, reply) => {
+    const { tenantId } = request.merchant!;
+    const now = new Date();
+    const months: { month: string; tryOns: number }[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i + 1, 1));
+      const count = await prisma.usageRecord.count({ where: { tenantId, createdAt: { gte: start, lt: end } } });
+      months.push({ month: `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`, tryOns: count });
+    }
+
+    return reply.send({ months });
+  });
+
   app.post("/api/v1/billing/request", { preHandler: authenticateMerchant }, async (request, reply) => {
     const parsed = requestSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });

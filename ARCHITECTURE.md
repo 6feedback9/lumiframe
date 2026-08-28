@@ -328,6 +328,18 @@ and there's a full funnel trail per session for debugging.
   integrations).
 - Audit log on auth events, API key rotation, and integration config
   changes.
+- **Customer-photo visibility is deliberately narrower for a merchant than
+  for the platform admin.** A try-on's detail view can show up to three
+  images — the merchant's product/catalog photo, the customer's raw
+  uploaded photo, and the AI-generated result — but
+  `buildTryOnDetailPayload`'s `includeCustomerImage` flag (`apps/api/src/
+  routes/tryons.ts`) means the merchant-facing route never returns the
+  customer's raw photo, only the product photo and the result (the
+  customer already wearing/using the product). Only the platform admin's
+  cross-tenant route (`apps/api/src/routes/admin.ts`) passes
+  `includeCustomerImage: true` and shows all three. This is a privacy
+  choice, not an oversight: a shopper uploaded that photo to try on one
+  product, not to be visible to a merchant browsing their dashboard.
 
 ## 12. Product image cache
 

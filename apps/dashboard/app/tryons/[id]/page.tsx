@@ -12,7 +12,10 @@ interface TryOnDetail {
   status: string;
   errorCode: string | null;
   errorMessage: string | null;
-  customerImageUrl: string | null;
+  // Deliberately no customerImageUrl here — the API's merchant-facing
+  // detail route never returns it (apps/api/src/routes/tryons.ts). Only
+  // the platform admin sees the customer's raw uploaded photo
+  // (apps/admin/app/tryons/[id]).
   resultUrl: string | null;
   generationDurationMs: number | null;
   createdAt: string;
@@ -85,14 +88,16 @@ function TryOnDetailContent() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginBottom: 20 }}>
-        <PhotoCard title={t("detail.productPhoto")} url={data.product.imageUrl} placeholder={t("detail.noPhoto")} />
-        <PhotoCard title={t("detail.customerPhoto")} url={data.customerImageUrl} placeholder={t("detail.noPhoto")} />
+      {/* Customer wearing the product, then the catalog photo it came from
+          — no raw customer photo here by design (see the TryOnDetail
+          comment above). */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, marginBottom: 20, maxWidth: 640 }}>
         <PhotoCard
           title={t("detail.resultPhoto")}
           url={data.resultUrl}
           placeholder={data.status === "COMPLETED" ? t("detail.noPhoto") : t("detail.notAvailable")}
         />
+        <PhotoCard title={t("detail.productPhoto")} url={data.product.imageUrl} placeholder={t("detail.noPhoto")} />
       </div>
 
       <div className="panel" style={{ padding: 20, fontSize: 13, color: "var(--mist)" }}>
