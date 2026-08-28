@@ -162,4 +162,42 @@ describe("platform admin", () => {
     });
     expect(res.statusCode).toBe(403);
   });
+
+  // merchantTenantId is still plan-less with its 5-credit trial balance
+  // from the grant test above — a plan-less tenant's only possible
+  // source of topUpCredits, so assigning its first real plan should
+  // clear it (see routes/admin.ts's isTrialConversion).
+  it("converting a trial tenant to its first real plan clears the trial's leftover credits", async () => {
+    const starterPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "STARTER" } });
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/plan`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { planId: starterPlan.id },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().plan.key).toBe("STARTER");
+    expect(res.json().topUpCredits).toBe(0);
+
+    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: merchantTenantId } });
+    expect(tenant.topUpCredits).toBe(0);
+  });
+
+  it("does NOT touch topUpCredits when changing plan on an already-paying tenant", async () => {
+    // merchantTenantId now has a real plan (previous test) — top up its
+    // balance the way a purchased pack would, then switch plans again.
+    // That balance is real money, not a trial freebie, and must survive.
+    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { topUpCredits: 20 } });
+    const growthPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "GROWTH" } });
+
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/plan`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { planId: growthPlan.id },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().topUpCredits).toBe(20);
+  });
 });

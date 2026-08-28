@@ -210,12 +210,30 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       if (!plan) return reply.code(400).send({ error: "Unknown planId" });
     }
 
+    const before = await prisma.tenant.findUnique({ where: { id } });
+    if (!before) return reply.code(404).send({ error: "Tenant not found" });
+
+    // A plan-less tenant's only possible source of topUpCredits is the
+    // free trial grant (a real top-up purchase requires an existing plan
+    // to price a pack against — see billing.ts) — so this is specifically
+    // "converting a trial tenant to its first real plan", not a plan
+    // change on an already-paying tenant. Zero the leftover trial balance
+    // in that one case; leave topUpCredits alone on every other plan
+    // change (upgrading/downgrading a paying tenant must never touch
+    // credits they've actually purchased).
+    const isTrialConversion = !before.planId && !!parsed.data.planId && !!before.trialGrantedAt;
+
     const tenant = await prisma.tenant.update({
       where: { id },
-      data: { planId: parsed.data.planId, planRequestNote: null, planRequestedAt: null },
+      data: {
+        planId: parsed.data.planId,
+        planRequestNote: null,
+        planRequestedAt: null,
+        ...(isTrialConversion ? { topUpCredits: 0 } : {}),
+      },
       include: { plan: true },
     });
-    return reply.send({ id: tenant.id, plan: tenant.plan });
+    return reply.send({ id: tenant.id, plan: tenant.plan, topUpCredits: tenant.topUpCredits });
   });
 
   app.post("/api/v1/admin/tenants/:id/topup", { preHandler: authenticateAdmin }, async (request, reply) => {
