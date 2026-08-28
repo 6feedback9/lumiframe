@@ -123,7 +123,7 @@ function TryOnsContent() {
           ))}
         </select>
 
-        {billing?.plan && (
+        {billing && (billing.plan || billing.topUpCredits > 0) && (
           <div
             style={{
               fontSize: 12,
@@ -134,11 +134,22 @@ function TryOnsContent() {
               background: "rgba(173,201,255,0.05)",
             }}
           >
-            {t("billing.usedThisMonth")}: <strong style={{ color: "var(--paper)" }}>{billing.usedThisMonth} / {billing.plan.monthlyLimit}</strong>
-            {billing.topUpCredits > 0 && (
+            {billing.plan ? (
               <>
-                {" "}
-                · {t("billing.topUpCredits")}: <strong style={{ color: "var(--paper)" }}>{billing.topUpCredits}</strong>
+                {t("billing.usedThisMonth")}: <strong style={{ color: "var(--paper)" }}>{billing.usedThisMonth} / {billing.plan.monthlyLimit}</strong>
+                {billing.topUpCredits > 0 && (
+                  <>
+                    {" "}
+                    · {t("billing.topUpCredits")}: <strong style={{ color: "var(--paper)" }}>{billing.topUpCredits}</strong>
+                  </>
+                )}
+              </>
+            ) : (
+              // No plan yet — a brand-new tenant on its free trial (see
+              // domain/trial.ts). Same topUpCredits value, just without a
+              // monthly limit to divide it against.
+              <>
+                {t("billing.trialActive")}: <strong style={{ color: "var(--paper)" }}>{billing.topUpCredits}</strong>
               </>
             )}
           </div>

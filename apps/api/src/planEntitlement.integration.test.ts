@@ -79,7 +79,16 @@ describe("plan-limit enforcement", () => {
     const store = await prisma.store.findUniqueOrThrow({ where: { id: storeId } });
     tenantId = store.tenantId;
 
-    // Registering assigns Starter (100/mo) by default.
+    // Registration only grants a trial now (see domain/trial.ts), not a
+    // paid plan — assign Starter (100/mo) directly, the same way the
+    // platform admin would once a merchant actually pays, and clear the
+    // trial credits registration granted alongside it (topUpCredits: 0)
+    // so this test exercises plan-limit enforcement specifically, not
+    // trial-credit enforcement (that's covered by trial.ts's own tests) —
+    // the first assertion below assumes blocking happens with zero
+    // top-up balance to fall back on.
+    const starterPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "STARTER" } });
+    await prisma.tenant.update({ where: { id: tenantId }, data: { planId: starterPlan.id, topUpCredits: 0 } });
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId }, include: { plan: true } });
     expect(tenant.plan?.key).toBe("STARTER");
     expect(tenant.plan?.monthlyLimit).toBe(100);

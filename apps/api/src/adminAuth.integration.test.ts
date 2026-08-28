@@ -111,15 +111,13 @@ describe("platform admin", () => {
     expect(body.stores.length).toBeGreaterThanOrEqual(1);
   });
 
-  // The owner-granted trial (product decision: no longer merchant
-  // self-serve — apps/admin's tenant Billing panel is the only way to
-  // grant it now, see apps/api/src/domain/trial.ts).
+  // The admin's manual trial grant (apps/admin's tenant Billing panel) —
+  // registration itself grants every new tenant a trial automatically now
+  // (see apps/api/src/domain/trial.ts), so this route only matters for a
+  // tenant that somehow doesn't have one: simulate that by clearing both
+  // planId and the trial registration already granted.
   it("lets the platform admin grant a trial to a plan-less tenant", async () => {
-    // Registration auto-assigns Starter to every new tenant (auth.ts),
-    // so "plan-less" here means an admin cleared it via the plan select —
-    // the same state as a real tenant whose owner did that, and the only
-    // state grantTrial() is actually meant for.
-    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: null } });
+    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: null, trialGrantedAt: null, topUpCredits: 0 } });
 
     const before = await app.inject({
       method: "GET",

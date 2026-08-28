@@ -1,9 +1,11 @@
 // A one-time free top-up a tenant can get before any plan is assigned.
-// Originally a merchant self-service action (POST /api/v1/billing/trial);
-// product decision changed this to owner-granted only — the platform
-// owner activates it herself from apps/admin for a specific client
-// (POST /api/v1/admin/tenants/:id/trial), and the merchant dashboard no
-// longer has a way to trigger it. Kept as a domain function rather than
+// Every new tenant is granted this automatically at registration now
+// (routes/auth.ts) — no plan assigned yet, TRIAL_CREDITS to try the
+// product with. This function stays as the admin's manual fallback
+// (POST /api/v1/admin/tenants/:id/trial) for the one case a fresh
+// signup doesn't cover: a tenant that somehow doesn't have a trial yet
+// (e.g. a pre-existing tenant from before the auto-grant, or one an
+// admin reset back to plan-less). Kept as a domain function rather than
 // inline in the admin route since the grant logic (guards + the actual
 // update) doesn't belong to routing.
 
