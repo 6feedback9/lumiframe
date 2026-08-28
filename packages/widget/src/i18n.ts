@@ -26,6 +26,11 @@ export interface Copy {
   likeAria: string;
   dislikeAria: string;
   feedbackThanks: string;
+  examplePhoto: string;
+  tip1: string;
+  tip2: string;
+  tip3: string;
+  tip4: string;
 }
 
 const COPY: Record<MountWidgetOptions["locale"], Copy> = {
@@ -55,6 +60,11 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     likeAria: "Like this result",
     dislikeAria: "Dislike this result",
     feedbackThanks: "Thanks for the feedback!",
+    examplePhoto: "Example photo",
+    tip1: "Only you in the photo",
+    tip2: "Full body, head to toe",
+    tip3: "Good lighting",
+    tip4: "No clutter in the background",
   },
   uk: {
     title: "Віртуальна примірка",
@@ -82,6 +92,11 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     likeAria: "Подобається",
     dislikeAria: "Не подобається",
     feedbackThanks: "Дякуємо за відгук!",
+    examplePhoto: "Приклад фото",
+    tip1: "Лише ти на фото",
+    tip2: "Повний зріст",
+    tip3: "Гарне освітлення",
+    tip4: "Без зайвих предметів на фоні",
   },
   ru: {
     title: "Виртуальная примерка",
@@ -109,6 +124,11 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     likeAria: "Нравится",
     dislikeAria: "Не нравится",
     feedbackThanks: "Спасибо за отзыв!",
+    examplePhoto: "Пример фото",
+    tip1: "Только ты на фото",
+    tip2: "Полный рост",
+    tip3: "Хорошее освещение",
+    tip4: "Без лишних предметов на фоне",
   },
 };
 

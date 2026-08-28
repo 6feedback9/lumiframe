@@ -2,6 +2,12 @@
 // (ARCHITECTURE.md §3/§7). Lazy-loaded by @lumiframe/sdk on open() — see
 // packages/sdk/src/index.ts — so this module's weight never lands on a
 // product page that no one clicks "Try on" on.
+//
+// Layout (product ask, from a reference screenshot): a full-page split
+// view — photo/guidance on the left, product + cart on the right — rather
+// than a floating bottom-sheet card. The product panel's "Add to cart" is
+// deliberately always active, independent of the try-on's own state: a
+// shopper should be able to buy without trying on, same as any store.
 
 import { ApiClient } from "./apiClient";
 import { fileToUploadDataUri } from "./imageResize";
@@ -25,6 +31,8 @@ function ensureStyles(): void {
 const POLL_INTERVAL_MS = 1200;
 const POLL_TIMEOUT_MS = 45_000;
 
+type PhotoState = "empty" | "selected" | "processing" | "result";
+
 export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   ensureStyles();
   const T = getCopy(options.locale);
@@ -47,7 +55,8 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   }
   // Reuse the same accent the merchant configured for the auto-injected page
   // button (product ask: the try-on window's own design — colors included —
-  // should be configurable, not a second, disconnected blue).
+  // should be configurable, not a second, disconnected blue), unless a
+  // modal-specific override was set — see packages/sdk's fallback chain.
   if (options.accentColorStart || options.accentColorEnd) {
     const start = options.accentColorStart ?? options.accentColorEnd!;
     const end = options.accentColorEnd ?? options.accentColorStart!;
@@ -55,71 +64,86 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     backdrop.style.setProperty("--lf-btn-bg", options.accentStyle === "solid" ? start : `linear-gradient(135deg, ${start}, ${end})`);
   }
   if (options.accentTextColor) backdrop.style.setProperty("--lf-accent-contrast", options.accentTextColor);
-  backdrop.innerHTML = `
-    <div class="lf-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(T.title)}">
-      <div class="lf-header">
-        <span class="lf-brand">${escapeHtml(T.title)}</span>
-        <button type="button" class="lf-close" data-close aria-label="${escapeHtml(T.close)}">✕</button>
-      </div>
-      <div class="lf-body">
-        ${
-          options.product.productTitle
-            ? `<div class="lf-product">
-                <img class="lf-pimg" src="${escapeHtml(options.product.productImageUrl)}" alt="" onerror="this.style.display='none'">
-                <div>
-                  <div class="lf-pname">${escapeHtml(options.product.productTitle)}</div>
-                  ${options.product.price ? `<div class="lf-pprice">${escapeHtml(formatPrice(options.product.price, options.product.currency))}</div>` : ""}
-                </div>
-              </div>`
-            : ""
-        }
 
-        <div data-step="upload">
+  backdrop.innerHTML = `
+    <div class="lf-shell" role="dialog" aria-modal="true" aria-label="${escapeHtml(T.title)}">
+      <button type="button" class="lf-close" data-close aria-label="${escapeHtml(T.close)}">✕</button>
+
+      <div class="lf-photo-panel">
+        <div class="lf-col">
+          <div class="lf-eyebrow">${escapeHtml(T.title)}</div>
           <div class="lf-head">${escapeHtml(options.modalHeading || T.head)}</div>
           <div class="lf-desc">${escapeHtml(options.modalSubheading || T.desc)}</div>
+
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
-            <img class="lf-preview" data-preview alt="">
+            <div class="lf-photo-badge">${escapeHtml(T.examplePhoto)}</div>
             <div class="lf-placeholder" data-placeholder>
-              <div class="lf-placeholder-icon">📷</div>
-              <div class="lf-upload-text">${escapeHtml(T.upload)}</div>
-              <div class="lf-upload-hint">${escapeHtml(T.hint)}</div>
+              <div class="lf-placeholder-icon">🧍</div>
+            </div>
+            <img class="lf-preview" data-preview alt="">
+            <img class="lf-result-img" data-result-img alt="Try-on result">
+            <div class="lf-processing-overlay">
+              <div class="lf-spinner"></div>
+              <div class="lf-gen-title">${escapeHtml(T.generating)}</div>
+              <div class="lf-gen-sub">${escapeHtml(T.genSub)}</div>
             </div>
           </div>
-          <div class="lf-privacy">${escapeHtml(T.privacy)}</div>
-          <div class="lf-consent">
-            <input type="checkbox" id="lf-consent-check" data-consent>
-            <label for="lf-consent-check">${escapeHtml(T.consentLabel)}</label>
+
+          <div data-pre-upload>
+            <ul class="lf-tips">
+              <li>${escapeHtml(T.tip1)}</li>
+              <li>${escapeHtml(T.tip2)}</li>
+              <li>${escapeHtml(T.tip3)}</li>
+              <li>${escapeHtml(T.tip4)}</li>
+            </ul>
+            <button type="button" class="lf-btn lf-btn-primary" data-upload-trigger>${escapeHtml(T.upload)}</button>
+            <div class="lf-privacy">${escapeHtml(T.privacy)}</div>
           </div>
+
+          <div data-pre-generate style="display:none">
+            <div class="lf-consent">
+              <input type="checkbox" id="lf-consent-check" data-consent>
+              <label for="lf-consent-check">${escapeHtml(T.consentLabel)}</label>
+            </div>
+            <button type="button" class="lf-btn lf-btn-primary" data-generate disabled>${escapeHtml(T.generate)}</button>
+          </div>
+
+          <div data-result-block style="display:none">
+            <div class="lf-ai-note">${escapeHtml(T.aiNote)}</div>
+            <div class="lf-feedback" data-feedback>
+              <span class="lf-feedback-prompt">${escapeHtml(T.feedbackPrompt)}</span>
+              <button type="button" class="lf-fb-btn" data-fb-like aria-label="${escapeHtml(T.likeAria)}">👍</button>
+              <button type="button" class="lf-fb-btn" data-fb-dislike aria-label="${escapeHtml(T.dislikeAria)}">👎</button>
+            </div>
+            <div class="lf-feedback-thanks" data-fb-thanks style="display:none">${escapeHtml(T.feedbackThanks)}</div>
+            <div class="lf-actions">
+              ${showTryAnother ? `<button type="button" class="lf-btn lf-btn-secondary" data-retry>${escapeHtml(T.tryAnother)}</button>` : ""}
+              ${showBack ? `<button type="button" class="lf-btn lf-btn-secondary" data-back>${escapeHtml(T.backToProduct)}</button>` : ""}
+            </div>
+          </div>
+
           <div class="lf-error" data-error style="display:none"></div>
-          <button type="button" class="lf-btn lf-btn-primary" data-generate disabled>${escapeHtml(T.generate)}</button>
-        </div>
-
-        <div data-step="processing" style="display:none">
-          <div class="lf-generating">
-            <div class="lf-spinner"></div>
-            <div class="lf-gen-title">${escapeHtml(T.generating)}</div>
-            <div class="lf-gen-sub">${escapeHtml(T.genSub)}</div>
-          </div>
-        </div>
-
-        <div data-step="result" style="display:none">
-          <img class="lf-result-img" data-result-img alt="Try-on result">
-          <div class="lf-ai-note">${escapeHtml(T.aiNote)}</div>
-          <div class="lf-feedback" data-feedback>
-            <span class="lf-feedback-prompt">${escapeHtml(T.feedbackPrompt)}</span>
-            <button type="button" class="lf-fb-btn" data-fb-like aria-label="${escapeHtml(T.likeAria)}">👍</button>
-            <button type="button" class="lf-fb-btn" data-fb-dislike aria-label="${escapeHtml(T.dislikeAria)}">👎</button>
-          </div>
-          <div class="lf-feedback-thanks" data-fb-thanks style="display:none">${escapeHtml(T.feedbackThanks)}</div>
-          <div class="lf-actions">
-            ${showTryAnother ? `<button type="button" class="lf-btn lf-btn-secondary" data-retry>${escapeHtml(T.tryAnother)}</button>` : ""}
-            ${showBack ? `<button type="button" class="lf-btn lf-btn-secondary" data-back>${escapeHtml(T.backToProduct)}</button>` : ""}
-          </div>
-          <button type="button" class="lf-btn lf-btn-primary" data-add-to-cart>${escapeHtml(T.addToCart)}</button>
         </div>
       </div>
-      <div class="lf-footer">Lumi Frame</div>
+
+      <div class="lf-product-panel">
+        <div class="lf-col">
+          ${
+            options.product.productTitle
+              ? `<div class="lf-product">
+                  <img class="lf-pimg" src="${escapeHtml(options.product.productImageUrl)}" alt="" onerror="this.style.display='none'">
+                  <div>
+                    <div class="lf-pname">${escapeHtml(options.product.productTitle)}</div>
+                    ${options.product.price ? `<div class="lf-pprice">${escapeHtml(formatPrice(options.product.price, options.product.currency))}</div>` : ""}
+                  </div>
+                </div>`
+              : ""
+          }
+          <button type="button" class="lf-btn lf-btn-primary" data-add-to-cart>${escapeHtml(T.addToCart)}</button>
+          <div class="lf-brand-footer">Lumi Frame</div>
+        </div>
+      </div>
     </div>
   `;
   document.body.appendChild(backdrop);
@@ -127,10 +151,18 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
 
   const q = <E extends Element = Element>(sel: string) => backdrop.querySelector<E>(sel)!;
 
-  function showStep(name: "upload" | "processing" | "result"): void {
-    for (const step of ["upload", "processing", "result"]) {
-      (q(`[data-step="${step}"]`) as HTMLElement).style.display = step === name ? "block" : "none";
-    }
+  const zone = q<HTMLElement>("[data-zone]");
+  const preUpload = q<HTMLElement>("[data-pre-upload]");
+  const preGenerate = q<HTMLElement>("[data-pre-generate]");
+  const resultBlock = q<HTMLElement>("[data-result-block]");
+
+  function setPhotoState(state: PhotoState): void {
+    zone.classList.toggle("has-photo", state === "selected" || state === "processing");
+    zone.classList.toggle("has-result", state === "result");
+    zone.classList.toggle("is-processing", state === "processing");
+    preUpload.style.display = state === "empty" ? "block" : "none";
+    preGenerate.style.display = state === "selected" ? "block" : "none";
+    resultBlock.style.display = state === "result" ? "block" : "none";
   }
 
   function showError(message: string): void {
@@ -151,7 +183,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     clearError();
     const dataUri = await fileToUploadDataUri(file);
     q<HTMLImageElement>("[data-preview]").src = dataUri;
-    q<HTMLElement>("[data-zone]").classList.add("has-photo");
+    setPhotoState("selected");
     updateGenerateEnabled();
     options.onEvent("tryon:photo-selected", { product: options.product });
     void api.postEvent({ type: "PHOTO_SELECTED", externalProductId: options.product.productId, visitorId, browserSessionId });
@@ -175,25 +207,25 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
           options.onEvent("tryon:completed", { tryOnId, resultUrl: status.resultUrl });
           q<HTMLImageElement>("[data-result-img]").src = status.resultUrl;
           resetFeedbackUi();
-          showStep("result");
+          setPhotoState("result");
           return;
         }
         if (status.status === "FAILED" || status.status === "EXPIRED") {
           options.onEvent("tryon:failed", { tryOnId, errorCode: status.errorCode ?? "EXPIRED", errorMessage: status.message ?? status.errorMessage });
-          showStep("upload");
+          setPhotoState("selected");
           showError(status.status === "EXPIRED" ? T.expired : T.errGen);
           return;
         }
         if (Date.now() > deadline) {
           options.onEvent("tryon:failed", { tryOnId, errorCode: "CLIENT_POLL_TIMEOUT" });
-          showStep("upload");
+          setPhotoState("selected");
           showError(T.errGen);
           return;
         }
         pollHandle = setTimeout(tick, POLL_INTERVAL_MS);
       } catch {
         if (Date.now() > deadline) {
-          showStep("upload");
+          setPhotoState("selected");
           showError(T.errGen);
           return;
         }
@@ -206,7 +238,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   async function generate(): Promise<void> {
     if (!selectedFile) return;
     clearError();
-    showStep("processing");
+    setPhotoState("processing");
     options.onEvent("tryon:processing", {});
 
     try {
@@ -224,7 +256,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
       options.onEvent("tryon:started", { product: options.product, tryOnId: created.tryOnId });
       await pollUntilDone();
     } catch (error) {
-      showStep("upload");
+      setPhotoState("selected");
       showError((error as Error).message || T.errGen);
     }
   }
@@ -236,13 +268,14 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file || !tryOnId) return;
-      showStep("processing");
+      const dataUri = await fileToUploadDataUri(file);
+      q<HTMLImageElement>("[data-preview]").src = dataUri;
+      setPhotoState("processing");
       try {
-        const dataUri = await fileToUploadDataUri(file);
         await api.retryTryOn(tryOnId, dataUri);
         await pollUntilDone();
       } catch (error) {
-        showStep("result"); // stay on the previous result rather than losing it
+        setPhotoState("result"); // stay on the previous result rather than losing it
         showError((error as Error).message || T.errGen);
       }
     };
@@ -344,7 +377,6 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     }
   });
 
-  const zone = q<HTMLElement>("[data-zone]");
   const fileInput = q<HTMLInputElement>("[data-file-input]");
   fileInput.addEventListener("change", (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
@@ -356,6 +388,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     const file = e.dataTransfer?.files?.[0];
     if (file) void onFileSelected(file);
   });
+  q("[data-upload-trigger]").addEventListener("click", () => fileInput.click());
 
   q("[data-generate]").addEventListener("click", () => void generate());
   q<HTMLInputElement>("[data-consent]").addEventListener("change", updateGenerateEnabled);
