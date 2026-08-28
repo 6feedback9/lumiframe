@@ -12,7 +12,7 @@ export interface WidgetConfig {
   buttonTextColor?: string;
   buttonFont?: string;
   buttonGlow?: boolean;
-  buttonStyle?: "gradient" | "solid";
+  buttonStyle?: "gradient" | "solid" | "outline";
   /** Continuous scale, percent of the default size. 100 = default. */
   buttonSize?: number;
   /** Horizontal-only stretch on top of buttonSize. 100 = default (no stretch). */

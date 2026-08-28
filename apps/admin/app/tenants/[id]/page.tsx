@@ -20,7 +20,7 @@ interface WidgetConfig {
   buttonTextColor?: string;
   buttonFont?: string;
   buttonGlow?: boolean;
-  buttonStyle?: "gradient" | "solid";
+  buttonStyle?: "gradient" | "solid" | "outline";
   /** Continuous scale, percent of the default size. 100 = default. */
   buttonSize?: number;
   /** Horizontal-only stretch on top of buttonSize. 100 = default (no stretch). */
@@ -285,17 +285,21 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
 
   const sizeScale = (config.buttonSize ?? 100) / 100;
   const widthScale = (config.buttonWidth ?? 100) / 100;
-  const previewBackground =
-    config.buttonStyle === "solid" ? config.buttonColorStart : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
+  const isOutline = config.buttonStyle === "outline";
+  const previewBackground = isOutline
+    ? "transparent"
+    : config.buttonStyle === "solid"
+      ? config.buttonColorStart
+      : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     padding: `${0.75 * sizeScale}em ${1.5 * sizeScale * widthScale}em`,
-    border: "none",
+    border: isOutline ? `2px solid ${config.buttonColorStart}` : "none",
     borderRadius: config.buttonShape === "rectangular" ? 8 : 999,
     background: previewBackground,
-    color: config.buttonTextColor,
+    color: isOutline ? config.buttonColorStart : config.buttonTextColor,
     fontFamily: config.buttonFont || "inherit",
     fontWeight: 600,
     fontSize: 15 * sizeScale,
@@ -336,24 +340,27 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
             <select value={config.buttonStyle ?? "gradient"} onChange={(e) => setConfig({ ...config, buttonStyle: e.target.value as WidgetConfig["buttonStyle"] })} style={selectStyle}>
               <option value="gradient">{t("buttonDesign.styleGradient")}</option>
               <option value="solid">{t("buttonDesign.styleSolid")}</option>
+              <option value="outline">{t("buttonDesign.styleOutline")}</option>
             </select>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "solid" ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "gradient" ? "1fr 1fr" : "1fr", gap: 12, marginBottom: 12 }}>
             <div className="field">
               <label>{t("buttonDesign.color1")}</label>
               <input type="color" value={config.buttonColorStart} onChange={(e) => setConfig({ ...config, buttonColorStart: e.target.value })} style={{ height: 38, padding: 4 }} />
             </div>
-            {config.buttonStyle !== "solid" && (
+            {config.buttonStyle === "gradient" && (
               <div className="field">
                 <label>{t("buttonDesign.color2")}</label>
                 <input type="color" value={config.buttonColorEnd} onChange={(e) => setConfig({ ...config, buttonColorEnd: e.target.value })} style={{ height: 38, padding: 4 }} />
               </div>
             )}
           </div>
+          {!isOutline && (
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.textColor")}</label>
             <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 38, padding: 4 }} />
           </div>
+          )}
           <div className="field" style={{ marginBottom: 12 }}>
             <label>
               {t("buttonDesign.size")}: {config.buttonSize ?? 100}%

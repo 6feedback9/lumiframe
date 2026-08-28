@@ -40,7 +40,7 @@ const setWidgetConfigSchema = z.object({
   buttonTextColor: z.string().max(20).optional(),
   buttonFont: z.string().max(80).optional(),
   buttonGlow: z.boolean().optional(),
-  buttonStyle: z.enum(["gradient", "solid"]).optional(),
+  buttonStyle: z.enum(["gradient", "solid", "outline"]).optional(),
   buttonSize: z.number().int().min(70).max(160).optional(),
   buttonWidth: z.number().int().min(100).max(300).optional(),
   buttonShape: z.enum(["rounded", "rectangular"]).optional(),

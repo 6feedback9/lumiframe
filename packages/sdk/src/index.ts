@@ -44,6 +44,7 @@ function ensureButtonStylesInjected(): void {
   style.id = BUTTON_STYLE_ID;
   style.textContent = `
 .lumiframe-tryon-button {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -59,10 +60,26 @@ function ensureButtonStylesInjected(): void {
   line-height: 1;
   cursor: pointer;
   position: relative;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
 }
 .lumiframe-tryon-button:hover { opacity: 0.9; }
 .lumiframe-tryon-button:active { transform: scale(0.98); }
+
+/* Style "outline" (TryOnInitOptions.buttonStyle) — no fill at all, just a
+   border + matching text in the accent color. --lumiframe-accent-1 is set
+   alongside --lumiframe-accent whenever a button color is configured
+   (see createButton()), specifically so this has a flat color to use —
+   --lumiframe-accent itself may be a gradient, which border-color/color
+   can't use directly. */
+.lumiframe-tryon-button.lumiframe-style-outline {
+  background: transparent;
+  border: 2px solid var(--lumiframe-accent-1, #73b7ff);
+  color: var(--lumiframe-accent-1, #73b7ff);
+}
+.lumiframe-tryon-button.lumiframe-style-outline:hover {
+  background: color-mix(in srgb, var(--lumiframe-accent-1, #73b7ff) 10%, transparent);
+  opacity: 1;
+}
 
 /* Position (TryOnInitOptions.buttonPosition, default "after") */
 .lumiframe-tryon-button-floating {
@@ -340,7 +357,8 @@ class TryOnSdkImpl implements TryOnSdk {
     } = this.options ?? {};
 
     const animation = buttonAnimation ?? "none";
-    button.className = `lumiframe-tryon-button${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
+    const styleClass = buttonStyle === "outline" ? " lumiframe-style-outline" : "";
+    button.className = `lumiframe-tryon-button${styleClass}${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
 
     // Continuous size (70-160% of the default), not fixed sm/md/lg steps —
     // em-based padding on .lumiframe-tryon-button scales along with this.
@@ -355,8 +373,13 @@ class TryOnSdkImpl implements TryOnSdk {
 
     if (buttonColorStart || buttonColorEnd) {
       const start = buttonColorStart ?? buttonColorEnd!;
+      // A flat color for "outline" to use as its border/text — separate
+      // from --lumiframe-accent below, which can be a gradient and isn't
+      // usable directly as a border-color or text color.
+      button.style.setProperty("--lumiframe-accent-1", start);
       // "solid" (TryOnInitOptions.buttonStyle) uses just the start color,
       // flat — no gradient. Default/"gradient" keeps the two-color blend.
+      // "outline" ignores this — no fill at all, see the CSS rule above.
       const background =
         buttonStyle === "solid" ? start : `linear-gradient(135deg, ${start}, ${buttonColorEnd ?? buttonColorStart!})`;
       button.style.setProperty("--lumiframe-accent", background);

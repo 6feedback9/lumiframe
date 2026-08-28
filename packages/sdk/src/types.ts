@@ -43,8 +43,8 @@ export interface TryOnInitOptions {
   buttonFont?: string;
   /** A static glow in the accent color. Ignored when `buttonAnimation` is set to anything but `"none"` — the animation drives the same box-shadow. */
   buttonGlow?: boolean;
-  /** `"gradient"` (default) blends buttonColorStart -> buttonColorEnd; `"solid"` uses buttonColorStart flat. */
-  buttonStyle?: "gradient" | "solid";
+  /** `"gradient"` (default) blends buttonColorStart -> buttonColorEnd; `"solid"` uses buttonColorStart flat; `"outline"` drops the fill entirely — just a buttonColorStart-colored border and text on a transparent background. */
+  buttonStyle?: "gradient" | "solid" | "outline";
   /** Continuous scale, percent of the default size. 100 = default. Range 70-160. Scales the button uniformly (both height and width). */
   buttonSize?: number;
   /** Stretches the button's horizontal padding only, on top of `buttonSize` — makes it longer without also making it taller. 100 = default (no stretch). Range 100-300. */

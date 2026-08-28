@@ -24,7 +24,7 @@ const updateStoreSchema = z.object({
       buttonTextColor: z.string().max(20).optional(),
       buttonFont: z.string().max(80).optional(),
       buttonGlow: z.boolean().optional(),
-      buttonStyle: z.enum(["gradient", "solid"]).optional(),
+      buttonStyle: z.enum(["gradient", "solid", "outline"]).optional(),
       // Continuous scale (percent of default), not fixed sm/md/lg steps.
       buttonSize: z.number().int().min(70).max(160).optional(),
       // Horizontal-only stretch on top of buttonSize — makes the button

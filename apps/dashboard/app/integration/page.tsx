@@ -152,17 +152,21 @@ function IntegrationContent() {
   // Horizontal-only stretch on top of sizeScale — mirrors packages/sdk's
   // --lumiframe-width-scale, so "make it longer" doesn't also make it taller.
   const widthScale = (config.buttonWidth ?? 100) / 100;
-  const previewBackground =
-    config.buttonStyle === "solid" ? config.buttonColorStart : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
+  const isOutline = config.buttonStyle === "outline";
+  const previewBackground = isOutline
+    ? "transparent"
+    : config.buttonStyle === "solid"
+      ? config.buttonColorStart
+      : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     padding: `${0.75 * sizeScale}em ${1.5 * sizeScale * widthScale}em`,
-    border: "none",
+    border: isOutline ? `2px solid ${config.buttonColorStart}` : "none",
     borderRadius: config.buttonShape === "rectangular" ? 8 : 999,
     background: previewBackground,
-    color: config.buttonTextColor,
+    color: isOutline ? config.buttonColorStart : config.buttonTextColor,
     fontFamily: config.buttonFont || "inherit",
     fontWeight: 600,
     fontSize: 15 * sizeScale,
@@ -242,15 +246,16 @@ function IntegrationContent() {
             <select value={config.buttonStyle} onChange={(e) => setConfig({ ...config, buttonStyle: e.target.value as WidgetConfig["buttonStyle"] })} style={SELECT_STYLE}>
               <option value="gradient">{t("customize.styleGradient")}</option>
               <option value="solid">{t("customize.styleSolid")}</option>
+              <option value="outline">{t("customize.styleOutline")}</option>
             </select>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "solid" ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "gradient" ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
             <div className="field">
-              <label>{config.buttonStyle === "solid" ? t("customize.style") : t("customize.color1")}</label>
+              <label>{config.buttonStyle === "gradient" ? t("customize.color1") : t("customize.style")}</label>
               <input type="color" value={config.buttonColorStart} onChange={(e) => setConfig({ ...config, buttonColorStart: e.target.value })} style={{ height: 40, padding: 4 }} />
             </div>
-            {config.buttonStyle !== "solid" && (
+            {config.buttonStyle === "gradient" && (
               <div className="field">
                 <label>{t("customize.color2")}</label>
                 <input type="color" value={config.buttonColorEnd} onChange={(e) => setConfig({ ...config, buttonColorEnd: e.target.value })} style={{ height: 40, padding: 4 }} />
@@ -258,10 +263,12 @@ function IntegrationContent() {
             )}
           </div>
 
+          {!isOutline && (
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.textColor")}</label>
             <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 40, padding: 4 }} />
           </div>
+          )}
 
           <div className="field" style={{ marginBottom: 14 }}>
             <label>

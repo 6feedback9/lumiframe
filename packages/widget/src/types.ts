@@ -36,7 +36,10 @@ export interface MountWidgetOptions {
    */
   accentColorStart?: string;
   accentColorEnd?: string;
-  accentStyle?: "gradient" | "solid";
+  // "outline" is a page-button-only style (packages/sdk) — the modal's own
+  // buttons stay filled regardless, so this just falls back to "gradient"
+  // for that case, same as any other unrecognized value.
+  accentStyle?: "gradient" | "solid" | "outline";
   accentTextColor?: string;
   /** Overrides the default upload-step heading/subheading text. */
   modalHeading?: string;
