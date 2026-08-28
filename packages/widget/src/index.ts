@@ -34,6 +34,15 @@ const POLL_TIMEOUT_MS = 45_000;
 type PhotoState = "empty" | "selected" | "processing" | "result";
 
 export function mountWidget(options: MountWidgetOptions): WidgetHandle {
+  // Guard against a second widget stacking on top of the first — a
+  // double-click on the "Try on" button, or a merchant's page accidentally
+  // loading the SDK script twice, both used to leave two full `.lf-backdrop`
+  // overlays in the DOM at once (duplicated tips list, doubled-up content).
+  // Belt-and-suspenders with the SDK's own open() re-entry guard
+  // (packages/sdk/src/index.ts) — this one is a plain DOM check, so it
+  // still catches a second, independent SDK instance on the same page.
+  document.querySelectorAll("[data-lumiframe-widget]").forEach((el) => el.remove());
+
   ensureStyles();
   const T = getCopy(options.locale);
   const api = new ApiClient(options.apiBaseUrl, options.storeId);

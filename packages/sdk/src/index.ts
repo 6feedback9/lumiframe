@@ -187,6 +187,12 @@ class TryOnSdkImpl implements TryOnSdk {
 
   open(product?: AttachProductInput): void {
     this.assertInitialized();
+    // A double-click (or a fast repeat tap) on the auto-injected button
+    // used to mount a second, stacked copy of the widget — same instance,
+    // no re-entry guard. packages/widget also guards this independently
+    // (for a page that loads the SDK script twice), but this is the cheap
+    // no-op for the common case.
+    if (this.isOpen) return;
     const resolved = this.resolveProduct(product);
     if (!resolved) {
       throw new Error(
@@ -203,9 +209,9 @@ class TryOnSdkImpl implements TryOnSdk {
   }
 
   private async mountWidget(product: AttachProductInput): Promise<void> {
-    // Best-effort: fills in price/currency from Shopify's own product JSON
-    // when the page's own markup didn't have it (see detectProduct.ts) —
-    // a no-op on any non-Shopify store or if price was already found.
+    // Best-effort: on a Shopify store, corrects price/currency against
+    // Shopify's own product JSON — the page's own markup isn't always
+    // right (see detectProduct.ts). A no-op on any non-Shopify store.
     const enriched = await enrichFromShopify(product);
 
     // packages/widget ships its real implementation in Phase 1. The
