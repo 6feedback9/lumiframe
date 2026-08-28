@@ -169,88 +169,37 @@ function BillingContent() {
     <>
       <div className="page-title">{t("billing.title")}</div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20, alignItems: "start" }}>
-        <div className="panel" style={{ padding: 24 }}>
-          {data.plan ? (
-            <>
-              <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>
-                {data.plan.name} — ${data.plan.priceUsd}
-                {t("billing.perMonth")}
-              </h3>
-              <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 16px" }}>
-                {t("billing.usedThisMonth")}: {data.usedThisMonth} / {data.plan.monthlyLimit}
-                {data.topUpCredits > 0 ? ` (+${data.topUpCredits} ${t("billing.topUpCredits").toLowerCase()})` : ""}
-              </p>
-              <ProgressBar used={data.usedThisMonth} limit={data.plan.monthlyLimit} />
-            </>
-          ) : (
-            <p style={{ fontSize: 13, color: "var(--danger, #ff6b6b)" }}>{t("billing.noPlan")}</p>
-          )}
-
-          {(data.planRequestNote || requestSent) && (
-            <p style={{ fontSize: 12, color: "var(--sky)", marginTop: 16 }}>
-              {requestSent ? t("billing.requestSent") : t("billing.pendingRequest")}
+      <div className="panel" style={{ padding: 24, marginBottom: 24, maxWidth: 640 }}>
+        {data.plan ? (
+          <>
+            <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>
+              {data.plan.name} — ${data.plan.priceUsd}
+              {t("billing.perMonth")}
+            </h3>
+            <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 16px" }}>
+              {t("billing.usedThisMonth")}: {data.usedThisMonth} / {data.plan.monthlyLimit}
+              {data.topUpCredits > 0 ? ` (+${data.topUpCredits} ${t("billing.topUpCredits").toLowerCase()})` : ""}
             </p>
-          )}
+            <ProgressBar used={data.usedThisMonth} limit={data.plan.monthlyLimit} />
+          </>
+        ) : (
+          <p style={{ fontSize: 13, color: "var(--danger, #ff6b6b)" }}>{t("billing.noPlan")}</p>
+        )}
 
-          <button className="btn" style={{ marginTop: 16, width: "auto", padding: "8px 16px" }} disabled={requesting === "topup"} onClick={requestTopUp}>
-            {t("billing.requestTopUp")}
-            {data.plan ? ` (+${data.plan.topUpPackSize} — $${data.plan.topUpPackPriceUsd})` : ""}
-          </button>
-        </div>
+        {(data.planRequestNote || requestSent) && (
+          <p style={{ fontSize: 12, color: "var(--sky)", marginTop: 16 }}>
+            {requestSent ? t("billing.requestSent") : t("billing.pendingRequest")}
+          </p>
+        )}
 
-        <div className="panel" style={{ padding: 24 }}>
-          <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("billing.paymentTitle")}</h3>
-          <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 16px", lineHeight: 1.5 }}>{t("billing.paymentDesc")}</p>
-
-          <CopyRow label={t("billing.recipient")} value={PAYMENT_DETAILS.recipient} />
-          <CopyRow label={t("billing.taxId")} value={PAYMENT_DETAILS.taxId} />
-          <CopyRow label={t("billing.iban")} value={PAYMENT_DETAILS.iban} />
-          <CopyRow label={t("billing.bank")} value={PAYMENT_DETAILS.bank} />
-          <CopyRow label={t("billing.purpose")} value={t("billing.purposeValue")} />
-
-          <div className="field" style={{ marginTop: 14, marginBottom: 12 }}>
-            <label>{t("billing.payingFor")}</label>
-            <select
-              value={payFor}
-              onChange={(e) => setPayFor(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "9px 12px",
-                borderRadius: 10,
-                border: "1px solid var(--line-strong)",
-                background: "rgba(173,201,255,0.05)",
-                color: "var(--paper)",
-                fontSize: 13,
-              }}
-            >
-              {data.allPlans.map((p) => (
-                <option key={p.key} value={p.key}>
-                  {p.name} — ${p.priceUsd}
-                  {t("billing.perMonth")}
-                </option>
-              ))}
-              <option value="topup">
-                {t("billing.topUpPack")} (+{data.plan?.topUpPackSize ?? "…"} — ${data.plan?.topUpPackPriceUsd ?? "…"})
-              </option>
-            </select>
-          </div>
-
-          <div className="field" style={{ marginBottom: 12 }}>
-            <label>{t("billing.paidNote")}</label>
-            <input value={paidNote} onChange={(e) => setPaidNote(e.target.value)} placeholder={t("billing.paidNotePlaceholder")} maxLength={300} />
-          </div>
-
-          {paidSent && <p style={{ fontSize: 12, color: "var(--sky)", marginBottom: 12 }}>{t("billing.paidSent")}</p>}
-
-          <button className="btn" style={{ width: "auto", padding: "8px 16px" }} disabled={requesting === "paid"} onClick={confirmPaid}>
-            {t("billing.confirmPaid")}
-          </button>
-        </div>
+        <button className="btn" style={{ marginTop: 16, width: "auto", padding: "8px 16px" }} disabled={requesting === "topup"} onClick={requestTopUp}>
+          {t("billing.requestTopUp")}
+          {data.plan ? ` (+${data.plan.topUpPackSize} — $${data.plan.topUpPackPriceUsd})` : ""}
+        </button>
       </div>
 
       <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("billing.plans")}</h3>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.allPlans.length}, 1fr)`, gap: 16, maxWidth: 900 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.allPlans.length}, 1fr)`, gap: 16, maxWidth: 900, marginBottom: 24 }}>
         {data.allPlans.map((p) => {
           const isCurrent = data.plan?.key === p.key;
           return (
@@ -298,6 +247,55 @@ function BillingContent() {
             </div>
           );
         })}
+      </div>
+
+      <div className="panel" style={{ padding: 24, maxWidth: 640 }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("billing.paymentTitle")}</h3>
+        <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 16px", lineHeight: 1.5 }}>{t("billing.paymentDesc")}</p>
+
+        <CopyRow label={t("billing.recipient")} value={PAYMENT_DETAILS.recipient} />
+        <CopyRow label={t("billing.taxId")} value={PAYMENT_DETAILS.taxId} />
+        <CopyRow label={t("billing.iban")} value={PAYMENT_DETAILS.iban} />
+        <CopyRow label={t("billing.bank")} value={PAYMENT_DETAILS.bank} />
+        <CopyRow label={t("billing.purpose")} value={t("billing.purposeValue")} />
+
+        <div className="field" style={{ marginTop: 14, marginBottom: 12 }}>
+          <label>{t("billing.payingFor")}</label>
+          <select
+            value={payFor}
+            onChange={(e) => setPayFor(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "9px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--line-strong)",
+              background: "rgba(173,201,255,0.05)",
+              color: "var(--paper)",
+              fontSize: 13,
+            }}
+          >
+            {data.allPlans.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.name} — ${p.priceUsd}
+                {t("billing.perMonth")}
+              </option>
+            ))}
+            <option value="topup">
+              {t("billing.topUpPack")} (+{data.plan?.topUpPackSize ?? "…"} — ${data.plan?.topUpPackPriceUsd ?? "…"})
+            </option>
+          </select>
+        </div>
+
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label>{t("billing.paidNote")}</label>
+          <input value={paidNote} onChange={(e) => setPaidNote(e.target.value)} placeholder={t("billing.paidNotePlaceholder")} maxLength={300} />
+        </div>
+
+        {paidSent && <p style={{ fontSize: 12, color: "var(--sky)", marginBottom: 12 }}>{t("billing.paidSent")}</p>}
+
+        <button className="btn" style={{ width: "auto", padding: "8px 16px" }} disabled={requesting === "paid"} onClick={confirmPaid}>
+          {t("billing.confirmPaid")}
+        </button>
       </div>
     </>
   );
