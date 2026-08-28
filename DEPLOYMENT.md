@@ -59,8 +59,18 @@ scale past one instance). To do it properly:
    `claude/eyewear-tryon-saas-arch` (or `main` once merged).
 2. **Build Command** (runs from the repo root):
    ```
-   corepack enable && pnpm install --frozen-lockfile && pnpm --filter @lumiframe/database exec prisma generate && pnpm --filter @lumiframe/sdk build
+   npm install -g pnpm@8.15.0 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @lumiframe/database exec prisma generate && pnpm --filter @lumiframe/sdk build
    ```
+   Two gotchas baked into this, hit while deploying for real:
+   - `corepack enable` fails on Render's build image with `EROFS: read-only
+     file system, unlink '/usr/bin/pnpm'` — install pnpm via `npm install -g`
+     instead.
+   - `--prod=false` is required *even though* this is a production deploy:
+     if `NODE_ENV=production` is set (recommended below), pnpm silently skips
+     devDependencies, which is where `prisma` (needed for `prisma generate`)
+     and `tsx` (what actually runs `apps/api` — see Start Command) live.
+     Without this flag the build "succeeds" partially, then the start
+     command fails with `tsx: not found`.
 3. **Start Command**: `pnpm --filter @lumiframe/api start`
 4. **Environment** — set these (see `.env.example` for the full list):
    - `DATABASE_URL`, `DIRECT_URL` — from Supabase
@@ -68,6 +78,7 @@ scale past one instance). To do it properly:
    - `JWT_SECRET` — generate one: `openssl rand -hex 32`
    - `REDIS_URL` — from Upstash, if you set it up
    - `AI_PROVIDER=mock` — until a real vendor is wired up (`ARCHITECTURE.md` §13)
+   - `NODE_ENV=production`
    - `API_BASE_URL` — Render's assigned URL, e.g. `https://lumiframe-api.onrender.com`
    - Leave `PORT` alone — Render sets it.
 5. Deploy, then check `https://<your-service>.onrender.com/health` returns

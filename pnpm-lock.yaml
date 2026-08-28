@@ -72,6 +72,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.12
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -82,9 +85,6 @@ importers:
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.43
-      tsx:
-        specifier: ^4.19.0
-        version: 4.23.12
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
@@ -270,7 +270,7 @@ packages:
     cpu: [ppc64]
     os: [aix]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/android-arm64@0.21.5:
@@ -297,7 +297,7 @@ packages:
     cpu: [arm64]
     os: [android]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/android-arm@0.21.5:
@@ -324,7 +324,7 @@ packages:
     cpu: [arm]
     os: [android]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/android-x64@0.21.5:
@@ -351,7 +351,7 @@ packages:
     cpu: [x64]
     os: [android]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/darwin-arm64@0.21.5:
@@ -378,7 +378,7 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/darwin-x64@0.21.5:
@@ -405,7 +405,7 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/freebsd-arm64@0.21.5:
@@ -432,7 +432,7 @@ packages:
     cpu: [arm64]
     os: [freebsd]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/freebsd-x64@0.21.5:
@@ -459,7 +459,7 @@ packages:
     cpu: [x64]
     os: [freebsd]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-arm64@0.21.5:
@@ -486,7 +486,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-arm@0.21.5:
@@ -513,7 +513,7 @@ packages:
     cpu: [arm]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-ia32@0.21.5:
@@ -540,7 +540,7 @@ packages:
     cpu: [ia32]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-loong64@0.21.5:
@@ -567,7 +567,7 @@ packages:
     cpu: [loong64]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-mips64el@0.21.5:
@@ -594,7 +594,7 @@ packages:
     cpu: [mips64el]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-ppc64@0.21.5:
@@ -621,7 +621,7 @@ packages:
     cpu: [ppc64]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-riscv64@0.21.5:
@@ -648,7 +648,7 @@ packages:
     cpu: [riscv64]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-s390x@0.21.5:
@@ -675,7 +675,7 @@ packages:
     cpu: [s390x]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/linux-x64@0.21.5:
@@ -702,7 +702,7 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/netbsd-arm64@0.27.7:
@@ -720,7 +720,7 @@ packages:
     cpu: [arm64]
     os: [netbsd]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/netbsd-x64@0.21.5:
@@ -747,7 +747,7 @@ packages:
     cpu: [x64]
     os: [netbsd]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/openbsd-arm64@0.27.7:
@@ -765,7 +765,7 @@ packages:
     cpu: [arm64]
     os: [openbsd]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/openbsd-x64@0.21.5:
@@ -792,7 +792,7 @@ packages:
     cpu: [x64]
     os: [openbsd]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/openharmony-arm64@0.27.7:
@@ -810,7 +810,7 @@ packages:
     cpu: [arm64]
     os: [openharmony]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/sunos-x64@0.21.5:
@@ -837,7 +837,7 @@ packages:
     cpu: [x64]
     os: [sunos]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/win32-arm64@0.21.5:
@@ -864,7 +864,7 @@ packages:
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/win32-ia32@0.21.5:
@@ -891,7 +891,7 @@ packages:
     cpu: [ia32]
     os: [win32]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@esbuild/win32-x64@0.21.5:
@@ -918,7 +918,7 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@fastify/ajv-compiler@3.6.0:
@@ -1909,7 +1909,7 @@ packages:
       '@esbuild/win32-arm64': 0.28.2
       '@esbuild/win32-ia32': 0.28.2
       '@esbuild/win32-x64': 0.28.2
-    dev: true
+    dev: false
 
   /estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
@@ -2761,7 +2761,7 @@ packages:
       esbuild: 0.28.2
     optionalDependencies:
       fsevents: 2.3.3
-    dev: true
+    dev: false
 
   /turbo@2.10.12:
     resolution: {integrity: sha512-AswgMPnpOoaVZHrrSBejETzEbuIA69OVGwfkHwfrY0A23VjWXBANzgq9+OymWOHAIArB7D1+1z498WY8fGg1Jw==}
