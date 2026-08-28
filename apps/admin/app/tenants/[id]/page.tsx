@@ -651,12 +651,175 @@ function TeamPanel({ id, users, onUpdated }: { id: string; users: TenantUser[]; 
   );
 }
 
+function AccountPanel({ id, tenant, onUpdated }: { id: string; tenant: TenantDetail; onUpdated: () => void }) {
+  const { t } = useI18n();
+  const firstStore = tenant.stores[0];
+  const [tenantName, setTenantName] = useState(tenant.name);
+  const [storeName, setStoreName] = useState(firstStore?.name ?? "");
+  const [storeUrl, setStoreUrl] = useState(firstStore?.storeUrl ?? "");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [deletingTryOns, setDeletingTryOns] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Suspended only once every store agrees — a tenant with more than one
+  // store isn't fully "off" if any of them can still serve try-ons.
+  const isActive = tenant.stores.length > 0 && tenant.stores.every((s) => s.status === "ACTIVE");
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProfile(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/profile`, {
+        method: "PATCH",
+        body: JSON.stringify({ tenantName, storeName, storeUrl }),
+      });
+      onUpdated();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function toggleStatus() {
+    setSavingStatus(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: isActive ? "SUSPENDED" : "ACTIVE" }),
+      });
+      onUpdated();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingStatus(false);
+    }
+  }
+
+  async function deleteTryOns() {
+    if (!window.confirm(t("account.deleteTryOnsConfirm").replace("{name}", tenant.name))) return;
+    setDeletingTryOns(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/tryons`, { method: "DELETE" });
+      onUpdated();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setDeletingTryOns(false);
+    }
+  }
+
+  async function deleteAccount() {
+    setDeletingAccount(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}`, { method: "DELETE" });
+      // Full navigation, not client-side routing — the tenant this page
+      // is showing no longer exists, so there's nothing left to render
+      // here even for an instant.
+      window.location.href = "/";
+    } catch (err) {
+      setError((err as Error).message);
+      setDeletingAccount(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 20, maxWidth: 640 }}>
+      {error && <div className="empty-state">{error}</div>}
+
+      <div className="panel" style={{ padding: 24 }}>
+        <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("account.profileTitle")}</h3>
+        <form onSubmit={saveProfile}>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("account.tenantName")}</label>
+            <input value={tenantName} onChange={(e) => setTenantName(e.target.value)} required maxLength={200} />
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("account.storeName")}</label>
+            <input value={storeName} onChange={(e) => setStoreName(e.target.value)} required maxLength={200} />
+          </div>
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label>{t("account.storeUrl")}</label>
+            <input type="url" value={storeUrl} onChange={(e) => setStoreUrl(e.target.value)} required />
+          </div>
+          <button className="btn" type="submit" style={{ width: "auto", padding: "9px 16px" }} disabled={savingProfile}>
+            {savingProfile ? t("common.saving") : t("common.save")}
+          </button>
+        </form>
+      </div>
+
+      <div className="panel" style={{ padding: 24 }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("account.statusTitle")}</h3>
+        <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 14 }}>{t("account.statusDesc")}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span className={`badge badge-${isActive ? "active" : "suspended"}`}>
+            {isActive ? t("account.statusActive") : t("account.statusSuspended")}
+          </span>
+          <button
+            className="btn"
+            type="button"
+            style={{ width: "auto", padding: "9px 16px" }}
+            disabled={savingStatus || tenant.stores.length === 0}
+            onClick={toggleStatus}
+          >
+            {savingStatus ? t("common.saving") : isActive ? t("account.statusSuspended") : t("account.statusActive")}
+          </button>
+        </div>
+      </div>
+
+      <div className="panel" style={{ padding: 24, border: "1px solid rgba(255,107,107,0.35)" }}>
+        <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "var(--danger)" }}>{t("account.dangerTitle")}</h3>
+
+        <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: "1px solid var(--line)" }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{t("account.deleteTryOnsTitle")}</div>
+          <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 12 }}>{t("account.deleteTryOnsDesc")}</p>
+          <button
+            type="button"
+            className="btn"
+            style={{ width: "auto", padding: "9px 16px", background: "rgba(255,107,107,0.15)", color: "var(--danger)" }}
+            disabled={deletingTryOns}
+            onClick={deleteTryOns}
+          >
+            {deletingTryOns ? t("common.saving") : t("account.deleteTryOnsButton")}
+          </button>
+        </div>
+
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{t("account.deleteAccountTitle")}</div>
+          <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 12 }}>{t("account.deleteAccountDesc")}</p>
+          <div className="field" style={{ marginBottom: 12, maxWidth: 320 }}>
+            <label>{t("account.deleteAccountConfirmLabel")}</label>
+            <input value={deleteConfirmInput} onChange={(e) => setDeleteConfirmInput(e.target.value)} placeholder={tenant.name} />
+          </div>
+          <button
+            type="button"
+            className="btn"
+            style={{ width: "auto", padding: "9px 16px", background: "rgba(255,107,107,0.15)", color: "var(--danger)" }}
+            disabled={deletingAccount || deleteConfirmInput !== tenant.name}
+            onClick={deleteAccount}
+          >
+            {deletingAccount ? t("common.saving") : t("account.deleteAccountButton")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
   { id: "overview", labelKey: "tenantDetail.tabOverview" },
   { id: "plan", labelKey: "tenantDetail.tabPlan" },
   { id: "button", labelKey: "tenantDetail.tabButton" },
   { id: "team", labelKey: "tenantDetail.tabTeam" },
   { id: "products", labelKey: "tenantDetail.tabProducts" },
+  { id: "account", labelKey: "tenantDetail.tabAccount" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -795,6 +958,8 @@ function TenantDetailContent({ id }: { id: string }) {
           </div>
         </div>
       )}
+
+      {tab === "account" && <AccountPanel id={id} tenant={tenant} onUpdated={load} />}
     </>
   );
 }

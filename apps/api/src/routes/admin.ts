@@ -12,6 +12,12 @@ import { buildTryOnDetailPayload } from "./tryons";
 
 const setPlanSchema = z.object({ planId: z.string().nullable() });
 const addCreditsSchema = z.object({ addCredits: z.number().int() });
+const setStoreStatusSchema = z.object({ status: z.enum(["ACTIVE", "SUSPENDED"]) });
+const setTenantProfileSchema = z.object({
+  tenantName: z.string().min(1).max(200).optional(),
+  storeName: z.string().min(1).max(200).optional(),
+  storeUrl: z.string().url().optional(),
+});
 const addUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -283,6 +289,121 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       data: { tenantId: id, action: "store.widgetConfig.updated_by_admin", targetType: "Store", targetId: store.id },
     });
     return reply.send({ storeId: updated.id, widgetConfig: updated.widgetConfig });
+  });
+
+  // ── Account status: pause/reactivate every store under this tenant at
+  // once (product ask: the platform owner should be able to turn a
+  // client's widget off — e.g. non-payment, abuse — without touching
+  // their data). Blocks new try-on creation immediately: routes/store.ts's
+  // authenticateStorePublic already refuses anything but an ACTIVE store.
+  app.patch("/api/v1/admin/tenants/:id/status", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = setStoreStatusSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant not found" });
+
+    await prisma.store.updateMany({ where: { tenantId: id }, data: { status: parsed.data.status } });
+    await prisma.auditLog.create({
+      data: { tenantId: id, action: "tenant.status_changed_by_admin", targetType: "Tenant", targetId: id },
+    });
+
+    const stores = await prisma.store.findMany({ where: { tenantId: id }, select: { id: true, status: true } });
+    return reply.send({ id, stores });
+  });
+
+  // ── Profile: company/store name + URL (product ask: the platform
+  // owner should be able to fix/edit a client's basic profile from her
+  // own console — none of these have ever been editable anywhere, not
+  // even by the merchant themselves; they're set once at registration).
+  app.patch("/api/v1/admin/tenants/:id/profile", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = setTenantProfileSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant not found" });
+
+    if (parsed.data.tenantName) {
+      await prisma.tenant.update({ where: { id }, data: { name: parsed.data.tenantName } });
+    }
+    if (parsed.data.storeName || parsed.data.storeUrl) {
+      const store = await prisma.store.findFirst({ where: { tenantId: id }, orderBy: { createdAt: "asc" } });
+      if (store) {
+        await prisma.store.update({
+          where: { id: store.id },
+          data: {
+            ...(parsed.data.storeName ? { name: parsed.data.storeName } : {}),
+            ...(parsed.data.storeUrl ? { storeUrl: parsed.data.storeUrl } : {}),
+          },
+        });
+      }
+    }
+    await prisma.auditLog.create({
+      data: { tenantId: id, action: "tenant.profile_updated_by_admin", targetType: "Tenant", targetId: id },
+    });
+
+    const updated = await prisma.tenant.findUniqueOrThrow({ where: { id }, include: { stores: true } });
+    return reply.send({ id, name: updated.name, stores: updated.stores });
+  });
+
+  // Deletes the private-storage objects a tenant's generations reference
+  // before their DB rows go away — best-effort (a storage hiccup must
+  // never block the actual delete the owner asked for). Only the
+  // privacy-sensitive images: the customer's own uploaded photo and the
+  // generated result. Product asset photos are just the merchant's own
+  // catalog shots, shared by content hash across a store's generations —
+  // not worth the extra risk of touching here.
+  async function deleteTenantPhotos(tenantId: string): Promise<void> {
+    const generations = await prisma.tryOnGeneration.findMany({
+      where: { tenantId },
+      select: { customerImageKey: true, resultImageKey: true },
+    });
+    const deletions: Promise<void>[] = [];
+    for (const g of generations) {
+      if (g.customerImageKey) deletions.push(storage.deleteObject(BUCKETS.customerPhotos, g.customerImageKey).catch(() => {}));
+      if (g.resultImageKey) deletions.push(storage.deleteObject(BUCKETS.tryonResults, g.resultImageKey).catch(() => {}));
+    }
+    await Promise.all(deletions);
+  }
+
+  // ── Bulk-delete every try-on for a tenant, keeping the account itself
+  // (product ask: wipe test data / a client's history on request without
+  // deleting their whole account). Cascades to generations/usage/
+  // attribution via the schema's onDelete: Cascade on TryOnSession.
+  app.delete("/api/v1/admin/tenants/:id/tryons", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant not found" });
+
+    await deleteTenantPhotos(id);
+    const { count } = await prisma.tryOnSession.deleteMany({ where: { tenantId: id } });
+    await prisma.auditLog.create({
+      data: { tenantId: id, action: "tenant.tryons_deleted_by_admin", targetType: "Tenant", targetId: id },
+    });
+    return reply.send({ ok: true, deleted: count });
+  });
+
+  // ── Delete a tenant's account entirely — irreversible. Every row tied
+  // to this tenant cascades away at the DB level (every relevant FK in
+  // the schema is onDelete: Cascade back to Tenant); this route's own
+  // job is just the storage cleanup that cascading deletes can't do,
+  // plus refusing the one tenant this must never touch: the reserved
+  // platform-admin account (see PLATFORM_TENANT_SLUG) — that's not a
+  // client, deleting it would lock every admin out.
+  app.delete("/api/v1/admin/tenants/:id", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant not found" });
+    if (tenant.slug === PLATFORM_TENANT_SLUG) {
+      return reply.code(403).send({ error: "The platform's own account can't be deleted from here" });
+    }
+
+    await deleteTenantPhotos(id);
+    console.warn(`[admin] tenant ${id} (${tenant.name}) deleted by ${request.merchant!.userId}`);
+    await prisma.tenant.delete({ where: { id } });
+    return reply.send({ ok: true });
   });
 
   // ── Cross-tenant try-on browsing (product ask: platform owner sees

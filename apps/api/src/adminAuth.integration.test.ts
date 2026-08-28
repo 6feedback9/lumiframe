@@ -200,4 +200,96 @@ describe("platform admin", () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().topUpCredits).toBe(20);
   });
+
+  it("suspends and reactivates every store under a tenant", async () => {
+    const suspend = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/status`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { status: "SUSPENDED" },
+    });
+    expect(suspend.statusCode).toBe(200);
+    expect(suspend.json().stores.every((s: { status: string }) => s.status === "SUSPENDED")).toBe(true);
+
+    const reactivate = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/status`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { status: "ACTIVE" },
+    });
+    expect(reactivate.statusCode).toBe(200);
+    expect(reactivate.json().stores.every((s: { status: string }) => s.status === "ACTIVE")).toBe(true);
+  });
+
+  it("updates a tenant's profile (company name, store name, URL)", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/profile`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { tenantName: "Renamed Co", storeName: "Renamed Store", storeUrl: "https://renamed.example.com" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().name).toBe("Renamed Co");
+    expect(res.json().stores[0].name).toBe("Renamed Store");
+    expect(res.json().stores[0].storeUrl).toBe("https://renamed.example.com");
+  });
+
+  it("wipes a tenant's try-ons without touching the account itself", async () => {
+    const store = await prisma.store.findFirstOrThrow({ where: { tenantId: merchantTenantId } });
+    const session = await prisma.tryOnSession.create({
+      data: {
+        tenantId: merchantTenantId,
+        storeId: store.id,
+        externalProductId: "fixture-to-delete",
+        productImageUrl: "https://example.com/fixture.jpg",
+        visitorId: "fixture-visitor",
+        status: "COMPLETED",
+      },
+    });
+
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/tryons`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().deleted).toBeGreaterThanOrEqual(1);
+
+    expect(await prisma.tryOnSession.findUnique({ where: { id: session.id } })).toBeNull();
+    // The account itself must survive a try-ons wipe.
+    expect(await prisma.tenant.findUnique({ where: { id: merchantTenantId } })).not.toBeNull();
+  });
+
+  it("refuses to delete the reserved platform tenant", async () => {
+    // The real reserved slug (routes/admin.ts's PLATFORM_TENANT_SLUG) —
+    // distinct from this file's own "lumiframe-platform-test" fixture,
+    // which is a normal, deletable tenant as far as this route is
+    // concerned. Upsert rather than assuming it exists: whichever test
+    // file runs first is the one that actually creates it.
+    const platformTenant = await prisma.tenant.upsert({
+      where: { slug: "lumiframe-platform" },
+      create: { name: "Lumi Frame (platform)", slug: "lumiframe-platform" },
+      update: {},
+    });
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/admin/tenants/${platformTenant.id}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(await prisma.tenant.findUnique({ where: { id: platformTenant.id } })).not.toBeNull();
+  });
+
+  // Last test in this file on purpose — deletes merchantTenantId for real.
+  it("deletes a tenant's account entirely, cascading its data", async () => {
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/admin/tenants/${merchantTenantId}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.statusCode).toBe(200);
+
+    expect(await prisma.tenant.findUnique({ where: { id: merchantTenantId } })).toBeNull();
+    expect(await prisma.store.findFirst({ where: { tenantId: merchantTenantId } })).toBeNull();
+  });
 });
