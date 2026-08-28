@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { clearToken } from "@/lib/api";
 import { useI18n, type Locale } from "@/lib/i18n";
 
 export function Sidebar() {
@@ -10,13 +11,13 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="logo">
+      <a href="/" className="logo">
         <span className="mark">Ú</span>
         <span>
           <span className="word">Lumi Frame</span>
           <span className="tag">{t("nav.tag")}</span>
         </span>
-      </div>
+      </a>
       <nav>
         <a href="/" className={pathname === "/" || pathname.startsWith("/tenants") ? "active" : ""}>
           {t("nav.tenants")}
@@ -53,6 +54,27 @@ export function Sidebar() {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={() => {
+          clearToken();
+          window.location.href = "/login";
+        }}
+        style={{
+          margin: "0 20px 20px",
+          padding: "10px 0",
+          borderRadius: 8,
+          border: "1px solid var(--line-strong)",
+          background: "transparent",
+          color: "var(--mist)",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        {t("nav.logout")}
+      </button>
     </aside>
   );
 }

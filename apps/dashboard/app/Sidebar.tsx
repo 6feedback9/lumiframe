@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { apiFetch, getToken } from "@/lib/api";
+import { apiFetch, clearToken, getToken } from "@/lib/api";
 import { useI18n, type Locale } from "@/lib/i18n";
 
 interface StoreInfo {
@@ -53,13 +53,13 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="logo">
+      <a href="/" className="logo">
         <span className="mark">Ú</span>
         <span>
           <span className="word">{storeName ?? "Lumi Frame"}</span>
           <span className="tag">{t("nav.poweredBy")}</span>
         </span>
-      </div>
+      </a>
       <nav>
         {links.map((link) => (
           <a key={link.href} href={link.href} className={pathname === link.href ? "active" : ""}>
@@ -105,6 +105,27 @@ export function Sidebar() {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={() => {
+          clearToken();
+          window.location.href = "/login";
+        }}
+        style={{
+          margin: "0 20px 20px",
+          padding: "10px 0",
+          borderRadius: 8,
+          border: "1px solid var(--line-strong)",
+          background: "transparent",
+          color: "var(--mist)",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        {t("nav.logout")}
+      </button>
       <style>{`
         @keyframes lumiframe-trial-pulse {
           0% { box-shadow: 0 0 0 0 rgba(61,220,132,0.6); }
