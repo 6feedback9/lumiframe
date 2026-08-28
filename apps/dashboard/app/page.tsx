@@ -70,7 +70,15 @@ function OverviewContent() {
   );
 
   if (error) return <div className="empty-state">{error}</div>;
-  if (!data) return <div className="empty-state">{t("common.loading")}</div>;
+  // Wait for all three — not just `data` — before rendering anything.
+  // Each is its own fetch, so whichever loses the race used to pop its
+  // section in above content that had already rendered (the billing
+  // stat-grid at the top, the monthly charts further down), shifting the
+  // whole page down a beat after first paint (product-reported: the top
+  // panel "loads after" everything below it). Showing nothing until
+  // every section actually has data to show renders the page complete
+  // and stable on the first paint instead.
+  if (!data || !billing || !history) return <div className="empty-state">{t("common.loading")}</div>;
 
   const stats = [
     { label: t("overview.tryons30d"), value: data.totalTryOns },
@@ -87,25 +95,23 @@ function OverviewContent() {
     <>
       <div className="page-title">{t("overview.title")}</div>
 
-      {billing && (
-        <div className="stat-grid" style={{ marginBottom: 20 }}>
-          <div className="stat-card">
-            <div className="label">{t("overview.currentPlan")}</div>
-            <div className="value">{billing.plan?.name ?? "—"}</div>
-          </div>
-          <div className="stat-card">
-            <div className="label">{t("overview.usedThisMonth")}</div>
-            <div className="value">
-              {billing.usedThisMonth}
-              {billing.plan ? ` / ${billing.plan.monthlyLimit}` : ""}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="label">{t("overview.creditsLeft")}</div>
-            <div className="value">{billing.topUpCredits}</div>
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
+        <div className="stat-card">
+          <div className="label">{t("overview.currentPlan")}</div>
+          <div className="value">{billing.plan?.name ?? "—"}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">{t("overview.usedThisMonth")}</div>
+          <div className="value">
+            {billing.usedThisMonth}
+            {billing.plan ? ` / ${billing.plan.monthlyLimit}` : ""}
           </div>
         </div>
-      )}
+        <div className="stat-card">
+          <div className="label">{t("overview.creditsLeft")}</div>
+          <div className="value">{billing.topUpCredits}</div>
+        </div>
+      </div>
 
       <div className="stat-grid">
         {stats.map((s) => (
@@ -120,12 +126,10 @@ function OverviewContent() {
         <LineTrendChart title={t("overview.dailyTryOns")} points={dailyPoints} />
       </div>
 
-      {history && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-          <BarTrendChart title={t("overview.monthlyTryOns")} points={monthlyPoints} />
-          <BarTrendChart title={t("overview.creditsUsage")} points={monthlyPoints} />
-        </div>
-      )}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+        <BarTrendChart title={t("overview.monthlyTryOns")} points={monthlyPoints} />
+        <BarTrendChart title={t("overview.creditsUsage")} points={monthlyPoints} />
+      </div>
 
       <div className="panel">
         <table>
