@@ -89,6 +89,12 @@ const SELECT_STYLE: React.CSSProperties = {
   fontSize: 13,
 };
 
+const TABS = [
+  { id: "button", labelKey: "integration.tabButton" },
+  { id: "modal", labelKey: "integration.tabModal" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
 function IntegrationContent() {
   const { t } = useI18n();
   const [store, setStore] = useState<StoreInfo | null>(null);
@@ -96,6 +102,7 @@ function IntegrationContent() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState<TabId>("button");
 
   useEffect(() => {
     apiFetch<StoreInfo>("/api/v1/store")
@@ -173,7 +180,30 @@ function IntegrationContent() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
         <div className="panel" style={{ padding: 24 }}>
-          <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("customize.title")}</h3>
+          <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)" }}>
+            {TABS.map((tb) => (
+              <button
+                key={tb.id}
+                type="button"
+                onClick={() => setTab(tb.id)}
+                style={{
+                  padding: "8px 14px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: tab === tb.id ? "2px solid var(--sky)" : "2px solid transparent",
+                  color: tab === tb.id ? "var(--paper)" : "var(--mist)",
+                  fontSize: 13,
+                  fontWeight: tab === tb.id ? 700 : 500,
+                  cursor: "pointer",
+                }}
+              >
+                {t(tb.labelKey)}
+              </button>
+            ))}
+          </div>
+
+          {tab === "button" && (
+            <>
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.label")}</label>
             <input value={config.buttonText ?? ""} onChange={(e) => setConfig({ ...config, buttonText: e.target.value })} maxLength={60} />
@@ -250,9 +280,11 @@ function IntegrationContent() {
               </label>
             </div>
           )}
+            </>
+          )}
 
-          <h3 style={{ margin: "20px 0 14px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.placementTitle")}</h3>
-
+          {tab === "modal" && (
+            <>
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.position")}</label>
             <select
@@ -348,6 +380,8 @@ function IntegrationContent() {
               maxLength={200}
             />
           </div>
+            </>
+          )}
 
           <button className="btn" onClick={save} disabled={saving}>
             {saving ? t("common.saving") : saved ? t("common.saved") : t("common.save")}

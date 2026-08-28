@@ -13,8 +13,12 @@ import { checkPlanEntitlement } from "../domain/planEntitlement";
 const requestSchema = z.object({
   message: z.string().min(1).max(1000).optional(),
   // What the merchant is asking for, so the admin dashboard can show it
-  // as a one-line summary instead of just "see note".
-  kind: z.enum(["upgrade", "topup"]),
+  // as a one-line summary instead of just "see note". "paid" is the
+  // merchant confirming they've sent a bank transfer for the payment
+  // requisites shown on the billing page (product ask: manual-billing
+  // flow — merchant pays by transfer, taps "I've paid", the platform
+  // owner verifies and activates the plan herself).
+  kind: z.enum(["upgrade", "topup", "paid"]),
   planKey: z.enum(["STARTER", "GROWTH", "PRO"]).optional(),
 });
 
@@ -83,7 +87,9 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
     const note =
       parsed.data.kind === "upgrade"
         ? `Requested upgrade to ${parsed.data.planKey ?? "a higher plan"}.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`
-        : `Requested a top-up pack.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+        : parsed.data.kind === "topup"
+          ? `Requested a top-up pack.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`
+          : `💰 Merchant confirms payment sent — please verify and activate.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
 
     const tenant = await prisma.tenant.update({
       where: { id: tenantId },
