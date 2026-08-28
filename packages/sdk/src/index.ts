@@ -227,7 +227,6 @@ class TryOnSdkImpl implements TryOnSdk {
       // their customers are overwhelmingly Ukrainian-speaking, and an
       // unconfigured widget should read that way out of the box.
       locale: this.options!.locale ?? "uk",
-      modalMaxWidth: this.options!.modalMaxWidth,
       showTryAnotherButton: this.options!.showTryAnotherButton,
       showBackButton: this.options!.showBackButton,
       modalHeading: this.options!.modalHeading,

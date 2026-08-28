@@ -18,7 +18,7 @@ export const WIDGET_CSS = `
 
 .lf-shell {
   position: relative;
-  width: 100%; max-width: var(--lf-modal-width, none);
+  width: 100%;
   margin: 0 auto;
   display: flex; flex-direction: column;
 }

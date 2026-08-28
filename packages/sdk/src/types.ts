@@ -53,8 +53,6 @@ export interface TryOnInitOptions {
   buttonShape?: "rounded" | "rectangular";
   /** Default `"none"`. `"pulse"` is a soft expanding ring in the accent color; `"shimmer"` is a light sweep across the button. */
   buttonAnimation?: "none" | "pulse" | "shimmer";
-  /** Caps the try-on window's width on very wide viewports, in px. Default: no cap — the window fills the screen. */
-  modalMaxWidth?: number;
   /** Show the "Try another photo" action on the try-on result screen. Default `true`. */
   showTryAnotherButton?: boolean;
   /** Show the "Back to product" action on the try-on result screen. Default `true`. */

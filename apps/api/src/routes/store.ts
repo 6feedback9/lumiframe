@@ -37,14 +37,14 @@ const updateStoreSchema = z.object({
       // laid out — packages/sdk + packages/widget apply all of these).
       buttonPosition: z.enum(["before", "after", "floating"]).optional(),
       buttonAnchorSelector: z.string().max(300).optional(),
-      // The try-on window is full-bleed by default (no cap) — this only
-      // caps it on very wide viewports for a merchant who wants that.
-      modalMaxWidth: z.number().int().min(900).max(2000).optional(),
+      // The try-on window always fills the screen and adapts to the
+      // viewport on its own (packages/widget's own responsive CSS) — no
+      // merchant-configurable width, deliberately (product ask: it should
+      // just work on every device, not need tuning per store).
       showTryAnotherButton: z.boolean().optional(),
       showBackButton: z.boolean().optional(),
       // Try-on window text + color overrides (product ask: "цвета/текст/
-      // размеры" for the window itself — modalMaxWidth above is the size;
-      // these are the colors and text. Colors default to the button's own
+      // размеры" for the window itself. Colors default to the button's own
       // when unset — see packages/sdk's fallback.
       modalHeading: z.string().max(120).optional(),
       modalSubheading: z.string().max(200).optional(),

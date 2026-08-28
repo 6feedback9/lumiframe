@@ -59,9 +59,6 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   const backdrop = document.createElement("div");
   backdrop.className = "lf-backdrop";
   backdrop.setAttribute("data-lumiframe-widget", "");
-  if (options.modalMaxWidth) {
-    backdrop.style.setProperty("--lf-modal-width", `${options.modalMaxWidth}px`);
-  }
   // Reuse the same accent the merchant configured for the auto-injected page
   // button (product ask: the try-on window's own design — colors included —
   // should be configurable, not a second, disconnected blue), unless a

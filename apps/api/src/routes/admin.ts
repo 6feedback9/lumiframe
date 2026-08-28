@@ -47,7 +47,6 @@ const setWidgetConfigSchema = z.object({
   buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
   buttonPosition: z.enum(["before", "after", "floating"]).optional(),
   buttonAnchorSelector: z.string().max(300).optional(),
-  modalMaxWidth: z.number().int().min(900).max(2000).optional(),
   showTryAnotherButton: z.boolean().optional(),
   showBackButton: z.boolean().optional(),
   modalHeading: z.string().max(120).optional(),

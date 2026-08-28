@@ -21,7 +21,6 @@ export interface WidgetConfig {
   buttonAnimation?: "none" | "pulse" | "shimmer";
   buttonPosition?: "before" | "after" | "floating";
   buttonAnchorSelector?: string;
-  modalMaxWidth?: number;
   showTryAnotherButton?: boolean;
   showBackButton?: boolean;
   modalHeading?: string;
@@ -47,7 +46,6 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.buttonAnimation && config.buttonAnimation !== "none") options.buttonAnimation = config.buttonAnimation;
   if (config.buttonPosition && config.buttonPosition !== "after") options.buttonPosition = config.buttonPosition;
   if (config.buttonAnchorSelector) options.buttonAnchorSelector = config.buttonAnchorSelector;
-  if (config.modalMaxWidth) options.modalMaxWidth = config.modalMaxWidth;
   if (config.showTryAnotherButton === false) options.showTryAnotherButton = false;
   if (config.showBackButton === false) options.showBackButton = false;
   if (config.modalHeading) options.modalHeading = config.modalHeading;

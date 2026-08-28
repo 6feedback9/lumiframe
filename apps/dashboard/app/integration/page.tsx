@@ -42,16 +42,6 @@ const POSITION_OPTIONS = [
   { value: "floating", labelKey: "customize.positionFloating" },
 ] as const;
 
-// The try-on window is full-bleed by default (fills the screen) — these
-// are only for a merchant who explicitly wants it capped on very wide
-// monitors. value 0 means "no cap" and is simply omitted from the saved
-// config (see buildInitOptions in lib/snippet.ts).
-const MODAL_WIDTH_OPTIONS = [
-  { value: 0, labelKey: "customize.modalWidthAuto" },
-  { value: 1200, labelKey: "customize.modalWidthMd" },
-  { value: 1600, labelKey: "customize.modalWidthLg" },
-] as const;
-
 const DEFAULTS: Required<
   Pick<
     WidgetConfig,
@@ -385,21 +375,6 @@ function IntegrationContent() {
             </div>
           )}
 
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("customize.modalWidth")}</label>
-            <select
-              value={config.modalMaxWidth ?? 0}
-              onChange={(e) => setConfig({ ...config, modalMaxWidth: Number(e.target.value) || undefined })}
-              style={SELECT_STYLE}
-            >
-              {MODAL_WIDTH_OPTIONS.map((w) => (
-                <option key={w.value} value={w.value}>
-                  {t(w.labelKey)}
-                  {w.value ? ` (${w.value}px)` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="field" style={{ marginBottom: 20 }}>
             <label>{t("customize.modalButtons")}</label>

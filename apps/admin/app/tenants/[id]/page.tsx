@@ -29,7 +29,6 @@ interface WidgetConfig {
   buttonAnimation?: "none" | "pulse" | "shimmer";
   buttonPosition?: "before" | "after" | "floating";
   buttonAnchorSelector?: string;
-  modalMaxWidth?: number;
   showTryAnotherButton?: boolean;
   showBackButton?: boolean;
   modalHeading?: string;
@@ -222,13 +221,6 @@ const POSITION_OPTIONS = [
   { value: "after", label: "buttonDesign.positionAfter" },
   { value: "before", label: "buttonDesign.positionBefore" },
   { value: "floating", label: "buttonDesign.positionFloating" },
-] as const;
-
-// value 0 means "no cap" and is simply omitted from the saved config
-const MODAL_WIDTH_OPTIONS = [
-  { value: 0, label: "buttonDesign.modalWidthAuto" },
-  { value: 1200, label: "buttonDesign.modalWidthMd" },
-  { value: 1600, label: "buttonDesign.modalWidthLg" },
 ] as const;
 
 const SHAPE_OPTIONS = [
@@ -450,21 +442,6 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
             </div>
           )}
 
-          <div className="field" style={{ marginBottom: 12 }}>
-            <label>{t("buttonDesign.modalWidth")}</label>
-            <select
-              value={config.modalMaxWidth ?? 0}
-              onChange={(e) => setConfig({ ...config, modalMaxWidth: Number(e.target.value) || undefined })}
-              style={selectStyle}
-            >
-              {MODAL_WIDTH_OPTIONS.map((w) => (
-                <option key={w.value} value={w.value}>
-                  {t(w.label)}
-                  {w.value ? ` (${w.value}px)` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="field" style={{ marginBottom: 16 }}>
             <label>{t("buttonDesign.modalButtons")}</label>
