@@ -27,7 +27,12 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      // Only when there's actually a body — Fastify's default JSON body
+      // parser rejects a request that declares Content-Type: application/
+      // json but sends no body at all with a bare 400 "Bad Request", no
+      // useful detail (found via apps/admin's identical bug on the
+      // trial-grant button, a bodyless POST).
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
@@ -40,7 +45,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(body.error ?? `Request failed (HTTP ${res.status})`, res.status);
+    // message before error: our own routes only ever set `error` (with a
+    // real description), but Fastify's own error responses (body parsing,
+    // rate limiting) put the useful detail in `message` and just the
+    // generic HTTP reason phrase ("Bad Request") in `error`.
+    throw new ApiError(body.message ?? body.error ?? `Request failed (HTTP ${res.status})`, res.status);
   }
   return res.json();
 }
