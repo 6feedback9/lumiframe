@@ -226,6 +226,13 @@ model Store {
   tryonResultRetentionHours   Int?
   attributionWindowHours      Int?
 
+  // Anti-abuse (product ask: a merchant can cap how many try-ons the same
+  // shopper gets, so one visitor can't hammer the store's monthly quota).
+  // null = unlimited. Enforced by IP in apps/api/src/routes/tryons.ts —
+  // visitorId alone isn't enough since it's client-generated and trivially
+  // reset by clearing storage.
+  maxTryOnsPerVisitor Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -308,6 +315,10 @@ model TryOnSession {
   // ── Visitor / session identity (anonymous, no customer account) ──
   visitorId       String
   browserSessionId String?
+  // Captured from the request at creation (behind Render's proxy — see
+  // app.ts's trustProxy). Used to enforce Store.maxTryOnsPerVisitor: unlike
+  // visitorId, it can't be reset just by clearing browser storage.
+  visitorIp        String?
 
   // ── Attribution context, captured once and never overwritten ──
   utmSource   String?
@@ -345,6 +356,7 @@ model TryOnSession {
   @@index([storeId, externalProductId])
   @@index([visitorId])
   @@index([tenantId, feedback])
+  @@index([storeId, visitorIp])
   @@map("tryon_sessions")
 }
 

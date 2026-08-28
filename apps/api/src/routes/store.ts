@@ -5,6 +5,10 @@ import { authenticateMerchant } from "../plugins/auth";
 
 const updateStoreSchema = z.object({
   allowedDomains: z.array(z.string().min(1)).min(1).optional(),
+  // Anti-abuse cap on try-ons per shopper (product ask), enforced by IP —
+  // see apps/api/src/domain/visitorLimit.ts. null explicitly clears it back
+  // to unlimited; omitted leaves it untouched.
+  maxTryOnsPerVisitor: z.number().int().min(1).max(1000).nullable().optional(),
   widgetConfig: z
     .object({
       logo: z.string().url().optional(),
@@ -87,6 +91,7 @@ export async function storeRoutes(app: FastifyInstance): Promise<void> {
       where: { id: store.id },
       data: {
         ...(parsed.data.allowedDomains ? { allowedDomains: parsed.data.allowedDomains } : {}),
+        ...(parsed.data.maxTryOnsPerVisitor !== undefined ? { maxTryOnsPerVisitor: parsed.data.maxTryOnsPerVisitor } : {}),
         ...(parsed.data.widgetConfig ? { widgetConfig: { ...(store.widgetConfig as object), ...parsed.data.widgetConfig } } : {}),
       },
     });

@@ -7,6 +7,7 @@ import { env } from "../env";
 import { authenticateMerchant, authenticateStorePublic } from "../plugins/auth";
 import { isAllowedProductUrl } from "../domain/allowedDomains";
 import { checkPlanEntitlement } from "../domain/planEntitlement";
+import { checkVisitorLimit } from "../domain/visitorLimit";
 import { createTryOnSchema, feedbackSchema, retryPhotoSchema } from "../schemas";
 
 const MAX_CUSTOMER_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -64,6 +65,15 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(403).send({ error: "product.url is not on an allowed domain for this store" });
     }
 
+    const visitorIp = request.ip;
+    const withinVisitorLimit = await checkVisitorLimit(store.id, store.maxTryOnsPerVisitor, visitorIp);
+    if (!withinVisitorLimit) {
+      return reply.code(429).send({
+        error: "You've reached the try-on limit for this store. Please contact the store if you'd like another try.",
+        code: "VISITOR_LIMIT_REACHED",
+      });
+    }
+
     const visitorId = input.visitorId ?? randomUUID();
     const expiresAt = new Date(Date.now() + resultRetentionMs(store));
 
@@ -79,6 +89,7 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
         price: input.product.price,
         currency: input.product.currency,
         visitorId,
+        visitorIp,
         browserSessionId: input.browserSessionId,
         utmSource: input.utm?.source,
         utmMedium: input.utm?.medium,

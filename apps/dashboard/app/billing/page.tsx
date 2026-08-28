@@ -204,6 +204,7 @@ function BillingContent() {
   const [error, setError] = useState<string | null>(null);
   const [startingTrial, setStartingTrial] = useState(false);
   const [payTarget, setPayTarget] = useState<PayTarget | null>(null);
+  const [trialToast, setTrialToast] = useState<string | null>(null);
 
   function load() {
     apiFetch<BillingInfo>("/api/v1/billing").then(setData).catch((err) => setError(err.message));
@@ -215,6 +216,8 @@ function BillingContent() {
     setStartingTrial(true);
     try {
       await apiFetch("/api/v1/billing/trial", { method: "POST" });
+      setTrialToast(t("billing.trialActivatedToast").replace("{count}", String(data?.trialCredits ?? "")));
+      setTimeout(() => setTrialToast(null), 4000);
       load();
     } catch (err) {
       setError((err as Error).message);
@@ -265,7 +268,7 @@ function BillingContent() {
           {!data.plan &&
             (data.trialAvailable ? (
               <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={startingTrial} onClick={startTrial}>
-                {startingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${data.trialCredits})`}
+                {startingTrial ? t("common.saving") : t("billing.startTrial")}
               </button>
             ) : (
               <button className="btn" style={{ width: "auto", padding: "9px 16px", opacity: 0.5, cursor: "default" }} disabled>
@@ -347,6 +350,28 @@ function BillingContent() {
             load();
           }}
         />
+      )}
+
+      {trialToast && (
+        <div
+          style={{
+            position: "fixed",
+            left: 20,
+            bottom: 20,
+            zIndex: 500,
+            maxWidth: 260,
+            background: "var(--surface)",
+            border: "1px solid var(--sky)",
+            borderRadius: 12,
+            padding: "12px 16px",
+            fontSize: 12.5,
+            color: "var(--paper)",
+            lineHeight: 1.5,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
+          }}
+        >
+          ✓ {trialToast}
+        </div>
       )}
     </>
   );

@@ -20,7 +20,11 @@ import { storageServeRoutes } from "./routes/storageServe";
 const MAX_REQUEST_BODY_BYTES = 20 * 1024 * 1024; // 20MB
 
 export async function buildApp(): Promise<FastifyInstance> {
-  const app = Fastify({ logger: process.env.NODE_ENV !== "test", bodyLimit: MAX_REQUEST_BODY_BYTES });
+  // trustProxy: this runs behind Render's reverse proxy (DEPLOYMENT.md §3),
+  // so without it request.ip would resolve to Render's edge, the same for
+  // every visitor — silently breaking both the per-visitor try-on limit
+  // below and the global rate-limiter's per-IP keying just above it.
+  const app = Fastify({ logger: process.env.NODE_ENV !== "test", bodyLimit: MAX_REQUEST_BODY_BYTES, trustProxy: true });
 
   // Public routes are called from the customer's browser on an arbitrary
   // merchant domain — CORS is permissive here because the actual security

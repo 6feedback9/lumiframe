@@ -14,6 +14,7 @@ interface StoreInfo {
   status: string;
   allowedDomains: string[];
   widgetConfig?: WidgetConfig;
+  maxTryOnsPerVisitor?: number | null;
 }
 
 const FONT_OPTIONS = [
@@ -106,12 +107,19 @@ function IntegrationContent() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState<TabId>("button");
+  // Per-visitor try-on cap (product ask: anti-abuse). Kept as a plain text
+  // input rather than a controlled number — empty means "unlimited" and
+  // shouldn't fight the user by snapping back to 0.
+  const [visitorLimit, setVisitorLimit] = useState("");
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [savedLimit, setSavedLimit] = useState(false);
 
   useEffect(() => {
     apiFetch<StoreInfo>("/api/v1/store")
       .then((s) => {
         setStore(s);
         setConfig({ ...DEFAULTS, ...s.widgetConfig });
+        setVisitorLimit(s.maxTryOnsPerVisitor ? String(s.maxTryOnsPerVisitor) : "");
       })
       .catch((err) => setError(err.message));
   }, []);
@@ -127,6 +135,23 @@ function IntegrationContent() {
       setError((err as Error).message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveVisitorLimit() {
+    setSavingLimit(true);
+    setSavedLimit(false);
+    const n = Number(visitorLimit);
+    const value = visitorLimit.trim() && Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+    try {
+      await apiFetch("/api/v1/store", { method: "PATCH", body: JSON.stringify({ maxTryOnsPerVisitor: value }) });
+      setVisitorLimit(value ? String(value) : "");
+      setSavedLimit(true);
+      setTimeout(() => setSavedLimit(false), 2500);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingLimit(false);
     }
   }
 
@@ -602,6 +627,25 @@ function IntegrationContent() {
                 <li key={d}>{d}</li>
               ))}
             </ul>
+          </div>
+
+          <div className="panel" style={{ padding: 24 }}>
+            <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("integration.visitorLimitTitle")}</h3>
+            <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 14 }}>{t("integration.visitorLimitDesc")}</p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={visitorLimit}
+                onChange={(e) => setVisitorLimit(e.target.value)}
+                placeholder={t("integration.visitorLimitUnlimited")}
+                style={{ maxWidth: 140 }}
+              />
+              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={savingLimit} onClick={saveVisitorLimit}>
+                {savingLimit ? t("common.saving") : savedLimit ? "✓" : t("common.save")}
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -25,6 +25,7 @@ export function Sidebar() {
   const [storeName, setStoreName] = useState<string | null>(null);
   const [billing, setBilling] = useState<BillingSummary | null>(null);
   const [activatingTrial, setActivatingTrial] = useState(false);
+  const [trialToast, setTrialToast] = useState<string | null>(null);
 
   const hidden = pathname === "/login" || pathname === "/register";
 
@@ -48,6 +49,8 @@ export function Sidebar() {
       await apiFetch("/api/v1/billing/trial", { method: "POST" });
       const fresh = await apiFetch<BillingSummary>("/api/v1/billing");
       setBilling(fresh);
+      setTrialToast(t("billing.trialActivatedToast").replace("{count}", String(fresh.trialCredits)));
+      setTimeout(() => setTrialToast(null), 4000);
     } catch {
       // Best-effort here — the Billing page itself is the authoritative
       // place to retry if this fails for some reason.
@@ -94,7 +97,7 @@ export function Sidebar() {
               className="btn"
               style={{ width: "100%", padding: "9px 0", fontSize: 12 }}
             >
-              {activatingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${billing.trialCredits})`}
+              {activatingTrial ? t("common.saving") : t("billing.startTrial")}
             </button>
           ) : (
             <button
@@ -130,6 +133,27 @@ export function Sidebar() {
           </button>
         ))}
       </div>
+      {trialToast && (
+        <div
+          style={{
+            position: "fixed",
+            left: 20,
+            bottom: 20,
+            zIndex: 500,
+            maxWidth: 260,
+            background: "var(--surface)",
+            border: "1px solid var(--sky)",
+            borderRadius: 12,
+            padding: "12px 16px",
+            fontSize: 12.5,
+            color: "var(--paper)",
+            lineHeight: 1.5,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
+          }}
+        >
+          ✓ {trialToast}
+        </div>
+      )}
     </aside>
   );
 }
