@@ -28,6 +28,8 @@ interface WidgetConfig {
   modalMaxWidth?: number;
   showTryAnotherButton?: boolean;
   showBackButton?: boolean;
+  modalHeading?: string;
+  modalSubheading?: string;
 }
 
 interface TenantUser {
@@ -401,6 +403,19 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
                 </label>
               </div>
             </div>
+          </div>
+
+          <h4 style={{ margin: "16px 0 8px", fontSize: 13, borderTop: "1px solid var(--line)", paddingTop: 16 }}>{t("buttonDesign.modalTextTitle")}</h4>
+          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginBottom: 12 }}>{t("buttonDesign.colorsInherited")}</p>
+
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.modalHeading")}</label>
+            <input value={config.modalHeading ?? ""} onChange={(e) => setConfig({ ...config, modalHeading: e.target.value || undefined })} maxLength={120} />
+          </div>
+
+          <div className="field" style={{ marginBottom: 16 }}>
+            <label>{t("buttonDesign.modalSubheading")}</label>
+            <input value={config.modalSubheading ?? ""} onChange={(e) => setConfig({ ...config, modalSubheading: e.target.value || undefined })} maxLength={200} />
           </div>
 
           <button className="btn" style={{ width: "auto", padding: "9px 18px" }} disabled={saving} onClick={save}>

@@ -31,8 +31,10 @@ export function Sidebar() {
     { href: "/", label: t("nav.overview") },
     { href: "/tryons", label: t("nav.tryons") },
     { href: "/integration", label: t("nav.integration") },
+    { href: "/feedback", label: t("nav.feedback") },
     { href: "/team", label: t("nav.team") },
     { href: "/billing", label: t("nav.billing") },
+    { href: "/help", label: t("nav.help") },
   ];
 
   return (

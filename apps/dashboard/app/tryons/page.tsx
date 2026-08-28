@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthGuard } from "../AuthGuard";
+import { openLightbox, PhotoLightbox } from "../PhotoLightbox";
 import { apiFetch } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
@@ -53,6 +54,7 @@ function TryOnsContent() {
   const [page, setPage] = useState(1);
   const [month, setMonth] = useState(""); // "" = all time
   const [error, setError] = useState<string | null>(null);
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const limit = 10;
   const monthOptions = useMemo(() => recentMonths(locale), [locale]);
 
@@ -127,9 +129,15 @@ function TryOnsContent() {
                 <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.id}`)}>
                   <td>{item.productTitle ?? "—"}</td>
                   <td>
-                    <img className="thumb" src={item.productImageUrl} alt="" />
+                    <img className="thumb" src={item.productImageUrl} alt="" style={{ cursor: "zoom-in" }} onClick={openLightbox(setZoomUrl, item.productImageUrl)} />
                   </td>
-                  <td>{item.resultUrl ? <img className="thumb" src={item.resultUrl} alt="" /> : "—"}</td>
+                  <td>
+                    {item.resultUrl ? (
+                      <img className="thumb" src={item.resultUrl} alt="" style={{ cursor: "zoom-in" }} onClick={openLightbox(setZoomUrl, item.resultUrl)} />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>
                     <span className={badgeClass(item.status)}>{item.status}</span>
                     {item.status === "FAILED" && (item.errorMessage || item.errorCode) && (
@@ -175,6 +183,8 @@ function TryOnsContent() {
           </button>
         </div>
       )}
+
+      {zoomUrl && <PhotoLightbox url={zoomUrl} onClose={() => setZoomUrl(null)} />}
     </>
   );
 }

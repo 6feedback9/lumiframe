@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthGuard } from "../AuthGuard";
+import { openLightbox, PhotoLightbox } from "../PhotoLightbox";
 import { apiFetch } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
@@ -41,6 +42,7 @@ function TryOnsContent() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const limit = 20;
 
   useEffect(() => {
@@ -137,11 +139,23 @@ function TryOnsContent() {
                   <td>{item.tenantName}</td>
                   <td>{item.storeName}</td>
                   <td>{item.productTitle ?? "—"}</td>
-                  <td>{item.customerImageUrl ? <img className="thumb" src={item.customerImageUrl} alt="" /> : "—"}</td>
                   <td>
-                    <img className="thumb" src={item.productImageUrl} alt="" />
+                    {item.customerImageUrl ? (
+                      <img className="thumb" src={item.customerImageUrl} alt="" style={{ cursor: "zoom-in" }} onClick={openLightbox(setZoomUrl, item.customerImageUrl)} />
+                    ) : (
+                      "—"
+                    )}
                   </td>
-                  <td>{item.resultUrl ? <img className="thumb" src={item.resultUrl} alt="" /> : "—"}</td>
+                  <td>
+                    <img className="thumb" src={item.productImageUrl} alt="" style={{ cursor: "zoom-in" }} onClick={openLightbox(setZoomUrl, item.productImageUrl)} />
+                  </td>
+                  <td>
+                    {item.resultUrl ? (
+                      <img className="thumb" src={item.resultUrl} alt="" style={{ cursor: "zoom-in" }} onClick={openLightbox(setZoomUrl, item.resultUrl)} />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>
                     <span className={badgeClass(item.status)}>{item.status}</span>
                   </td>
@@ -168,6 +182,8 @@ function TryOnsContent() {
           </button>
         </div>
       )}
+
+      {zoomUrl && <PhotoLightbox url={zoomUrl} onClose={() => setZoomUrl(null)} />}
     </>
   );
 }

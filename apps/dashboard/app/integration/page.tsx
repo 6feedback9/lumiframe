@@ -326,6 +326,29 @@ function IntegrationContent() {
             </div>
           </div>
 
+          <h3 style={{ margin: "20px 0 10px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.modalTextTitle")}</h3>
+          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginBottom: 14 }}>{t("customize.colorsInherited")}</p>
+
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label>{t("customize.modalHeading")}</label>
+            <input
+              value={config.modalHeading ?? ""}
+              onChange={(e) => setConfig({ ...config, modalHeading: e.target.value || undefined })}
+              placeholder={t("customize.modalHeadingPlaceholder")}
+              maxLength={120}
+            />
+          </div>
+
+          <div className="field" style={{ marginBottom: 20 }}>
+            <label>{t("customize.modalSubheading")}</label>
+            <input
+              value={config.modalSubheading ?? ""}
+              onChange={(e) => setConfig({ ...config, modalSubheading: e.target.value || undefined })}
+              placeholder={t("customize.modalSubheadingPlaceholder")}
+              maxLength={200}
+            />
+          </div>
+
           <button className="btn" onClick={save} disabled={saving}>
             {saving ? t("common.saving") : saved ? t("common.saved") : t("common.save")}
           </button>

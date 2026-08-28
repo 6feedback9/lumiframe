@@ -31,6 +31,11 @@ const updateStoreSchema = z.object({
       modalMaxWidth: z.number().int().min(360).max(900).optional(),
       showTryAnotherButton: z.boolean().optional(),
       showBackButton: z.boolean().optional(),
+      // Try-on window text overrides (product ask: "цвета/текст/размеры" —
+      // colors are inherited from the button design above, sizes are
+      // modalMaxWidth above; this is the "text" part).
+      modalHeading: z.string().max(120).optional(),
+      modalSubheading: z.string().max(200).optional(),
     })
     .optional(),
 });
