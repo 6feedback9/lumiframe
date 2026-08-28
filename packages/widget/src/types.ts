@@ -14,7 +14,8 @@ export type WidgetEventName =
   | "tryon:processing"
   | "tryon:completed"
   | "tryon:failed"
-  | "tryon:add-to-cart";
+  | "tryon:add-to-cart"
+  | "tryon:feedback";
 
 export interface MountWidgetOptions {
   product: WidgetProduct;
@@ -29,6 +30,19 @@ export interface MountWidgetOptions {
   showTryAnotherButton?: boolean;
   /** Show the "Back to product" action on the result screen. Default true. */
   showBackButton?: boolean;
+  /**
+   * The modal's own accent (its "Try On"/"Add to cart" buttons, the
+   * spinner, the upload zone's hover border) — same accent the merchant
+   * already configures for the auto-injected page button, reused here so
+   * the two look like one product instead of two different blues.
+   */
+  accentColorStart?: string;
+  accentColorEnd?: string;
+  accentStyle?: "gradient" | "solid";
+  accentTextColor?: string;
+  /** Overrides the default upload-step heading/subheading text. */
+  modalHeading?: string;
+  modalSubheading?: string;
 }
 
 export interface WidgetHandle {

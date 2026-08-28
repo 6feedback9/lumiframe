@@ -211,6 +211,14 @@ class TryOnSdkImpl implements TryOnSdk {
       modalMaxWidth: this.options!.modalMaxWidth,
       showTryAnotherButton: this.options!.showTryAnotherButton,
       showBackButton: this.options!.showBackButton,
+      modalHeading: this.options!.modalHeading,
+      modalSubheading: this.options!.modalSubheading,
+      // Same accent as the auto-injected page button, so the try-on window
+      // reads as the same product rather than a mismatched second theme.
+      accentColorStart: this.options!.buttonColorStart,
+      accentColorEnd: this.options!.buttonColorEnd,
+      accentStyle: this.options!.buttonStyle,
+      accentTextColor: this.options!.buttonTextColor,
       onEvent: (event, payload) => this.bus.emit(event, payload as never),
       onClose: () => this.close(),
     });

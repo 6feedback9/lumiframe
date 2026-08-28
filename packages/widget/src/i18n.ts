@@ -21,6 +21,11 @@ export interface Copy {
   addingToCart: string;
   addedToCart: string;
   addToCartFallback: string;
+  consentLabel: string;
+  feedbackPrompt: string;
+  likeAria: string;
+  dislikeAria: string;
+  feedbackThanks: string;
 }
 
 const COPY: Record<MountWidgetOptions["locale"], Copy> = {
@@ -40,11 +45,16 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     genSub: "This usually takes a few seconds.",
     errUpload: "We couldn't read this photo. Please try another one.",
     errGen: "Something went wrong. Please try again.",
-    aiNote: "This image is AI-generated. Actual fit may vary.",
+    aiNote: "This is an AI-generated preview, not an exact copy of the real product — just an approximate example of how it might look.",
     expired: "This preview has expired according to our privacy policy.",
     addingToCart: "Adding…",
     addedToCart: "Added ✓",
     addToCartFallback: "Use the store's \"Add to cart\" button to finish your order.",
+    consentLabel: "I agree that my photo will be used only to generate this preview.",
+    feedbackPrompt: "How do you like it?",
+    likeAria: "Like this result",
+    dislikeAria: "Dislike this result",
+    feedbackThanks: "Thanks for the feedback!",
   },
   uk: {
     title: "Віртуальна примірка",
@@ -62,11 +72,16 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     genSub: "Зазвичай це займає кілька секунд.",
     errUpload: "Не вдалося зчитати фото. Спробуйте інше.",
     errGen: "Щось пішло не так. Спробуйте ще раз.",
-    aiNote: "Зображення згенеровано ШІ. Результат може відрізнятися.",
+    aiNote: "Це орієнтовний вигляд, згенерований ШІ, а не точна копія товару — лише приклад того, як він може виглядати.",
     expired: "Це прев'ю більше недоступне згідно з політикою конфіденційності.",
     addingToCart: "Додаємо…",
     addedToCart: "Додано ✓",
     addToCartFallback: "Щоб завершити замовлення, натисніть «Додати до кошика» на сторінці товару.",
+    consentLabel: "Я погоджуюсь, що моє фото буде використано лише для генерації цього прев'ю.",
+    feedbackPrompt: "Як вам результат?",
+    likeAria: "Подобається",
+    dislikeAria: "Не подобається",
+    feedbackThanks: "Дякуємо за відгук!",
   },
   ru: {
     title: "Виртуальная примерка",
@@ -84,11 +99,16 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     genSub: "Обычно это занимает несколько секунд.",
     errUpload: "Не удалось прочитать фото. Попробуйте другое.",
     errGen: "Что-то пошло не так. Попробуйте ещё раз.",
-    aiNote: "Изображение сгенерировано ИИ. Результат может отличаться.",
+    aiNote: "Это ориентировочный вид, сгенерированный ИИ, а не точная копия товара — лишь пример того, как он может выглядеть.",
     expired: "Это превью больше недоступно согласно политике конфиденциальности.",
     addingToCart: "Добавляем…",
     addedToCart: "Добавлено ✓",
     addToCartFallback: "Чтобы завершить заказ, нажмите «Добавить в корзину» на странице товара.",
+    consentLabel: "Я согласен(на), что моё фото будет использовано только для генерации этого превью.",
+    feedbackPrompt: "Как вам результат?",
+    likeAria: "Нравится",
+    dislikeAria: "Не нравится",
+    feedbackThanks: "Спасибо за отзыв!",
   },
 };
 

@@ -45,6 +45,16 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   if (options.modalMaxWidth) {
     backdrop.style.setProperty("--lf-modal-width", `${options.modalMaxWidth}px`);
   }
+  // Reuse the same accent the merchant configured for the auto-injected page
+  // button (product ask: the try-on window's own design — colors included —
+  // should be configurable, not a second, disconnected blue).
+  if (options.accentColorStart || options.accentColorEnd) {
+    const start = options.accentColorStart ?? options.accentColorEnd!;
+    const end = options.accentColorEnd ?? options.accentColorStart!;
+    backdrop.style.setProperty("--lf-accent-1", start);
+    backdrop.style.setProperty("--lf-btn-bg", options.accentStyle === "solid" ? start : `linear-gradient(135deg, ${start}, ${end})`);
+  }
+  if (options.accentTextColor) backdrop.style.setProperty("--lf-accent-contrast", options.accentTextColor);
   backdrop.innerHTML = `
     <div class="lf-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(T.title)}">
       <div class="lf-header">
@@ -65,8 +75,8 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
         }
 
         <div data-step="upload">
-          <div class="lf-head">${escapeHtml(T.head)}</div>
-          <div class="lf-desc">${escapeHtml(T.desc)}</div>
+          <div class="lf-head">${escapeHtml(options.modalHeading || T.head)}</div>
+          <div class="lf-desc">${escapeHtml(options.modalSubheading || T.desc)}</div>
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
             <img class="lf-preview" data-preview alt="">
@@ -77,6 +87,10 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
             </div>
           </div>
           <div class="lf-privacy">${escapeHtml(T.privacy)}</div>
+          <div class="lf-consent">
+            <input type="checkbox" id="lf-consent-check" data-consent>
+            <label for="lf-consent-check">${escapeHtml(T.consentLabel)}</label>
+          </div>
           <div class="lf-error" data-error style="display:none"></div>
           <button type="button" class="lf-btn lf-btn-primary" data-generate disabled>${escapeHtml(T.generate)}</button>
         </div>
@@ -92,6 +106,12 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
         <div data-step="result" style="display:none">
           <img class="lf-result-img" data-result-img alt="Try-on result">
           <div class="lf-ai-note">${escapeHtml(T.aiNote)}</div>
+          <div class="lf-feedback" data-feedback>
+            <span class="lf-feedback-prompt">${escapeHtml(T.feedbackPrompt)}</span>
+            <button type="button" class="lf-fb-btn" data-fb-like aria-label="${escapeHtml(T.likeAria)}">👍</button>
+            <button type="button" class="lf-fb-btn" data-fb-dislike aria-label="${escapeHtml(T.dislikeAria)}">👎</button>
+          </div>
+          <div class="lf-feedback-thanks" data-fb-thanks style="display:none">${escapeHtml(T.feedbackThanks)}</div>
           <div class="lf-actions">
             ${showTryAnother ? `<button type="button" class="lf-btn lf-btn-secondary" data-retry>${escapeHtml(T.tryAnother)}</button>` : ""}
             ${showBack ? `<button type="button" class="lf-btn lf-btn-secondary" data-back>${escapeHtml(T.backToProduct)}</button>` : ""}
@@ -132,9 +152,17 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     const dataUri = await fileToUploadDataUri(file);
     q<HTMLImageElement>("[data-preview]").src = dataUri;
     q<HTMLElement>("[data-zone]").classList.add("has-photo");
-    q<HTMLButtonElement>("[data-generate]").disabled = false;
+    updateGenerateEnabled();
     options.onEvent("tryon:photo-selected", { product: options.product });
     void api.postEvent({ type: "PHOTO_SELECTED", externalProductId: options.product.productId, visitorId, browserSessionId });
+  }
+
+  // "Try On" stays disabled until both a photo is chosen and the shopper
+  // has ticked the consent box (product ask: a real, enforced privacy
+  // checkbox on the try-on window, not just a passive footnote).
+  function updateGenerateEnabled(): void {
+    const consented = q<HTMLInputElement>("[data-consent]").checked;
+    q<HTMLButtonElement>("[data-generate]").disabled = !(selectedFile && consented);
   }
 
   async function pollUntilDone(): Promise<void> {
@@ -146,6 +174,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
         if (status.status === "COMPLETED" && status.resultUrl) {
           options.onEvent("tryon:completed", { tryOnId, resultUrl: status.resultUrl });
           q<HTMLImageElement>("[data-result-img]").src = status.resultUrl;
+          resetFeedbackUi();
           showStep("result");
           return;
         }
@@ -225,6 +254,22 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     backdrop.remove();
     document.body.style.overflow = "";
     options.onClose();
+  }
+
+  function resetFeedbackUi(): void {
+    q("[data-fb-like]").classList.remove("selected");
+    q("[data-fb-dislike]").classList.remove("selected");
+    q<HTMLElement>("[data-fb-thanks]").style.display = "none";
+    q<HTMLElement>("[data-feedback]").style.display = "flex";
+  }
+
+  function submitFeedback(rating: "LIKE" | "DISLIKE"): void {
+    if (!tryOnId) return;
+    q("[data-fb-like]").classList.toggle("selected", rating === "LIKE");
+    q("[data-fb-dislike]").classList.toggle("selected", rating === "DISLIKE");
+    q<HTMLElement>("[data-fb-thanks]").style.display = "block";
+    options.onEvent("tryon:feedback", { tryOnId, rating });
+    void api.submitFeedback(tryOnId, rating);
   }
 
   /**
@@ -313,9 +358,12 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   });
 
   q("[data-generate]").addEventListener("click", () => void generate());
+  q<HTMLInputElement>("[data-consent]").addEventListener("change", updateGenerateEnabled);
   backdrop.querySelector("[data-retry]")?.addEventListener("click", () => void retry());
   backdrop.querySelector("[data-back]")?.addEventListener("click", close);
   q("[data-add-to-cart]").addEventListener("click", () => void addToCart());
+  q("[data-fb-like]").addEventListener("click", () => submitFeedback("LIKE"));
+  q("[data-fb-dislike]").addEventListener("click", () => submitFeedback("DISLIKE"));
 
   return { close };
 }

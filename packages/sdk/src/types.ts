@@ -55,6 +55,9 @@ export interface TryOnInitOptions {
   showTryAnotherButton?: boolean;
   /** Show the "Back to product" action on the try-on result screen. Default `true`. */
   showBackButton?: boolean;
+  /** Overrides the try-on window's default upload-step heading/subheading text. */
+  modalHeading?: string;
+  modalSubheading?: string;
 }
 
 /**
@@ -80,6 +83,7 @@ export type SdkEventName =
   | "tryon:completed"
   | "tryon:failed"
   | "tryon:add-to-cart"
+  | "tryon:feedback"
   | "tryon:close";
 
 export interface SdkEventPayloads {
@@ -90,6 +94,7 @@ export interface SdkEventPayloads {
   "tryon:completed": { tryOnId: string; resultUrl: string };
   "tryon:failed": { tryOnId?: string; errorCode: string; errorMessage?: string };
   "tryon:add-to-cart": { product: AttachProductInput; tryOnId?: string };
+  "tryon:feedback": { tryOnId: string; rating: "LIKE" | "DISLIKE" };
   "tryon:close": Record<string, never>;
 }
 

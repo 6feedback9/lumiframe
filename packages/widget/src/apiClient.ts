@@ -82,6 +82,16 @@ export class ApiClient {
     return res.json();
   }
 
+  async submitFeedback(tryOnId: string, rating: "LIKE" | "DISLIKE"): Promise<void> {
+    await fetch(this.url(`/api/v1/tryons/${tryOnId}/feedback?storeId=${encodeURIComponent(this.storeId)}`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating }),
+    }).catch(() => {
+      // Best-effort — a dropped "like" tap must never block the UX.
+    });
+  }
+
   async postEvent(event: {
     type: string;
     tryOnSessionId?: string;
