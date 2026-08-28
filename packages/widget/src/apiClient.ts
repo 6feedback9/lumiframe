@@ -102,13 +102,4 @@ export class ApiClient {
     });
   }
 
-  /** Reads a File into a base64 data: URI for the inline-upload contract (packages/sdk README). */
-  static async fileToDataUri(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-  }
 }

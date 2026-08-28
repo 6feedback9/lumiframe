@@ -4,6 +4,7 @@
 // product page that no one clicks "Try on" on.
 
 import { ApiClient } from "./apiClient";
+import { fileToUploadDataUri } from "./imageResize";
 import { getBrowserSessionId, getVisitorId } from "./ids";
 import { getCopy } from "./i18n";
 import { WIDGET_CSS } from "./styles";
@@ -122,7 +123,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     }
     selectedFile = file;
     clearError();
-    const dataUri = await ApiClient.fileToDataUri(file);
+    const dataUri = await fileToUploadDataUri(file);
     q<HTMLImageElement>("[data-preview]").src = dataUri;
     q<HTMLElement>("[data-zone]").classList.add("has-photo");
     q<HTMLButtonElement>("[data-generate]").disabled = false;
@@ -174,7 +175,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     options.onEvent("tryon:processing", {});
 
     try {
-      const dataUri = await ApiClient.fileToDataUri(selectedFile);
+      const dataUri = await fileToUploadDataUri(selectedFile);
       const created = await api.createTryOn({
         product: options.product,
         customerImageDataUri: dataUri,
@@ -202,7 +203,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
       if (!file || !tryOnId) return;
       showStep("processing");
       try {
-        const dataUri = await ApiClient.fileToDataUri(file);
+        const dataUri = await fileToUploadDataUri(file);
         await api.retryTryOn(tryOnId, dataUri);
         await pollUntilDone();
       } catch (error) {

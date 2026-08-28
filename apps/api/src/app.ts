@@ -11,8 +11,14 @@ import { sdkRoutes } from "./routes/sdk";
 import { healthRoutes } from "./routes/health";
 import { storageServeRoutes } from "./routes/storageServe";
 
+// Fastify's default bodyLimit (1 MiB) is well under a single base64-encoded
+// customer photo (packages/widget resizes to ~1600px/JPEG q0.85 before
+// upload, but that's still commonly 1-4MB, and the client-side resize is a
+// best-effort optimization, not something this limit should depend on).
+const MAX_REQUEST_BODY_BYTES = 20 * 1024 * 1024; // 20MB
+
 export async function buildApp(): Promise<FastifyInstance> {
-  const app = Fastify({ logger: process.env.NODE_ENV !== "test" });
+  const app = Fastify({ logger: process.env.NODE_ENV !== "test", bodyLimit: MAX_REQUEST_BODY_BYTES });
 
   // Public routes are called from the customer's browser on an arbitrary
   // merchant domain — CORS is permissive here because the actual security
