@@ -30,6 +30,18 @@ export const WIDGET_CSS = `
      center its content inside it — same auto-margin mechanism already
      used for the desktop panels. */
   min-height: 100vh;
+  /* Mobile browsers (mobile Safari especially) size 100vh against the
+     viewport with the address bar hidden, not what's actually visible on
+     load — so the real content area is shorter than 100vh says, .lf-col
+     overflows past the fold, and its auto margins (by design) collapse
+     toward the top instead of splitting the leftover space evenly —
+     leaving the upload box sitting high with a dead gap below it instead
+     of centered ("не централизовал рамку", recurring even after the vh
+     fix above). 100dvh tracks the real, current visible viewport as the
+     address bar shows/hides; unsupported browsers just ignore this line
+     and keep the 100vh rule above as a fallback.
+   */
+  min-height: 100dvh;
   display: flex; flex-direction: column;
 }
 @media (min-width: 760px) { .lf-shell { flex-direction: row; } }
