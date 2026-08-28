@@ -79,7 +79,6 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
         <div class="lf-col">
           <div class="lf-eyebrow">${escapeHtml(T.title)}</div>
           <div class="lf-head">${escapeHtml(options.modalHeading || T.head)}</div>
-          <div class="lf-desc">${escapeHtml(options.modalSubheading || T.desc)}</div>
 
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
@@ -97,12 +96,6 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
           </div>
 
           <div data-pre-upload>
-            <ul class="lf-tips">
-              <li>${escapeHtml(T.tip1)}</li>
-              <li>${escapeHtml(T.tip2)}</li>
-              <li>${escapeHtml(T.tip3)}</li>
-              <li>${escapeHtml(T.tip4)}</li>
-            </ul>
             <button type="button" class="lf-btn lf-btn-primary" data-upload-trigger>${escapeHtml(T.upload)}</button>
             <div class="lf-privacy">${escapeHtml(T.privacy)}</div>
           </div>

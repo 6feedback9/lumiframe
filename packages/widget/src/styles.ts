@@ -55,6 +55,14 @@ export const WIDGET_CSS = `
 }
 @media (min-width: 760px) { .lf-product-panel { padding: clamp(20px, 5vh, 52px) 48px; border-top: none; border-left: 1px solid #ececec; } }
 
+/* Mobile only (product ask: "централізуй" — center it): the eyebrow and
+   heading read left-aligned-in-a-column as slightly off on a narrow phone
+   screen; centered matches the rest of the mobile layout (the upload
+   button and photo box already read as centered, being full-width). */
+@media (max-width: 759px) {
+  .lf-eyebrow, .lf-head { text-align: center; }
+}
+
 /* Mobile only (product ask): the product panel — photo/name/price and
    "Add to cart" — only makes sense once there's a result to actually add
    to cart alongside; before that it was just clutter above/below the
@@ -76,20 +84,18 @@ export const WIDGET_CSS = `
 .lf-col { width: 100%; max-width: 360px; margin: auto auto; }
 
 .lf-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #aaa; margin-bottom: 10px; }
-.lf-head { font-size: 21px; font-weight: 800; letter-spacing: -.01em; text-transform: uppercase; margin-bottom: 8px; color: #111; }
-.lf-desc { font-size: 13px; color: #8a8a8a; line-height: 1.5; margin-bottom: 16px; }
+.lf-head { font-size: 21px; font-weight: 800; letter-spacing: -.01em; text-transform: uppercase; margin-bottom: 16px; color: #111; }
 
 .lf-zone {
   position: relative; border-radius: 18px; overflow: hidden;
   background: #e7e7e6; aspect-ratio: 3 / 4;
-  /* Caps how tall this gets on a short viewport — a plain 3:4 box at the
-     column's full 360px width runs to 480px alone, more than the whole
-     panel needs to fit a typical laptop window without scrolling at all
-     once the tips list, the upload button and the privacy line below it
-     are added back in. The image still crops to fill via object-fit
-     below; this just stops the placeholder box from dictating the whole
-     panel's height. */
-  max-height: 42vh;
+  /* Caps how tall this gets on a short viewport. The image still crops to
+     fill via object-fit below; this just stops the placeholder box from
+     dictating the whole panel's height. Sized generously — the description
+     paragraph and tips checklist that used to sit around it are gone
+     (product ask: cut the instructional text, give that room to the photo
+     itself instead), so there's more height to spend on it than before. */
+  max-height: 56vh;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px;
 }
@@ -119,10 +125,6 @@ export const WIDGET_CSS = `
 .lf-spinner { width: 34px; height: 34px; margin-bottom: 14px; border: 2.5px solid #e2e2e2; border-top-color: var(--lf-accent-1, #73b7ff); border-radius: 50%; animation: lfSpin .8s linear infinite; }
 .lf-gen-title { font-size: 13px; font-weight: 700; color: #222; margin-bottom: 4px; }
 .lf-gen-sub { font-size: 11px; color: #999; }
-
-.lf-tips { list-style: none; margin: 0 0 14px; padding: 0; }
-.lf-tips li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; margin-bottom: 6px; }
-.lf-tips li::before { content: "✓"; color: var(--lf-accent-1, #73b7ff); font-weight: 700; flex-shrink: 0; }
 
 .lf-privacy { font-size: 11px; color: #b8b8b8; margin-top: 10px; line-height: 1.45; }
 .lf-error { background: #fff2f2; color: #d00; border-radius: 10px; padding: 10px 14px; font-size: 12px; margin-top: 10px; }
