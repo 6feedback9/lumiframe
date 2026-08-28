@@ -24,7 +24,7 @@
 // already known. A hung Gemini request is still bounded by
 // GENERATE_TIMEOUT_MS below, so it can't wedge the worker forever.
 
-import { fetchImageBytes } from "@lumiframe/storage";
+import { fetchImageBytes, type FetchedImage } from "@lumiframe/storage";
 import {
   registerTryOnProvider,
   type TryOnProvider,
@@ -32,6 +32,7 @@ import {
   type TryOnJobHandle,
   type TryOnJobStatus,
   type TryOnValidationResult,
+  type StoredImageRef,
 } from "@lumiframe/tryon";
 import { GoogleGenAI, Modality, type Part } from "@google/genai";
 
@@ -87,6 +88,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
+/**
+ * Prefers bytes the caller already has in hand (StoredImageRef.buffer) over
+ * fetching by URL — the worker sets this for the product image, since it
+ * just downloaded it from the merchant's site to hash it; there's no
+ * reason to also upload it to our storage and fetch it straight back down
+ * before Gemini even sees it. Falls back to a real fetch for anything that
+ * only carries a signed URL (still true of the customer's photo).
+ */
+async function resolveImageBytes(ref: StoredImageRef): Promise<FetchedImage> {
+  if (ref.buffer) return { buffer: ref.buffer, mimeType: ref.mimeType };
+  return fetchImageBytes(ref.url!);
+}
+
 /** Finds the first inline-image part in a Gemini response's first candidate. */
 function firstImagePart(parts: Part[] | undefined): { data: string; mimeType: string } | null {
   for (const part of parts ?? []) {
@@ -115,9 +129,9 @@ export class GeminiTryOnProvider implements TryOnProvider {
 
   validateInput(input: TryOnGenerationInput): TryOnValidationResult {
     const errors: string[] = [];
-    if (!input.faceImage?.url) errors.push("faceImage.url is required — a real provider must fetch actual bytes");
+    if (!input.faceImage?.url && !input.faceImage?.buffer) errors.push("faceImage.url or faceImage.buffer is required — a real provider must have actual bytes");
     if (!input.faceImage?.mimeType?.startsWith("image/")) errors.push("faceImage must be an image");
-    if (!input.eyewearImage?.url) errors.push("eyewearImage.url is required");
+    if (!input.eyewearImage?.url && !input.eyewearImage?.buffer) errors.push("eyewearImage.url or eyewearImage.buffer is required");
     if (!input.eyewearImage?.mimeType?.startsWith("image/")) errors.push("eyewearImage must be an image");
     return errors.length ? { valid: false, errors } : { valid: true };
   }
@@ -157,10 +171,7 @@ export class GeminiTryOnProvider implements TryOnProvider {
   }
 
   private async runGeneration(input: TryOnGenerationInput, startedAt: number): Promise<Outcome> {
-    const [face, eyewear] = await Promise.all([
-      fetchImageBytes(input.faceImage.url!),
-      fetchImageBytes(input.eyewearImage.url!),
-    ]);
+    const [face, eyewear] = await Promise.all([resolveImageBytes(input.faceImage), resolveImageBytes(input.eyewearImage)]);
 
     const response = await this.client.models.generateContent({
       model: this.model,

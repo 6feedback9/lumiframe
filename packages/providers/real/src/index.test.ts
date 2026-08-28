@@ -19,6 +19,7 @@ vi.mock("@lumiframe/storage", () => ({
 }));
 
 const { GeminiTryOnProvider } = await import("./index");
+const { fetchImageBytes: fetchImageBytesMock } = await import("@lumiframe/storage");
 
 const baseInput: TryOnGenerationInput = {
   tryOnSessionId: "session_1",
@@ -29,6 +30,7 @@ const baseInput: TryOnGenerationInput = {
 
 beforeEach(() => {
   generateContentMock.mockReset();
+  vi.mocked(fetchImageBytesMock).mockClear();
 });
 
 describe("GeminiTryOnProvider", () => {
@@ -61,6 +63,29 @@ describe("GeminiTryOnProvider", () => {
     const call = generateContentMock.mock.calls[0]?.[0];
     expect(call.model).toBeTruthy();
     expect(call.contents[0].parts).toHaveLength(3); // prompt text + 2 images
+  });
+
+  it("uses inline buffer bytes when present instead of fetching by URL", async () => {
+    generateContentMock.mockResolvedValue({
+      candidates: [{ content: { parts: [{ inlineData: { data: "ZmFrZQ==", mimeType: "image/png" } }] } }],
+    });
+
+    // The worker sets this for the product image (it already downloaded
+    // the bytes to compute a content hash) — no reason to also round-trip
+    // them through our storage and a signed URL just to read them back.
+    const provider = new GeminiTryOnProvider({ apiKey: "test-key" });
+    await provider.generateTryOn({
+      ...baseInput,
+      eyewearImage: { key: "product/frame.png", mimeType: "image/png", buffer: Buffer.from("real-bytes") },
+    });
+
+    // Only the customer photo (still URL-only) should have gone through
+    // fetchImageBytes — the product image's inline buffer must not.
+    expect(fetchImageBytesMock).toHaveBeenCalledTimes(1);
+    expect(fetchImageBytesMock).toHaveBeenCalledWith("https://storage.example.com/face.jpg");
+    const call = generateContentMock.mock.calls[0]?.[0];
+    const inlineDatas = call.contents[0].parts.filter((p: { inlineData?: unknown }) => p.inlineData).map((p: { inlineData: { data: string } }) => p.inlineData.data);
+    expect(inlineDatas).toContain(Buffer.from("real-bytes").toString("base64"));
   });
 
   it("fails cleanly when Gemini returns no image (e.g. a safety refusal)", async () => {

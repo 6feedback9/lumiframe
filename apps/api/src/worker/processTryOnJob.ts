@@ -93,16 +93,24 @@ export async function processTryOnJob({ tryOnGenerationId }: TryOnJobData): Prom
     const product = await fetchImageBytes(session.productImageUrl);
     const productHash = createHash("sha256").update(product.buffer).digest("hex");
     const productKey = `${session.storeId}/${productHash}.${extensionForMime(product.mimeType)}`;
-    await storage.putObject(BUCKETS.productAssets, productKey, product.buffer, product.mimeType);
 
-    await prisma.tryOnGeneration.update({
-      where: { id: generation.id },
-      data: { productAssetKey: productKey, productAssetMimeType: product.mimeType },
-    });
-
-    const [customerUrl, productUrl] = await Promise.all([
+    // Persisting the product asset (audit trail / future reuse) and
+    // resolving the customer photo's signed URL don't depend on each
+    // other, and — since a real provider now gets the product image's
+    // bytes inline below instead of re-fetching them from our own
+    // storage (see StoredImageRef.buffer) — neither one blocks the
+    // actual generation call either. This used to be three sequential
+    // network round trips (upload the product asset, sign both URLs,
+    // then the provider re-fetches the product image back down) sitting
+    // in front of every single Gemini call; now it's one, done in
+    // parallel with the other two instead of before them.
+    const [customerUrl] = await Promise.all([
       storage.getSignedUrl(BUCKETS.customerPhotos, generation.customerImageKey, SIGNED_URL_TTL_SECONDS),
-      storage.getSignedUrl(BUCKETS.productAssets, productKey, SIGNED_URL_TTL_SECONDS),
+      storage.putObject(BUCKETS.productAssets, productKey, product.buffer, product.mimeType),
+      prisma.tryOnGeneration.update({
+        where: { id: generation.id },
+        data: { productAssetKey: productKey, productAssetMimeType: product.mimeType },
+      }),
     ]);
 
     const provider = getTryOnProvider(env.AI_PROVIDER);
@@ -110,7 +118,7 @@ export async function processTryOnJob({ tryOnGenerationId }: TryOnJobData): Prom
       tryOnSessionId: session.id,
       tryOnGenerationId: generation.id,
       faceImage: { key: generation.customerImageKey, mimeType: generation.customerImageMimeType, url: customerUrl },
-      eyewearImage: { key: productKey, mimeType: product.mimeType, url: productUrl },
+      eyewearImage: { key: productKey, mimeType: product.mimeType, buffer: product.buffer },
     });
     await prisma.tryOnGeneration.update({
       where: { id: generation.id },

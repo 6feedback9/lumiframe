@@ -42,9 +42,20 @@ export interface StoredImageRef {
    * A signed URL the provider can fetch the bytes from directly, resolved
    * by the worker immediately before calling generateTryOn (short-lived —
    * providers must not persist it). Optional because MockTryOnProvider
-   * never needs to fetch anything; a real vendor adapter will require it.
+   * never needs to fetch anything; a real vendor adapter will require this
+   * or `buffer` below.
    */
   url?: string;
+  /**
+   * The image's actual bytes, when the caller already has them in memory
+   * (the worker does, for the product image — it just downloaded it from
+   * the merchant's site to compute this generation's content hash). A
+   * real provider should prefer this over `url` when both are present: it
+   * turns "worker uploads to our storage → signs a URL → provider fetches
+   * that URL" into nothing, since there was never a reason to round-trip
+   * bytes we already had through our own storage just to read them back.
+   */
+  buffer?: Buffer;
   width?: number;
   height?: number;
 }
