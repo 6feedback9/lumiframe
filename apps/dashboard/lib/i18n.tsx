@@ -204,7 +204,9 @@ const DICT = {
 
     "billing.title": "Тариф і використання",
     "billing.currentPlan": "Поточний тариф",
-    "billing.noPlan": "Тариф не призначено — зверніться до підтримки",
+    "billing.noPlan": "Тариф не призначено — зверніться до підтримки або спробуйте безкоштовний тестовий період.",
+    "billing.startTrial": "Розпочати тестовий період",
+    "billing.trialActive": "Тестовий період активний",
     "billing.usedThisMonth": "Використано цього місяця",
     "billing.topUpCredits": "Додаткові примірки (запас)",
     "billing.perMonth": "/міс",
@@ -452,7 +454,9 @@ const DICT = {
 
     "billing.title": "Plan & usage",
     "billing.currentPlan": "Current plan",
-    "billing.noPlan": "No plan assigned — please contact support",
+    "billing.noPlan": "No plan assigned — please contact support, or try the free trial.",
+    "billing.startTrial": "Start free trial",
+    "billing.trialActive": "Trial active",
     "billing.usedThisMonth": "Used this month",
     "billing.topUpCredits": "Extra try-ons (balance)",
     "billing.perMonth": "/mo",

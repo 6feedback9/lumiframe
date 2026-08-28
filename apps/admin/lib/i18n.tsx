@@ -14,6 +14,7 @@ const DICT = {
     "nav.tenants": "Клієнти",
     "nav.tryons": "Примірки",
     "nav.feedback": "Відгуки",
+    "nav.team": "Команда",
     "nav.tag": "Платформний адмін",
 
     "common.loading": "Завантаження…",
@@ -121,6 +122,13 @@ const DICT = {
     "team.role": "Роль",
     "team.addUser": "Додати користувача",
     "team.remove": "Видалити",
+    "team.adminTitle": "Команда платформи",
+    "team.adminDesc": "Акаунти з повним доступом до цього адмін-кабінету — бачать усіх клієнтів, як і ви.",
+    "team.adminAddWarning": "Новий акаунт отримає такий самий доступ, як у вас — до всіх клієнтів і всіх даних платформи.",
+    "team.lastLogin": "Останній вхід",
+    "team.never": "ще не заходив(-ла)",
+    "team.createdAt": "Додано",
+    "team.you": "(ви)",
 
     "tryons.title": "Усі примірки",
     "tryons.tenant": "Клієнт",
@@ -159,6 +167,7 @@ const DICT = {
     "nav.tenants": "Tenants",
     "nav.tryons": "Try-ons",
     "nav.feedback": "Feedback",
+    "nav.team": "Team",
     "nav.tag": "Platform Admin",
 
     "common.loading": "Loading…",
@@ -266,6 +275,13 @@ const DICT = {
     "team.role": "Role",
     "team.addUser": "Add user",
     "team.remove": "Remove",
+    "team.adminTitle": "Platform team",
+    "team.adminDesc": "Accounts with full access to this admin console — they see every client, same as you.",
+    "team.adminAddWarning": "A new account gets the same access as you — to every client and all platform data.",
+    "team.lastLogin": "Last login",
+    "team.never": "never signed in",
+    "team.createdAt": "Added",
+    "team.you": "(you)",
 
     "tryons.title": "All try-ons",
     "tryons.tenant": "Tenant",

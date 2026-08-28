@@ -16,6 +16,10 @@ const addUserSchema = z.object({
   password: z.string().min(8),
   role: z.enum(["OWNER", "ADMIN", "MEMBER"]).default("MEMBER"),
 });
+const addAdminUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
 
 // The reserved tenant apps/api/scripts/createPlatformAdmin.mjs creates to
 // hold platform-admin accounts — never a real merchant, so it's excluded
@@ -368,5 +372,62 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     // including the customer's raw uploaded photo (apps/api/src/routes/
     // tryons.ts's merchant-facing route deliberately omits it).
     return reply.send(await buildTryOnDetailPayload(session, { includeCustomerImage: true }));
+  });
+
+  // ── Platform-owner team: other platform-admin accounts ───────────────
+  // The owner explicitly asked for this — "make it self-serve, like the
+  // merchant Team page, so I can add my partner myself" — after being
+  // shown the tradeoff: unlike every other endpoint in this file,
+  // isPlatformAdmin was previously script-only (see
+  // apps/api/scripts/createPlatformAdmin.mjs) precisely so no web form
+  // could ever mint another full-access admin account. These three routes
+  // are that deliberate exception: still gated behind authenticateAdmin
+  // (only an existing platform admin can call them at all), but an
+  // authenticated admin can now add or remove *other* platform-admin
+  // accounts from her own console instead of needing a one-off SQL
+  // migration each time.
+  app.get("/api/v1/admin/team", { preHandler: authenticateAdmin }, async (_request, reply) => {
+    const users = await prisma.user.findMany({
+      where: { isPlatformAdmin: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, email: true, lastLoginAt: true, createdAt: true },
+    });
+    return reply.send({ users });
+  });
+
+  app.post("/api/v1/admin/team", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const parsed = addAdminUserSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const email = parsed.data.email.toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return reply.code(409).send({ error: "An account with this email already exists" });
+
+    const platformTenant = await prisma.tenant.upsert({
+      where: { slug: PLATFORM_TENANT_SLUG },
+      create: { name: "Lumi Frame (platform)", slug: PLATFORM_TENANT_SLUG },
+      update: {},
+    });
+    const passwordHash = await hashPassword(parsed.data.password);
+    const user = await prisma.user.create({
+      data: { tenantId: platformTenant.id, email, passwordHash, role: "OWNER", isPlatformAdmin: true },
+    });
+    return reply.code(201).send({ id: user.id, email: user.email, createdAt: user.createdAt });
+  });
+
+  app.delete("/api/v1/admin/team/:userId", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { userId: actorId } = request.merchant!;
+    const { userId } = request.params as { userId: string };
+
+    if (userId === actorId) return reply.code(400).send({ error: "You can't remove your own account" });
+
+    const target = await prisma.user.findFirst({ where: { id: userId, isPlatformAdmin: true } });
+    if (!target) return reply.code(404).send({ error: "Admin account not found" });
+
+    const adminCount = await prisma.user.count({ where: { isPlatformAdmin: true } });
+    if (adminCount <= 1) return reply.code(400).send({ error: "Can't remove the last platform admin account" });
+
+    await prisma.user.delete({ where: { id: userId } });
+    return reply.send({ ok: true });
   });
 }

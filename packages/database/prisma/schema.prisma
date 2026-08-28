@@ -130,6 +130,14 @@ model Tenant {
   // plan or adds credits.
   planRequestNote String?
   planRequestedAt DateTime?
+  // Self-serve trial (product ask: a brand-new tenant has no plan yet and
+  // is blocked from every try-on until the owner manually assigns one —
+  // let the merchant unblock themselves once, for a small taste of the
+  // product, instead of waiting). Granted at most once per tenant; the
+  // credits themselves just land in the existing topUpCredits balance —
+  // checkPlanEntitlement already treats a positive balance as usable even
+  // with no plan assigned, so no entitlement-logic changes were needed.
+  trialGrantedAt DateTime?
 
   plan          Plan?          @relation(fields: [planId], references: [id])
   users         User[]
@@ -171,12 +179,16 @@ model User {
   name         String?
   role         UserRole  @default(OWNER)
   // A platform-owner account (you, the Lumi Frame operator), not a
-  // merchant. Set only by an operator-run script (apps/api/scripts/
-  // createPlatformAdmin.mjs) — never via a public API, so there is no
-  // HTTP path that can mint one. Still belongs to a Tenant row (the
-  // reserved "lumiframe-platform" tenant the script creates) purely to
-  // satisfy the existing User->Tenant relation; it does not mean this
-  // account is scoped to that tenant's data the way a merchant is.
+  // merchant. Bootstrapped by an operator-run script (apps/api/scripts/
+  // createPlatformAdmin.mjs) for the very first admin — there is
+  // deliberately no *public* HTTP path that can mint one. Once at least
+  // one platform admin exists, apps/api/src/routes/admin.ts's
+  // authenticateAdmin-gated /api/v1/admin/team lets an existing admin add
+  // more (an informed, explicit product decision — see that route's
+  // comment). Still belongs to a Tenant row (the reserved
+  // "lumiframe-platform" tenant) purely to satisfy the existing
+  // User->Tenant relation; it does not mean this account is scoped to
+  // that tenant's data the way a merchant is.
   isPlatformAdmin Boolean @default(false)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())

@@ -27,6 +27,9 @@ export function Sidebar() {
         <a href="/feedback" className={pathname.startsWith("/feedback") ? "active" : ""}>
           {t("nav.feedback")}
         </a>
+        <a href="/team" className={pathname.startsWith("/team") ? "active" : ""}>
+          {t("nav.team")}
+        </a>
       </nav>
       <div style={{ padding: "12px 20px", display: "flex", gap: 6 }}>
         {(["uk", "en"] as Locale[]).map((l) => (

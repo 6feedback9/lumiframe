@@ -10,6 +10,12 @@ import { prisma } from "../context";
 import { authenticateMerchant } from "../plugins/auth";
 import { checkPlanEntitlement } from "../domain/planEntitlement";
 
+// Self-serve trial size (product ask: let a brand-new merchant unblock
+// themselves with a handful of try-ons instead of waiting on the owner to
+// assign a plan). A plain constant, not DB-configurable — same pattern as
+// PAYMENT_DETAILS in apps/dashboard/app/billing/page.tsx.
+const TRIAL_CREDITS = 5;
+
 const requestSchema = z.object({
   message: z.string().min(1).max(1000).optional(),
   // What the merchant is asking for, so the admin dashboard can show it
@@ -52,6 +58,10 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
       topUpCredits: entitlement.topUpCredits,
       planRequestNote: tenant.planRequestNote,
       planRequestedAt: tenant.planRequestedAt,
+      // The dashboard only offers the trial button while there's no plan
+      // assigned yet and it hasn't already been claimed once.
+      trialAvailable: !tenant.planId && !tenant.trialGrantedAt,
+      trialCredits: TRIAL_CREDITS,
       allPlans: allPlans.map((p) => ({
         key: p.key,
         name: p.name,
@@ -82,6 +92,21 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
     }
 
     return reply.send({ months });
+  });
+
+  // ── Self-serve trial: unblocks a brand-new tenant with no plan yet ────
+  app.post("/api/v1/billing/trial", { preHandler: authenticateMerchant }, async (request, reply) => {
+    const { tenantId } = request.merchant!;
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) return reply.code(404).send({ error: "Tenant not found" });
+    if (tenant.planId) return reply.code(409).send({ error: "A plan is already assigned — the trial is only for tenants with no plan yet" });
+    if (tenant.trialGrantedAt) return reply.code(409).send({ error: "Trial already used" });
+
+    const updated = await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { topUpCredits: { increment: TRIAL_CREDITS }, trialGrantedAt: new Date() },
+    });
+    return reply.send({ topUpCredits: updated.topUpCredits, trialGrantedAt: updated.trialGrantedAt });
   });
 
   app.post("/api/v1/billing/request", { preHandler: authenticateMerchant }, async (request, reply) => {

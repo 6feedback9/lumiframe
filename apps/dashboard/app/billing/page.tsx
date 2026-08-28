@@ -21,6 +21,8 @@ interface BillingInfo {
   planRequestNote: string | null;
   planRequestedAt: string | null;
   allPlans: PlanInfo[];
+  trialAvailable: boolean;
+  trialCredits: number;
 }
 
 // Lumi Web Agency's own bank details — every merchant pays the same
@@ -100,6 +102,7 @@ function BillingContent() {
   // admin's pending-request note actually names a plan (product ask: she
   // couldn't tell which plan a merchant had paid for).
   const [payFor, setPayFor] = useState("");
+  const [startingTrial, setStartingTrial] = useState(false);
 
   function load() {
     apiFetch<BillingInfo>("/api/v1/billing").then(setData).catch((err) => setError(err.message));
@@ -110,6 +113,18 @@ function BillingContent() {
   useEffect(() => {
     if (data && !payFor) setPayFor(data.plan?.key ?? data.allPlans[0]?.key ?? "topup");
   }, [data, payFor]);
+
+  async function startTrial() {
+    setStartingTrial(true);
+    try {
+      await apiFetch("/api/v1/billing/trial", { method: "POST" });
+      load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setStartingTrial(false);
+    }
+  }
 
   async function requestUpgrade(planKey: string) {
     setRequesting(planKey);
@@ -182,8 +197,22 @@ function BillingContent() {
             </p>
             <ProgressBar used={data.usedThisMonth} limit={data.plan.monthlyLimit} />
           </>
+        ) : data.topUpCredits > 0 ? (
+          <>
+            <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>{t("billing.trialActive")}</h3>
+            <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 4px" }}>
+              {t("billing.topUpCredits")}: {data.topUpCredits}
+            </p>
+          </>
         ) : (
-          <p style={{ fontSize: 13, color: "var(--danger, #ff6b6b)" }}>{t("billing.noPlan")}</p>
+          <>
+            <p style={{ fontSize: 13, color: "var(--danger, #ff6b6b)", marginBottom: data.trialAvailable ? 14 : 0 }}>{t("billing.noPlan")}</p>
+            {data.trialAvailable && (
+              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={startingTrial} onClick={startTrial}>
+                {startingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${data.trialCredits})`}
+              </button>
+            )}
+          </>
         )}
 
         {(data.planRequestNote || requestSent) && (
