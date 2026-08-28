@@ -34,7 +34,7 @@ packages/
   storage/        Object storage (local fs for dev/CI, Supabase for real)
   queue/          TryOnQueue (in-memory for dev/CI, BullMQ for real)
   providers/mock  MockTryOnProvider — no external AI calls
-  providers/real  Real AI vendor adapter — not yet built (Phase 2)
+  providers/real  GeminiTryOnProvider — real generation via Google Gemini
   integrations/   Shopify/WooCommerce/generic — not yet built (Phase 3)
 ```
 

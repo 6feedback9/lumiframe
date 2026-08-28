@@ -12,6 +12,11 @@ const schema = z.object({
   AI_PROVIDER: z.string().default("mock"),
   REDIS_URL: z.string().optional(),
 
+  // Only required when AI_PROVIDER=gemini (packages/providers/real). Left
+  // optional here so a mock-only deployment never needs to set these.
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_IMAGE_MODEL: z.string().optional(),
+
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   STORAGE_SIGNING_SECRET: z.string().optional(),
@@ -21,6 +26,9 @@ const schema = z.object({
   CUSTOMER_IMAGE_RETENTION_HOURS: z.coerce.number().positive().default(24),
   TRYON_RESULT_RETENTION_HOURS: z.coerce.number().positive().default(720),
   TRYON_ATTRIBUTION_WINDOW_HOURS: z.coerce.number().positive().default(72),
+}).refine((data) => data.AI_PROVIDER !== "gemini" || !!data.GEMINI_API_KEY, {
+  message: "GEMINI_API_KEY is required when AI_PROVIDER=gemini",
+  path: ["GEMINI_API_KEY"],
 });
 
 function loadEnv() {

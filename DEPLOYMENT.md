@@ -125,6 +125,35 @@ its hostname automatically. The success screen (and the Integration page
 later) gives them the exact `<script>` snippet to paste into their
 product page template, pointed at your Render API's `/sdk.js`.
 
+## 7. Turn on real AI generation — Gemini
+
+Until you do this, every try-on returns a labeled placeholder image
+(`AI_PROVIDER=mock`, the default) — fine for testing the flow, but not
+something to show real customers. To turn on real generation:
+
+1. Go to **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)**,
+   sign in with a Google account, click **Create API key**. No credit card
+   needed to get the key itself, but Gemini's image-editing model is a paid
+   model — see cost note below — so you'll be prompted to enable billing on
+   the Google Cloud project it creates for you the first time a request
+   actually needs it.
+2. Copy the key (starts with `AIza...`).
+3. Render → your `apps/api` service (**not** dashboard/admin — this only
+   matters on the backend) → **Environment**:
+   - Change `AI_PROVIDER` from `mock` to `gemini`
+   - Add `GEMINI_API_KEY` = the key you just copied
+4. **Manual Deploy** → **Deploy latest commit** (env var changes alone
+   restart the service, but you also want the latest code either way).
+5. Test a try-on again from a real product page — this time it calls
+   Gemini for real, so expect it to take several seconds longer than the
+   mock did.
+
+If it fails, check the Render service's **Logs** tab — the try-on's error
+message (shown in the widget) and the log line both include a short error
+code (`GEMINI_NO_IMAGE`, `GEMINI_REQUEST_FAILED`, etc.) and Gemini's own
+message, which is usually specific enough to act on (a safety-filter
+refusal on a particular photo, an invalid/unbilled API key, etc.).
+
 ## Rough cost to start
 
 - Supabase free tier: fine initially (500MB DB, 1GB storage).
@@ -132,3 +161,8 @@ product page template, pointed at your Render API's `/sdk.js`.
 - Render: the free web-service tier sleeps — budget ~$7/mo for always-on
   once you have a real merchant depending on it.
 - Vercel: Hobby tier covers `apps/dashboard` + `apps/admin` easily at this stage.
+- Gemini (§7, once turned on): roughly $0.07 per generated image at the
+  default model/resolution — i.e. per try-on a customer actually runs, not
+  per page view. Check
+  [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing)
+  for the current number against whatever `GEMINI_IMAGE_MODEL` you're on.

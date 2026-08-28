@@ -352,9 +352,14 @@ filename for a different image).
 
 These are flagged rather than guessed at, per the phased plan:
 
-- **Real AI provider.** Phase 0/1 ship mock-only. Whichever vendor is
-  chosen must be wrapped in `packages/providers/real` behind the existing
-  `TryOnProvider` interface — no other package should need to change.
+- ~~**Real AI provider.**~~ Resolved in Phase 2: `packages/providers/real`
+  (`GeminiTryOnProvider`) calls Google Gemini's image-editing model
+  (`gemini-3.1-flash-image-preview` by default, overridable via
+  `GEMINI_IMAGE_MODEL`) directly with the customer's photo and the
+  merchant's product photo, prompted to composite the eyewear onto the
+  face. Set `AI_PROVIDER=gemini` + `GEMINI_API_KEY` to use it — see
+  DEPLOYMENT.md. `ProductImageProcessor` (glasses detection/isolation
+  from an arbitrary product photo) is still deferred — see below.
 - **Attribution model beyond last-touch.** Default is last-touch/product,
   configurable window. First-touch/linear models are a Phase 4 nice-to-have.
 - **Shopify app review requirements** (OAuth scopes, embedded app vs. theme
@@ -407,9 +412,13 @@ error — never silently returns a broken image.
   cache (§12 — Phase 1 reprocesses the product image on every generation),
   and any retention-sweep job (expiresAt is set at creation; nothing yet
   deletes on it).
-- **Phase 2** — real AI provider behind `packages/providers/real`,
-  `ProductImageProcessor` (eyewear detection, background handling,
-  geometry extraction), product image cache.
+- **Phase 2** — real AI provider behind `packages/providers/real` — **done**:
+  `GeminiTryOnProvider` (Google Gemini image editing, see §13). Still
+  outstanding from Phase 2: `ProductImageProcessor` (eyewear detection,
+  background handling, geometry extraction — the provider currently hands
+  Gemini the whole merchant product photo as-is and relies on the prompt
+  to have it identify just the glasses, rather than a pre-isolated
+  cutout), and the product image content-hash cache.
 - **Phase 3** — Shopify app, WooCommerce plugin, `OrderTrackingAdapter`
   implementations, UTM/attribution wired to real orders.
 - **Phase 4** — billing (`UsageRecord` → invoicing), white-label, the

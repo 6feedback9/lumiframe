@@ -18,6 +18,7 @@
     "@fastify/rate-limit": "^9.1.0",
     "@lumiframe/database": "workspace:*",
     "@lumiframe/provider-mock": "workspace:*",
+    "@lumiframe/provider-real": "workspace:*",
     "@lumiframe/queue": "workspace:*",
     "@lumiframe/storage": "workspace:*",
     "@lumiframe/tryon": "workspace:*",
