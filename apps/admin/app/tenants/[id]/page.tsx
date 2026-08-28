@@ -70,6 +70,7 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
   const [creditsInput, setCreditsInput] = useState("");
   const [savingCredits, setSavingCredits] = useState(false);
   const [grantingTrial, setGrantingTrial] = useState(false);
+  const [trialError, setTrialError] = useState<string | null>(null);
 
   async function changePlan(planId: string) {
     setSavingPlan(true);
@@ -96,9 +97,15 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
 
   async function grantTrial() {
     setGrantingTrial(true);
+    setTrialError(null);
     try {
       await apiFetch(`/api/v1/admin/tenants/${id}/trial`, { method: "POST" });
       onUpdated();
+    } catch (err) {
+      // Was silently swallowed before (no catch here) — a failed request
+      // (stale deploy, already granted, network blip) looked exactly like
+      // the button "not working", with zero feedback either way.
+      setTrialError((err as Error).message);
     } finally {
       setGrantingTrial(false);
     }
@@ -199,9 +206,12 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
               `}</style>
             </div>
           ) : (
-            <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={grantingTrial} onClick={grantTrial}>
-              {grantingTrial ? t("common.saving") : t("tenantDetail.grantTrial")}
-            </button>
+            <>
+              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={grantingTrial} onClick={grantTrial}>
+                {grantingTrial ? t("common.saving") : t("tenantDetail.grantTrial")}
+              </button>
+              {trialError && <p style={{ fontSize: 12, color: "var(--danger, #ff6b6b)", marginTop: 8 }}>{trialError}</p>}
+            </>
           )}
         </div>
       )}

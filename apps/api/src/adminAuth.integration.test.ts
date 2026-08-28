@@ -110,4 +110,58 @@ describe("platform admin", () => {
     expect(Array.isArray(body.stores)).toBe(true);
     expect(body.stores.length).toBeGreaterThanOrEqual(1);
   });
+
+  // The owner-granted trial (product decision: no longer merchant
+  // self-serve — apps/admin's tenant Billing panel is the only way to
+  // grant it now, see apps/api/src/domain/trial.ts).
+  it("lets the platform admin grant a trial to a plan-less tenant", async () => {
+    // Registration auto-assigns Starter to every new tenant (auth.ts),
+    // so "plan-less" here means an admin cleared it via the plan select —
+    // the same state as a real tenant whose owner did that, and the only
+    // state grantTrial() is actually meant for.
+    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: null } });
+
+    const before = await app.inject({
+      method: "GET",
+      url: `/api/v1/admin/tenants/${merchantTenantId}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(before.json().planId).toBeNull();
+    expect(before.json().trialGrantedAt).toBeNull();
+
+    const grant = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/trial`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(grant.statusCode).toBe(200);
+    expect(grant.json().topUpCredits).toBe(5);
+    expect(grant.json().trialGrantedAt).not.toBeNull();
+
+    const after = await app.inject({
+      method: "GET",
+      url: `/api/v1/admin/tenants/${merchantTenantId}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(after.json().topUpCredits).toBe(5);
+    expect(after.json().trialGrantedAt).not.toBeNull();
+  });
+
+  it("refuses to grant the same tenant a second trial", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/trial`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it("rejects a merchant JWT on the trial-grant route", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/trial`,
+      headers: { authorization: `Bearer ${merchantToken}` },
+    });
+    expect(res.statusCode).toBe(403);
+  });
 });
