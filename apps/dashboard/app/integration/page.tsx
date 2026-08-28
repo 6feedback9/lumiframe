@@ -60,6 +60,7 @@ const DEFAULTS: Required<
     | "buttonTextColor"
     | "buttonStyle"
     | "buttonSize"
+    | "buttonWidth"
     | "buttonShape"
     | "buttonAnimation"
     | "buttonPosition"
@@ -73,6 +74,7 @@ const DEFAULTS: Required<
   buttonTextColor: "#ffffff",
   buttonStyle: "gradient",
   buttonSize: 100,
+  buttonWidth: 100,
   buttonShape: "rounded",
   buttonAnimation: "none",
   buttonPosition: "after",
@@ -132,13 +134,16 @@ function IntegrationContent() {
   if (!store) return <div className="empty-state">{t("common.loading")}</div>;
 
   const sizeScale = (config.buttonSize ?? 100) / 100;
+  // Horizontal-only stretch on top of sizeScale — mirrors packages/sdk's
+  // --lumiframe-width-scale, so "make it longer" doesn't also make it taller.
+  const widthScale = (config.buttonWidth ?? 100) / 100;
   const previewBackground =
     config.buttonStyle === "solid" ? config.buttonColorStart : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: `${0.75 * sizeScale}em ${1.5 * sizeScale}em`,
+    padding: `${0.75 * sizeScale}em ${1.5 * sizeScale * widthScale}em`,
     border: "none",
     borderRadius: config.buttonShape === "rectangular" ? 8 : 999,
     background: previewBackground,
@@ -254,6 +259,21 @@ function IntegrationContent() {
               step={5}
               value={config.buttonSize ?? 100}
               onChange={(e) => setConfig({ ...config, buttonSize: Number(e.target.value) })}
+              style={{ width: "100%", accentColor: "var(--sky)" }}
+            />
+          </div>
+
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label>
+              {t("customize.width")} — {config.buttonWidth ?? 100}%
+            </label>
+            <input
+              type="range"
+              min={100}
+              max={300}
+              step={10}
+              value={config.buttonWidth ?? 100}
+              onChange={(e) => setConfig({ ...config, buttonWidth: Number(e.target.value) })}
               style={{ width: "100%", accentColor: "var(--sky)" }}
             />
           </div>

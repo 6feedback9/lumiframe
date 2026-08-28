@@ -45,8 +45,10 @@ export interface TryOnInitOptions {
   buttonGlow?: boolean;
   /** `"gradient"` (default) blends buttonColorStart -> buttonColorEnd; `"solid"` uses buttonColorStart flat. */
   buttonStyle?: "gradient" | "solid";
-  /** Continuous scale, percent of the default size. 100 = default. Range 70-160. */
+  /** Continuous scale, percent of the default size. 100 = default. Range 70-160. Scales the button uniformly (both height and width). */
   buttonSize?: number;
+  /** Stretches the button's horizontal padding only, on top of `buttonSize` — makes it longer without also making it taller. 100 = default (no stretch). Range 100-300. */
+  buttonWidth?: number;
   /** `"rounded"` (default) is a fully rounded pill. `"rectangular"` is a normal ~8px corner radius. */
   buttonShape?: "rounded" | "rectangular";
   /** Default `"none"`. `"pulse"` is a soft expanding ring in the accent color; `"shimmer"` is a light sweep across the button. */

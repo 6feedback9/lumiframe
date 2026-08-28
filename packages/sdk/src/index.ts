@@ -49,7 +49,7 @@ function ensureButtonStylesInjected(): void {
   justify-content: center;
   gap: 0.5em;
   margin: 0.75em 0;
-  padding: 0.75em 1.5em;
+  padding: 0.75em calc(1.5em * var(--lumiframe-width-scale, 1));
   border: none;
   border-radius: var(--lumiframe-radius, 999px);
   background: var(--lumiframe-accent, linear-gradient(135deg, #73b7ff, #9f8cff));
@@ -78,6 +78,10 @@ function ensureButtonStylesInjected(): void {
    is applied inline via --lumiframe-scale below instead of a class, so it
    can vary continuously rather than in fixed steps. */
 .lumiframe-tryon-button { font-size: calc(1em * var(--lumiframe-scale, 1)); }
+
+/* Width (TryOnInitOptions.buttonWidth, a 100-300 percent scale, default 100)
+   stretches horizontal padding only, independent of --lumiframe-scale above
+   — lets a merchant make the button longer without also making it taller. */
 
 /* Animation (TryOnInitOptions.buttonAnimation, default "none") */
 .lumiframe-tryon-button.lumiframe-anim-pulse {
@@ -320,6 +324,7 @@ class TryOnSdkImpl implements TryOnSdk {
       buttonGlow,
       buttonStyle,
       buttonSize,
+      buttonWidth,
       buttonShape,
       buttonAnimation,
     } = this.options ?? {};
@@ -331,6 +336,11 @@ class TryOnSdkImpl implements TryOnSdk {
     // em-based padding on .lumiframe-tryon-button scales along with this.
     const scale = Math.max(0.5, (buttonSize ?? 100) / 100);
     button.style.setProperty("--lumiframe-scale", String(scale));
+    // Width (100-300%) stretches horizontal padding only, on top of the
+    // above — lets a merchant make the button longer without also making
+    // it taller (product ask: the uniform size scale alone couldn't do this).
+    const widthScale = Math.max(1, (buttonWidth ?? 100) / 100);
+    button.style.setProperty("--lumiframe-width-scale", String(widthScale));
     if (buttonShape) button.style.setProperty("--lumiframe-radius", buttonShape === "rectangular" ? "8px" : "999px");
 
     if (buttonColorStart || buttonColorEnd) {

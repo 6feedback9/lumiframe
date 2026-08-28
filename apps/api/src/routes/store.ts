@@ -23,6 +23,9 @@ const updateStoreSchema = z.object({
       buttonStyle: z.enum(["gradient", "solid"]).optional(),
       // Continuous scale (percent of default), not fixed sm/md/lg steps.
       buttonSize: z.number().int().min(70).max(160).optional(),
+      // Horizontal-only stretch on top of buttonSize — makes the button
+      // longer without also making it taller.
+      buttonWidth: z.number().int().min(100).max(300).optional(),
       buttonShape: z.enum(["rounded", "rectangular"]).optional(),
       buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
       // Button placement + try-on modal layout (product ask: merchant

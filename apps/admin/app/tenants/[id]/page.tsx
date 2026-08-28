@@ -23,6 +23,8 @@ interface WidgetConfig {
   buttonStyle?: "gradient" | "solid";
   /** Continuous scale, percent of the default size. 100 = default. */
   buttonSize?: number;
+  /** Horizontal-only stretch on top of buttonSize. 100 = default (no stretch). */
+  buttonWidth?: number;
   buttonShape?: "rounded" | "rectangular";
   buttonAnimation?: "none" | "pulse" | "shimmer";
   buttonPosition?: "before" | "after" | "floating";
@@ -193,7 +195,7 @@ const SHAPE_OPTIONS = [
 const WIDGET_CONFIG_DEFAULTS: Required<
   Pick<
     WidgetConfig,
-    "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor" | "buttonPosition" | "buttonSize" | "buttonShape" | "showTryAnotherButton" | "showBackButton"
+    "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor" | "buttonPosition" | "buttonSize" | "buttonWidth" | "buttonShape" | "showTryAnotherButton" | "showBackButton"
   >
 > = {
   buttonText: "Try on",
@@ -202,6 +204,7 @@ const WIDGET_CONFIG_DEFAULTS: Required<
   buttonTextColor: "#ffffff",
   buttonPosition: "after",
   buttonSize: 100,
+  buttonWidth: 100,
   buttonShape: "rounded",
   showTryAnotherButton: true,
   showBackButton: true,
@@ -235,13 +238,14 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
   }
 
   const sizeScale = (config.buttonSize ?? 100) / 100;
+  const widthScale = (config.buttonWidth ?? 100) / 100;
   const previewBackground =
     config.buttonStyle === "solid" ? config.buttonColorStart : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: `${0.75 * sizeScale}em ${1.5 * sizeScale}em`,
+    padding: `${0.75 * sizeScale}em ${1.5 * sizeScale * widthScale}em`,
     border: "none",
     borderRadius: config.buttonShape === "rectangular" ? 8 : 999,
     background: previewBackground,
@@ -315,6 +319,20 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
               step={5}
               value={config.buttonSize ?? 100}
               onChange={(e) => setConfig({ ...config, buttonSize: Number(e.target.value) })}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>
+              {t("buttonDesign.width")}: {config.buttonWidth ?? 100}%
+            </label>
+            <input
+              type="range"
+              min={100}
+              max={300}
+              step={10}
+              value={config.buttonWidth ?? 100}
+              onChange={(e) => setConfig({ ...config, buttonWidth: Number(e.target.value) })}
               style={{ width: "100%" }}
             />
           </div>

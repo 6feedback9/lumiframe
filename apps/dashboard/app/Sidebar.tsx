@@ -9,10 +9,22 @@ interface StoreInfo {
   name: string;
 }
 
+// Just enough of GET /api/v1/billing to decide whether the trial CTA below
+// the nav links should show, and in which state (product ask: the trial
+// activation should be visible from anywhere in the app, not just found by
+// digging into the Billing page).
+interface BillingSummary {
+  plan: { key: string } | null;
+  trialAvailable: boolean;
+  trialCredits: number;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { t, locale, setLocale } = useI18n();
   const [storeName, setStoreName] = useState<string | null>(null);
+  const [billing, setBilling] = useState<BillingSummary | null>(null);
+  const [activatingTrial, setActivatingTrial] = useState(false);
 
   const hidden = pathname === "/login" || pathname === "/register";
 
@@ -23,7 +35,26 @@ export function Sidebar() {
       .catch(() => {
         // Not fatal — the sidebar just falls back to the platform name.
       });
+    apiFetch<BillingSummary>("/api/v1/billing")
+      .then(setBilling)
+      .catch(() => {
+        // Not fatal — the sidebar simply won't show the trial CTA.
+      });
   }, [hidden]);
+
+  async function activateTrial() {
+    setActivatingTrial(true);
+    try {
+      await apiFetch("/api/v1/billing/trial", { method: "POST" });
+      const fresh = await apiFetch<BillingSummary>("/api/v1/billing");
+      setBilling(fresh);
+    } catch {
+      // Best-effort here — the Billing page itself is the authoritative
+      // place to retry if this fails for some reason.
+    } finally {
+      setActivatingTrial(false);
+    }
+  }
 
   if (hidden) return null;
 
@@ -53,6 +84,30 @@ export function Sidebar() {
           </a>
         ))}
       </nav>
+      {billing && !billing.plan && (
+        <div style={{ padding: "0 20px 12px" }}>
+          {billing.trialAvailable ? (
+            <button
+              type="button"
+              onClick={activateTrial}
+              disabled={activatingTrial}
+              className="btn"
+              style={{ width: "100%", padding: "9px 0", fontSize: 12 }}
+            >
+              {activatingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${billing.trialCredits})`}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="btn"
+              style={{ width: "100%", padding: "9px 0", fontSize: 12, opacity: 0.5, cursor: "default" }}
+            >
+              {t("billing.trialUsed")}
+            </button>
+          )}
+        </div>
+      )}
       <div style={{ padding: "12px 20px", display: "flex", gap: 6 }}>
         {(["uk", "en"] as Locale[]).map((l) => (
           <button

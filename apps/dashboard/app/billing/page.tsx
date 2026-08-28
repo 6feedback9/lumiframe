@@ -35,6 +35,12 @@ const PAYMENT_DETAILS = {
   bank: "АТ КБ «ПРИВАТБАНК»",
 };
 
+// What the merchant is confirming payment for when the popup opens —
+// either one of the plan cards or the top-up pack. `label` is the
+// human-readable line the popup shows ("Growth — $99/mo"), precomputed by
+// the caller so the popup itself doesn't need to re-derive pack pricing.
+type PayTarget = { kind: "plan"; planKey: string; label: string } | { kind: "topup"; label: string };
+
 function CopyRow({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
@@ -89,30 +95,121 @@ function ProgressBar({ used, limit }: { used: number; limit: number }) {
   );
 }
 
+// The order → requisites → "I've paid" flow lives entirely in this popup now
+// (product ask: clicking a plan should show payment details right there,
+// not send a silent "interested" ping while the actual payment details sit
+// in an unrelated section further down the page). Confirming always sends
+// kind: "paid" — the platform owner sees exactly what was paid for and
+// activates it herself.
+function PaymentPopup({ target, onClose, onPaid }: { target: PayTarget; onClose: () => void; onPaid: () => void }) {
+  const { t } = useI18n();
+  const [note, setNote] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirmPaid() {
+    setSending(true);
+    setError(null);
+    try {
+      await apiFetch("/api/v1/billing/request", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: "paid",
+          planKey: target.kind === "plan" ? target.planKey : undefined,
+          topUp: target.kind === "topup",
+          message: note || undefined,
+        }),
+      });
+      setSent(true);
+      onPaid();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        background: "rgba(6,10,20,0.6)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="panel"
+        style={{ padding: 26, maxWidth: 460, width: "100%", position: "relative", maxHeight: "90vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t("billing.payPopupClose")}
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            border: "1px solid var(--line-strong)",
+            background: "rgba(173,201,255,0.05)",
+            color: "var(--mist)",
+            cursor: "pointer",
+            fontSize: 14,
+          }}
+        >
+          ×
+        </button>
+
+        <h3 style={{ margin: "0 20px 4px 0", fontSize: 17 }}>{target.label}</h3>
+        <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 18px", lineHeight: 1.5 }}>{t("billing.paymentDesc")}</p>
+
+        <CopyRow label={t("billing.recipient")} value={PAYMENT_DETAILS.recipient} />
+        <CopyRow label={t("billing.taxId")} value={PAYMENT_DETAILS.taxId} />
+        <CopyRow label={t("billing.iban")} value={PAYMENT_DETAILS.iban} />
+        <CopyRow label={t("billing.bank")} value={PAYMENT_DETAILS.bank} />
+        <CopyRow label={t("billing.purpose")} value={t("billing.purposeValue")} />
+
+        <div className="field" style={{ marginTop: 14, marginBottom: 14 }}>
+          <label>{t("billing.paidNote")}</label>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("billing.paidNotePlaceholder")} maxLength={300} />
+        </div>
+
+        {error && <p style={{ fontSize: 12, color: "var(--danger, #ff6b6b)", marginBottom: 12 }}>{error}</p>}
+
+        {sent ? (
+          <p style={{ fontSize: 12, color: "var(--sky)" }}>{t("billing.paidSent")}</p>
+        ) : (
+          <button className="btn" style={{ width: "100%", padding: "10px 16px" }} disabled={sending} onClick={confirmPaid}>
+            {sending ? t("common.saving") : t("billing.confirmPaid")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BillingContent() {
   const { t } = useI18n();
   const [data, setData] = useState<BillingInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [requesting, setRequesting] = useState<string | null>(null);
-  const [requestSent, setRequestSent] = useState(false);
-  const [paidNote, setPaidNote] = useState("");
-  const [paidSent, setPaidSent] = useState(false);
-  // What the merchant is confirming payment for — "" means unset, "topup"
-  // means the top-up pack, anything else is a plan key. Needed so the
-  // admin's pending-request note actually names a plan (product ask: she
-  // couldn't tell which plan a merchant had paid for).
-  const [payFor, setPayFor] = useState("");
   const [startingTrial, setStartingTrial] = useState(false);
+  const [payTarget, setPayTarget] = useState<PayTarget | null>(null);
 
   function load() {
     apiFetch<BillingInfo>("/api/v1/billing").then(setData).catch((err) => setError(err.message));
   }
 
   useEffect(load, []);
-
-  useEffect(() => {
-    if (data && !payFor) setPayFor(data.plan?.key ?? data.allPlans[0]?.key ?? "topup");
-  }, [data, payFor]);
 
   async function startTrial() {
     setStartingTrial(true);
@@ -126,59 +223,13 @@ function BillingContent() {
     }
   }
 
-  async function requestUpgrade(planKey: string) {
-    setRequesting(planKey);
-    try {
-      await apiFetch("/api/v1/billing/request", {
-        method: "POST",
-        body: JSON.stringify({ kind: "upgrade", planKey }),
-      });
-      setRequestSent(true);
-      load();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setRequesting(null);
-    }
-  }
-
-  async function requestTopUp() {
-    setRequesting("topup");
-    try {
-      await apiFetch("/api/v1/billing/request", { method: "POST", body: JSON.stringify({ kind: "topup" }) });
-      setRequestSent(true);
-      load();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setRequesting(null);
-    }
-  }
-
-  async function confirmPaid() {
-    setRequesting("paid");
-    try {
-      await apiFetch("/api/v1/billing/request", {
-        method: "POST",
-        body: JSON.stringify({
-          kind: "paid",
-          planKey: payFor !== "topup" ? payFor : undefined,
-          topUp: payFor === "topup",
-          message: paidNote || undefined,
-        }),
-      });
-      setPaidSent(true);
-      setPaidNote("");
-      load();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setRequesting(null);
-    }
-  }
-
   if (error) return <div className="empty-state">{error}</div>;
   if (!data) return <div className="empty-state">{t("common.loading")}</div>;
+
+  // The top-up button only makes sense once there's actually nothing left
+  // to use — otherwise it's just clutter next to the trial button (product
+  // ask: it should "appear automatically once try-ons run out").
+  const showTopUp = !!data.plan && data.usedThisMonth >= data.plan.monthlyLimit && data.topUpCredits <= 0;
 
   return (
     <>
@@ -208,22 +259,33 @@ function BillingContent() {
           <p style={{ fontSize: 13, color: "var(--danger, #ff6b6b)", margin: 0 }}>{t("billing.noPlan")}</p>
         )}
 
-        {(data.planRequestNote || requestSent) && (
-          <p style={{ fontSize: 12, color: "var(--sky)", marginTop: 16 }}>
-            {requestSent ? t("billing.requestSent") : t("billing.pendingRequest")}
-          </p>
-        )}
+        {data.planRequestNote && <p style={{ fontSize: 12, color: "var(--sky)", marginTop: 16 }}>{t("billing.pendingRequest")}</p>}
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
-          {!data.plan && data.trialAvailable && (
-            <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={startingTrial} onClick={startTrial}>
-              {startingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${data.trialCredits})`}
+          {!data.plan &&
+            (data.trialAvailable ? (
+              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={startingTrial} onClick={startTrial}>
+                {startingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${data.trialCredits})`}
+              </button>
+            ) : (
+              <button className="btn" style={{ width: "auto", padding: "9px 16px", opacity: 0.5, cursor: "default" }} disabled>
+                {t("billing.trialUsed")}
+              </button>
+            ))}
+          {showTopUp && data.plan && (
+            <button
+              className="btn"
+              style={{ width: "auto", padding: "9px 16px" }}
+              onClick={() =>
+                setPayTarget({
+                  kind: "topup",
+                  label: `${t("billing.topUpPack")} (+${data.plan!.topUpPackSize} — $${data.plan!.topUpPackPriceUsd})`,
+                })
+              }
+            >
+              {t("billing.requestTopUp")} (+{data.plan.topUpPackSize} — ${data.plan.topUpPackPriceUsd})
             </button>
           )}
-          <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={requesting === "topup"} onClick={requestTopUp}>
-            {t("billing.requestTopUp")}
-            {data.plan ? ` (+${data.plan.topUpPackSize} — $${data.plan.topUpPackPriceUsd})` : ""}
-          </button>
         </div>
       </div>
 
@@ -267,8 +329,7 @@ function BillingContent() {
                 <button
                   className="btn"
                   style={{ width: "100%", padding: "9px 12px", fontSize: 13 }}
-                  disabled={requesting === p.key}
-                  onClick={() => requestUpgrade(p.key)}
+                  onClick={() => setPayTarget({ kind: "plan", planKey: p.key, label: `${p.name} — $${p.priceUsd}${t("billing.perMonth")}` })}
                 >
                   {t("billing.choosePlan")}
                 </button>
@@ -278,54 +339,15 @@ function BillingContent() {
         })}
       </div>
 
-      <div className="panel" style={{ padding: 24, maxWidth: 640 }}>
-        <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("billing.paymentTitle")}</h3>
-        <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 16px", lineHeight: 1.5 }}>{t("billing.paymentDesc")}</p>
-
-        <CopyRow label={t("billing.recipient")} value={PAYMENT_DETAILS.recipient} />
-        <CopyRow label={t("billing.taxId")} value={PAYMENT_DETAILS.taxId} />
-        <CopyRow label={t("billing.iban")} value={PAYMENT_DETAILS.iban} />
-        <CopyRow label={t("billing.bank")} value={PAYMENT_DETAILS.bank} />
-        <CopyRow label={t("billing.purpose")} value={t("billing.purposeValue")} />
-
-        <div className="field" style={{ marginTop: 14, marginBottom: 12 }}>
-          <label>{t("billing.payingFor")}</label>
-          <select
-            value={payFor}
-            onChange={(e) => setPayFor(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "9px 12px",
-              borderRadius: 10,
-              border: "1px solid var(--line-strong)",
-              background: "rgba(173,201,255,0.05)",
-              color: "var(--paper)",
-              fontSize: 13,
-            }}
-          >
-            {data.allPlans.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.name} — ${p.priceUsd}
-                {t("billing.perMonth")}
-              </option>
-            ))}
-            <option value="topup">
-              {t("billing.topUpPack")} (+{data.plan?.topUpPackSize ?? "…"} — ${data.plan?.topUpPackPriceUsd ?? "…"})
-            </option>
-          </select>
-        </div>
-
-        <div className="field" style={{ marginBottom: 12 }}>
-          <label>{t("billing.paidNote")}</label>
-          <input value={paidNote} onChange={(e) => setPaidNote(e.target.value)} placeholder={t("billing.paidNotePlaceholder")} maxLength={300} />
-        </div>
-
-        {paidSent && <p style={{ fontSize: 12, color: "var(--sky)", marginBottom: 12 }}>{t("billing.paidSent")}</p>}
-
-        <button className="btn" style={{ width: "auto", padding: "8px 16px" }} disabled={requesting === "paid"} onClick={confirmPaid}>
-          {t("billing.confirmPaid")}
-        </button>
-      </div>
+      {payTarget && (
+        <PaymentPopup
+          target={payTarget}
+          onClose={() => setPayTarget(null)}
+          onPaid={() => {
+            load();
+          }}
+        />
+      )}
     </>
   );
 }

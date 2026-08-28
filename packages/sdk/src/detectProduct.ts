@@ -73,7 +73,28 @@ export function readJsonLdProduct(doc: Document): PartialProduct | null {
   return null;
 }
 
-/** Priority 4: OpenGraph / product meta tags. */
+/** Priority 4: schema.org `Product` microdata (`itemprop` attributes) —
+ * common on storefront builders that mark up prices this way instead of (or
+ * alongside) JSON-LD, e.g. many Ukrainian platforms like Horoshop. */
+export function readMicrodataProduct(doc: Document): PartialProduct | null {
+  const root = doc.querySelector('[itemscope][itemtype*="schema.org/Product" i]') ?? doc;
+  const nameEl = root.querySelector('[itemprop="name"]');
+  const imageEl = root.querySelector('[itemprop="image"]');
+  const priceEl = root.querySelector('[itemprop="price"]');
+  const currencyEl = root.querySelector('[itemprop="priceCurrency"]');
+  if (!nameEl && !imageEl && !priceEl) return null;
+  const title = nameEl?.getAttribute("content") ?? nameEl?.textContent?.trim();
+  const image = imageEl?.getAttribute("content") ?? imageEl?.getAttribute("src") ?? undefined;
+  const currency = currencyEl?.getAttribute("content") ?? currencyEl?.textContent?.trim();
+  return {
+    productTitle: title || undefined,
+    productImageUrl: image || undefined,
+    price: parsePrice(priceEl?.getAttribute("content") ?? priceEl?.textContent ?? undefined),
+    currency: currency || undefined,
+  };
+}
+
+/** Priority 5: OpenGraph / product meta tags. */
 export function readOpenGraphProduct(doc: Document): PartialProduct | null {
   const image = attrOf(doc, 'meta[property="og:image"]', "content");
   const title = attrOf(doc, 'meta[property="og:title"]', "content");
