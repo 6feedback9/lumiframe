@@ -629,15 +629,16 @@ function IntegrationContent() {
               {t("integration.visitorLimitCurrent")}: {visitorLimit || t("integration.visitorLimitUnlimited")}
             </p>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input
-                type="number"
-                min={1}
-                max={1000}
-                value={visitorLimit}
-                onChange={(e) => setVisitorLimit(e.target.value)}
-                placeholder={t("integration.visitorLimitUnlimited")}
-                style={{ maxWidth: 220 }}
-              />
+              <div className="field" style={{ width: 220 }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={visitorLimit}
+                  onChange={(e) => setVisitorLimit(e.target.value)}
+                  placeholder={t("integration.visitorLimitUnlimited")}
+                />
+              </div>
               <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={savingLimit} onClick={saveVisitorLimit}>
                 {savingLimit ? t("common.saving") : savedLimit ? "✓" : t("common.save")}
               </button>
