@@ -9,14 +9,12 @@ interface StoreInfo {
   name: string;
 }
 
-// Just enough of GET /api/v1/billing to decide whether the trial CTA below
-// the nav links should show, and in which state (product ask: the trial
-// activation should be visible from anywhere in the app, not just found by
-// digging into the Billing page).
+// Just enough of GET /api/v1/billing to show the trial-active badge below
+// the nav links (product decision: activation is admin-only now — see
+// apps/admin's tenant Billing panel — so this is a passive status
+// indicator, not a button).
 interface BillingSummary {
-  plan: { key: string } | null;
-  trialAvailable: boolean;
-  trialCredits: number;
+  trialActive: boolean;
 }
 
 export function Sidebar() {
@@ -24,8 +22,6 @@ export function Sidebar() {
   const { t, locale, setLocale } = useI18n();
   const [storeName, setStoreName] = useState<string | null>(null);
   const [billing, setBilling] = useState<BillingSummary | null>(null);
-  const [activatingTrial, setActivatingTrial] = useState(false);
-  const [trialToast, setTrialToast] = useState<string | null>(null);
 
   const hidden = pathname === "/login" || pathname === "/register";
 
@@ -39,25 +35,9 @@ export function Sidebar() {
     apiFetch<BillingSummary>("/api/v1/billing")
       .then(setBilling)
       .catch(() => {
-        // Not fatal — the sidebar simply won't show the trial CTA.
+        // Not fatal — the sidebar simply won't show the trial badge.
       });
   }, [hidden]);
-
-  async function activateTrial() {
-    setActivatingTrial(true);
-    try {
-      await apiFetch("/api/v1/billing/trial", { method: "POST" });
-      const fresh = await apiFetch<BillingSummary>("/api/v1/billing");
-      setBilling(fresh);
-      setTrialToast(t("billing.trialActivatedToast").replace("{count}", String(fresh.trialCredits)));
-      setTimeout(() => setTrialToast(null), 4000);
-    } catch {
-      // Best-effort here — the Billing page itself is the authoritative
-      // place to retry if this fails for some reason.
-    } finally {
-      setActivatingTrial(false);
-    }
-  }
 
   if (hidden) return null;
 
@@ -87,28 +67,20 @@ export function Sidebar() {
           </a>
         ))}
       </nav>
-      {billing && !billing.plan && (
-        <div style={{ padding: "0 20px 12px" }}>
-          {billing.trialAvailable ? (
-            <button
-              type="button"
-              onClick={activateTrial}
-              disabled={activatingTrial}
-              className="btn"
-              style={{ width: "100%", padding: "9px 0", fontSize: 12 }}
-            >
-              {activatingTrial ? t("common.saving") : t("billing.startTrial")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="btn"
-              style={{ width: "100%", padding: "9px 0", fontSize: 12, opacity: 0.5, cursor: "default" }}
-            >
-              {t("billing.trialUsed")}
-            </button>
-          )}
+      {billing?.trialActive && (
+        <div style={{ padding: "0 20px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#3ddc84",
+              boxShadow: "0 0 0 rgba(61,220,132,0.6)",
+              animation: "lumiframe-trial-pulse 1.8s ease-out infinite",
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--paper)" }}>{t("billing.trialActive")}</span>
         </div>
       )}
       <div style={{ padding: "12px 20px", display: "flex", gap: 6 }}>
@@ -133,27 +105,13 @@ export function Sidebar() {
           </button>
         ))}
       </div>
-      {trialToast && (
-        <div
-          style={{
-            position: "fixed",
-            left: 20,
-            bottom: 20,
-            zIndex: 500,
-            maxWidth: 260,
-            background: "var(--surface)",
-            border: "1px solid var(--sky)",
-            borderRadius: 12,
-            padding: "12px 16px",
-            fontSize: 12.5,
-            color: "var(--paper)",
-            lineHeight: 1.5,
-            boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
-          }}
-        >
-          ✓ {trialToast}
-        </div>
-      )}
+      <style>{`
+        @keyframes lumiframe-trial-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(61,220,132,0.6); }
+          70% { box-shadow: 0 0 0 7px rgba(61,220,132,0); }
+          100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); }
+        }
+      `}</style>
     </aside>
   );
 }

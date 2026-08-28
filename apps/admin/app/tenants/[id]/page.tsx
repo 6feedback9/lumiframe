@@ -58,6 +58,7 @@ interface TenantDetail {
   totalUsageUnits: number;
   usedThisMonth: number;
   topUpCredits: number;
+  trialGrantedAt: string | null;
   plan: Plan | null;
   planRequestNote: string | null;
   planRequestedAt: string | null;
@@ -69,6 +70,7 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
   const [savingPlan, setSavingPlan] = useState(false);
   const [creditsInput, setCreditsInput] = useState("");
   const [savingCredits, setSavingCredits] = useState(false);
+  const [grantingTrial, setGrantingTrial] = useState(false);
 
   async function changePlan(planId: string) {
     setSavingPlan(true);
@@ -90,6 +92,16 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
       onUpdated();
     } finally {
       setSavingCredits(false);
+    }
+  }
+
+  async function grantTrial() {
+    setGrantingTrial(true);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/trial`, { method: "POST" });
+      onUpdated();
+    } finally {
+      setGrantingTrial(false);
     }
   }
 
@@ -162,6 +174,38 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
         {t("tenantDetail.usedThisMonth")}: {tenant.usedThisMonth}
         {tenant.plan ? ` / ${tenant.plan.monthlyLimit}` : ""} · {t("tenantDetail.topUpCredits")}: {tenant.topUpCredits}
       </p>
+
+      {!tenant.plan && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
+          {tenant.trialGrantedAt ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#3ddc84",
+                  animation: "lumiframe-admin-trial-pulse 1.8s ease-out infinite",
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{t("tenantDetail.trialActive")}</span>
+              <span style={{ fontSize: 11, color: "var(--mist-dim)" }}>({new Date(tenant.trialGrantedAt).toLocaleDateString()})</span>
+              <style>{`
+                @keyframes lumiframe-admin-trial-pulse {
+                  0% { box-shadow: 0 0 0 0 rgba(61,220,132,0.6); }
+                  70% { box-shadow: 0 0 0 7px rgba(61,220,132,0); }
+                  100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); }
+                }
+              `}</style>
+            </div>
+          ) : (
+            <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={grantingTrial} onClick={grantTrial}>
+              {grantingTrial ? t("common.saving") : t("tenantDetail.grantTrial")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

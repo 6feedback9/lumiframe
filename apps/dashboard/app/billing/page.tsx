@@ -21,8 +21,7 @@ interface BillingInfo {
   planRequestNote: string | null;
   planRequestedAt: string | null;
   allPlans: PlanInfo[];
-  trialAvailable: boolean;
-  trialCredits: number;
+  trialActive: boolean;
 }
 
 // Lumi Web Agency's own bank details — every merchant pays the same
@@ -202,29 +201,13 @@ function BillingContent() {
   const { t } = useI18n();
   const [data, setData] = useState<BillingInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [startingTrial, setStartingTrial] = useState(false);
   const [payTarget, setPayTarget] = useState<PayTarget | null>(null);
-  const [trialToast, setTrialToast] = useState<string | null>(null);
 
   function load() {
     apiFetch<BillingInfo>("/api/v1/billing").then(setData).catch((err) => setError(err.message));
   }
 
   useEffect(load, []);
-
-  async function startTrial() {
-    setStartingTrial(true);
-    try {
-      await apiFetch("/api/v1/billing/trial", { method: "POST" });
-      setTrialToast(t("billing.trialActivatedToast").replace("{count}", String(data?.trialCredits ?? "")));
-      setTimeout(() => setTrialToast(null), 4000);
-      load();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setStartingTrial(false);
-    }
-  }
 
   if (error) return <div className="empty-state">{error}</div>;
   if (!data) return <div className="empty-state">{t("common.loading")}</div>;
@@ -253,7 +236,19 @@ function BillingContent() {
           </>
         ) : data.topUpCredits > 0 ? (
           <>
-            <h3 style={{ margin: "0 0 4px", fontSize: 18 }}>{t("billing.trialActive")}</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span
+                style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: "50%",
+                  background: "#3ddc84",
+                  animation: "lumiframe-billing-trial-pulse 1.8s ease-out infinite",
+                  flexShrink: 0,
+                }}
+              />
+              <h3 style={{ margin: 0, fontSize: 18 }}>{t("billing.trialActive")}</h3>
+            </div>
             <p style={{ fontSize: 12, color: "var(--mist)", margin: "0 0 4px" }}>
               {t("billing.topUpCredits")}: {data.topUpCredits}
             </p>
@@ -265,16 +260,6 @@ function BillingContent() {
         {data.planRequestNote && <p style={{ fontSize: 12, color: "var(--sky)", marginTop: 16 }}>{t("billing.pendingRequest")}</p>}
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
-          {!data.plan &&
-            (data.trialAvailable ? (
-              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={startingTrial} onClick={startTrial}>
-                {startingTrial ? t("common.saving") : t("billing.startTrial")}
-              </button>
-            ) : (
-              <button className="btn" style={{ width: "auto", padding: "9px 16px", opacity: 0.5, cursor: "default" }} disabled>
-                {t("billing.trialUsed")}
-              </button>
-            ))}
           {showTopUp && data.plan && (
             <button
               className="btn"
@@ -352,27 +337,13 @@ function BillingContent() {
         />
       )}
 
-      {trialToast && (
-        <div
-          style={{
-            position: "fixed",
-            left: 20,
-            bottom: 20,
-            zIndex: 500,
-            maxWidth: 260,
-            background: "var(--surface)",
-            border: "1px solid var(--sky)",
-            borderRadius: 12,
-            padding: "12px 16px",
-            fontSize: 12.5,
-            color: "var(--paper)",
-            lineHeight: 1.5,
-            boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
-          }}
-        >
-          ✓ {trialToast}
-        </div>
-      )}
+      <style>{`
+        @keyframes lumiframe-billing-trial-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(61,220,132,0.6); }
+          70% { box-shadow: 0 0 0 7px rgba(61,220,132,0); }
+          100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); }
+        }
+      `}</style>
     </>
   );
 }

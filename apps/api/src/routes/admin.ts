@@ -7,6 +7,7 @@ import { signMerchantToken } from "../auth/jwt";
 import { authenticateAdmin } from "../plugins/auth";
 import { loginSchema } from "../schemas";
 import { startOfCurrentMonthUtc } from "../domain/planEntitlement";
+import { grantTrial, TrialGrantError } from "../domain/trial";
 import { buildTryOnDetailPayload } from "./tryons";
 
 const setPlanSchema = z.object({ planId: z.string().nullable() });
@@ -228,6 +229,20 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       data: { topUpCredits: { increment: parsed.data.addCredits }, planRequestNote: null, planRequestedAt: null },
     });
     return reply.send({ id: tenant.id, topUpCredits: tenant.topUpCredits });
+  });
+
+  // ── Owner-granted trial (product decision: no longer self-serve —
+  // merchant dashboard has no button for this anymore, only the owner can
+  // activate it, from here) ────────────────────────────────────────────
+  app.post("/api/v1/admin/tenants/:id/trial", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await grantTrial(id);
+      return reply.send({ id, ...result });
+    } catch (error) {
+      if (error instanceof TrialGrantError) return reply.code(error.statusCode).send({ error: error.message });
+      throw error;
+    }
   });
 
   // ── Edit a tenant's store's button design directly (product ask: the
