@@ -106,6 +106,7 @@ const DICT = {
     "integration.visitorLimitTitle": "Ліміт примірок на відвідувача",
     "integration.visitorLimitDesc": "Скільки разів один і той самий відвідувач може приміряти товари у вашому магазині. Визначається за IP-адресою. Порожньо — без обмежень.",
     "integration.visitorLimitUnlimited": "Без обмежень",
+    "integration.visitorLimitCurrent": "Поточне значення",
     "integration.snippetHelp": "Вставте це один раз, ближче до кінця шаблону сторінки товару. Кнопка «Try on» додається автоматично поруч із кнопкою «Додати в кошик» — без додаткового редагування теми.",
 
     "customize.title": "Оформлення кнопки",
@@ -141,7 +142,7 @@ const DICT = {
     "customize.animationNone": "Без анімації",
     "customize.animationPulse": "Пульсуюче кільце",
     "customize.animationShimmer": "Світловий відблиск",
-    "customize.placementTitle": "Розташування та вікно примірки",
+    "customize.placementTitle": "Розташування кнопки",
     "customize.position": "Де розмістити кнопку",
     "customize.positionAfter": "Після кнопки «Додати в кошик»",
     "customize.positionBefore": "Перед кнопкою «Додати в кошик»",
@@ -361,6 +362,7 @@ const DICT = {
     "integration.visitorLimitTitle": "Try-ons per visitor",
     "integration.visitorLimitDesc": "How many times the same visitor can try on products in your store. Tracked by IP address. Leave empty for no limit.",
     "integration.visitorLimitUnlimited": "No limit",
+    "integration.visitorLimitCurrent": "Current value",
     "integration.snippetHelp": "Paste this once, near the bottom of your product page template. It inserts a “Try on” button next to your add-to-cart button automatically — no theme editing beyond this one snippet.",
 
     "customize.title": "Button design",
@@ -396,7 +398,7 @@ const DICT = {
     "customize.animationNone": "No animation",
     "customize.animationPulse": "Pulsing ring",
     "customize.animationShimmer": "Light shimmer",
-    "customize.placementTitle": "Placement & try-on window",
+    "customize.placementTitle": "Button placement",
     "customize.position": "Where to place the button",
     "customize.positionAfter": "After the \"Add to cart\" button",
     "customize.positionBefore": "Before the \"Add to cart\" button",

@@ -250,7 +250,11 @@ function IntegrationContent() {
             </select>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "gradient" ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
+          {/* One row of same-width swatches whenever there are exactly two to
+              show — [color1, color2] for gradient, [fill, text] for solid.
+              Outline only ever has the one (no text-color field — see
+              isOutline below), so it stays alone in its own row. */}
+          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "outline" ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div className="field">
               <label>{config.buttonStyle === "gradient" ? t("customize.color1") : t("customize.style")}</label>
               <input type="color" value={config.buttonColorStart} onChange={(e) => setConfig({ ...config, buttonColorStart: e.target.value })} style={{ height: 40, padding: 4 }} />
@@ -261,9 +265,15 @@ function IntegrationContent() {
                 <input type="color" value={config.buttonColorEnd} onChange={(e) => setConfig({ ...config, buttonColorEnd: e.target.value })} style={{ height: 40, padding: 4 }} />
               </div>
             )}
+            {config.buttonStyle === "solid" && (
+              <div className="field">
+                <label>{t("customize.textColor")}</label>
+                <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 40, padding: 4 }} />
+              </div>
+            )}
           </div>
 
-          {!isOutline && (
+          {config.buttonStyle === "gradient" && (
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.textColor")}</label>
             <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 40, padding: 4 }} />
@@ -349,11 +359,9 @@ function IntegrationContent() {
               </label>
             </div>
           )}
-            </>
-          )}
 
-          {tab === "modal" && (
-            <>
+          <h3 style={{ margin: "6px 0 14px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.placementTitle")}</h3>
+
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.position")}</label>
             <select
@@ -381,8 +389,11 @@ function IntegrationContent() {
               <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.anchorSelectorHint")}</div>
             </div>
           )}
+            </>
+          )}
 
-
+          {tab === "modal" && (
+            <>
           <div className="field" style={{ marginBottom: 20 }}>
             <label>{t("customize.modalButtons")}</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
@@ -613,7 +624,10 @@ function IntegrationContent() {
 
           <div className="panel" style={{ padding: 24 }}>
             <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("integration.visitorLimitTitle")}</h3>
-            <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 14 }}>{t("integration.visitorLimitDesc")}</p>
+            <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 4 }}>{t("integration.visitorLimitDesc")}</p>
+            <p style={{ fontSize: 12, color: "var(--sky)", marginBottom: 14 }}>
+              {t("integration.visitorLimitCurrent")}: {visitorLimit || t("integration.visitorLimitUnlimited")}
+            </p>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <input
                 type="number"
@@ -622,7 +636,7 @@ function IntegrationContent() {
                 value={visitorLimit}
                 onChange={(e) => setVisitorLimit(e.target.value)}
                 placeholder={t("integration.visitorLimitUnlimited")}
-                style={{ maxWidth: 140 }}
+                style={{ maxWidth: 220 }}
               />
               <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={savingLimit} onClick={saveVisitorLimit}>
                 {savingLimit ? t("common.saving") : savedLimit ? "✓" : t("common.save")}

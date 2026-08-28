@@ -7,6 +7,16 @@ import { openLightbox, PhotoLightbox } from "../PhotoLightbox";
 import { apiFetch } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
+interface PlanInfo {
+  monthlyLimit: number;
+}
+
+interface BillingSummary {
+  plan: PlanInfo | null;
+  usedThisMonth: number;
+  topUpCredits: number;
+}
+
 interface TryOnRow {
   id: string;
   productTitle: string | null;
@@ -55,6 +65,7 @@ function TryOnsContent() {
   const [month, setMonth] = useState(""); // "" = all time
   const [error, setError] = useState<string | null>(null);
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+  const [billing, setBilling] = useState<BillingSummary | null>(null);
   const limit = 10;
   const monthOptions = useMemo(() => recentMonths(locale), [locale]);
 
@@ -73,11 +84,21 @@ function TryOnsContent() {
       .catch((err) => setError(err.message));
   }, [page, month]);
 
+  // Current plan usage, shown next to the month filter (product ask: the
+  // try-on limit should be visible right here, not only on the Billing page).
+  useEffect(() => {
+    apiFetch<BillingSummary>("/api/v1/billing")
+      .then(setBilling)
+      .catch(() => {
+        /* non-critical — the page works fine without this summary */
+      });
+  }, []);
+
   return (
     <>
       <div className="page-title">{t("tryons.title")}</div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <select
           value={month}
           onChange={(e) => {
@@ -101,6 +122,18 @@ function TryOnsContent() {
             </option>
           ))}
         </select>
+
+        {billing?.plan && (
+          <div style={{ fontSize: 12, color: "var(--mist)" }}>
+            {t("billing.usedThisMonth")}: <strong style={{ color: "var(--paper)" }}>{billing.usedThisMonth} / {billing.plan.monthlyLimit}</strong>
+            {billing.topUpCredits > 0 && (
+              <>
+                {" "}
+                · {t("billing.topUpCredits")}: <strong style={{ color: "var(--paper)" }}>{billing.topUpCredits}</strong>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {error && <div className="empty-state">{error}</div>}

@@ -343,7 +343,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
               <option value="outline">{t("buttonDesign.styleOutline")}</option>
             </select>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "gradient" ? "1fr 1fr" : "1fr", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "outline" ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div className="field">
               <label>{t("buttonDesign.color1")}</label>
               <input type="color" value={config.buttonColorStart} onChange={(e) => setConfig({ ...config, buttonColorStart: e.target.value })} style={{ height: 38, padding: 4 }} />
@@ -354,8 +354,14 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
                 <input type="color" value={config.buttonColorEnd} onChange={(e) => setConfig({ ...config, buttonColorEnd: e.target.value })} style={{ height: 38, padding: 4 }} />
               </div>
             )}
+            {config.buttonStyle === "solid" && (
+              <div className="field">
+                <label>{t("buttonDesign.textColor")}</label>
+                <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 38, padding: 4 }} />
+              </div>
+            )}
           </div>
-          {!isOutline && (
+          {config.buttonStyle === "gradient" && (
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.textColor")}</label>
             <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 38, padding: 4 }} />
