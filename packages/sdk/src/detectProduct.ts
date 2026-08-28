@@ -77,7 +77,14 @@ export function readJsonLdProduct(doc: Document): PartialProduct | null {
  * common on storefront builders that mark up prices this way instead of (or
  * alongside) JSON-LD, e.g. many Ukrainian platforms like Horoshop. */
 export function readMicrodataProduct(doc: Document): PartialProduct | null {
-  const root = doc.querySelector('[itemscope][itemtype*="schema.org/Product" i]') ?? doc;
+  // Must find an actual Product-scoped root — no document-wide fallback.
+  // itemprop="name"/"image" aren't unique to products (an Organization or
+  // WebSite schema uses "name" too, breadcrumbs and articles have "image")
+  // — searching the whole page for bare itemprop attributes was the same
+  // false-positive risk as the og:type-less OpenGraph check right below,
+  // and would auto-inject the button on non-product pages just the same.
+  const root = doc.querySelector('[itemscope][itemtype*="schema.org/Product" i]');
+  if (!root) return null;
   const nameEl = root.querySelector('[itemprop="name"]');
   const imageEl = root.querySelector('[itemprop="image"]');
   const priceEl = root.querySelector('[itemprop="price"]');
@@ -96,6 +103,16 @@ export function readMicrodataProduct(doc: Document): PartialProduct | null {
 
 /** Priority 5: OpenGraph / product meta tags. */
 export function readOpenGraphProduct(doc: Document): PartialProduct | null {
+  // og:title/og:image alone are NOT a product signal — nearly every page
+  // on the internet has them for social-share previews (a homepage, a
+  // blog post, a collection page — all of these have og:title/og:image
+  // too). Without this check, the "Try on" button was auto-injecting on
+  // every page of a real store, homepage included, because those generic
+  // sharing tags happily "detected" as a product. og:type is the actual,
+  // standard way a page declares itself a product page.
+  const type = attrOf(doc, 'meta[property="og:type"]', "content");
+  if (type?.toLowerCase() !== "product") return null;
+
   const image = attrOf(doc, 'meta[property="og:image"]', "content");
   const title = attrOf(doc, 'meta[property="og:title"]', "content");
   const url = attrOf(doc, 'meta[property="og:url"]', "content");

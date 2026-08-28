@@ -55,6 +55,19 @@ export const WIDGET_CSS = `
 }
 @media (min-width: 760px) { .lf-product-panel { padding: clamp(16px, 4vh, 48px) 48px; border-top: none; border-left: 1px solid #ececec; } }
 
+/* Mobile only (product ask): the product panel — photo/name/price and
+   "Add to cart" — only makes sense once there's a result to actually add
+   to cart alongside; before that it was just clutter above/below the
+   upload step on a small screen the shopper has to scroll past. Desktop's
+   side-by-side layout keeps it visible throughout — there's no scroll
+   conflict there, and a shopper should still be able to buy without
+   trying on (see .lf-product-panel above). .lf-shell.lf-has-result is
+   toggled by setPhotoState() in index.ts. */
+@media (max-width: 759px) {
+  .lf-product-panel { display: none; }
+  .lf-shell.lf-has-result .lf-product-panel { display: flex; }
+}
+
 /* margin: auto (not justify-content: center on the parent) — auto margins
    on a flex item absorb free space when there's room, giving the same
    vertically-centered look for short content, but collapse to 0 instead

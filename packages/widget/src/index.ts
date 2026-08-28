@@ -157,6 +157,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
 
   const q = <E extends Element = Element>(sel: string) => backdrop.querySelector<E>(sel)!;
 
+  const shell = q<HTMLElement>(".lf-shell");
   const zone = q<HTMLElement>("[data-zone]");
   const preUpload = q<HTMLElement>("[data-pre-upload]");
   const preGenerate = q<HTMLElement>("[data-pre-generate]");
@@ -169,6 +170,12 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     preUpload.style.display = state === "empty" ? "block" : "none";
     preGenerate.style.display = state === "selected" ? "block" : "none";
     resultBlock.style.display = state === "result" ? "block" : "none";
+    // Mobile only (see styles.ts): the product panel — photo, name, price,
+    // "Add to cart" — is hidden until there's a result, so a shopper isn't
+    // scrolling past the product they already know they're on before ever
+    // seeing the upload step. Desktop's side-by-side layout has no such
+    // problem and keeps it visible throughout (product ask, split view).
+    shell.classList.toggle("lf-has-result", state === "result");
   }
 
   function showError(message: string): void {
