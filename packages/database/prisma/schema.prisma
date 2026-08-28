@@ -92,6 +92,12 @@ enum AttributionModel {
   LAST_TOUCH
 }
 
+enum PlanKey {
+  STARTER
+  GROWTH
+  PRO
+}
+
 // ────────────────────────────────────────────────────────────
 // Tenant / auth
 // ────────────────────────────────────────────────────────────
@@ -103,6 +109,21 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ── Billing (ARCHITECTURE.md §13 addendum) ──────────────────────────
+  // Null planId = no plan assigned yet (blocks try-on creation — see
+  // apps/api/src/routes/tryons.ts). topUpCredits is a persistent balance,
+  // not month-scoped: consumed one-for-one once the current calendar
+  // month's plan.monthlyLimit is used up, and never expires on its own.
+  planId       String?
+  topUpCredits Int     @default(0)
+  // Set by the merchant's dashboard ("request a plan change / more
+  // credits" — payment is handled manually for now, see DEPLOYMENT.md) and
+  // cleared automatically the next time an admin changes this tenant's
+  // plan or adds credits.
+  planRequestNote String?
+  planRequestedAt DateTime?
+
+  plan          Plan?          @relation(fields: [planId], references: [id])
   users         User[]
   stores        Store[]
   auditLogs     AuditLog[]
@@ -110,6 +131,28 @@ model Tenant {
   events        Event[]
 
   @@map("tenants")
+}
+
+// Seeded once via migration (packages/database/prisma/migrations) — see
+// DEPLOYMENT.md for the exact numbers and how they were derived from
+// Gemini's per-image cost. Not exposed as an admin-editable CRUD screen
+// yet; adjust via a SQL UPDATE the same way the platform-admin account
+// was created, if the numbers ever need to change.
+model Plan {
+  id                String   @id @default(cuid())
+  key               PlanKey  @unique
+  name              String
+  monthlyLimit      Int
+  priceUsd          Decimal  @db.Decimal(10, 2)
+  topUpPackSize     Int
+  topUpPackPriceUsd Decimal  @db.Decimal(10, 2)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenants Tenant[]
+
+  @@map("plans")
 }
 
 model User {

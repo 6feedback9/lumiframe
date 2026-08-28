@@ -29,7 +29,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const passwordHash = await hashPassword(password);
     const rawApiKey = generateApiKey();
 
-    const tenant = await prisma.tenant.create({ data: { name: storeName, slug: `${hostname}-${Date.now().toString(36)}` } });
+    // Every new tenant starts on Starter (packages/database/prisma —
+    // seeded by migration). Not fatal if the Plan row is somehow missing
+    // (e.g. a fresh DB that hasn't run the seed migration yet) — the
+    // tenant just starts with planId null, same as before Plans existed.
+    const starterPlan = await prisma.plan.findUnique({ where: { key: "STARTER" } });
+    const tenant = await prisma.tenant.create({
+      data: { name: storeName, slug: `${hostname}-${Date.now().toString(36)}`, planId: starterPlan?.id },
+    });
     const user = await prisma.user.create({
       data: { tenantId: tenant.id, email: email.toLowerCase(), passwordHash, role: "OWNER" },
     });

@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import { authRoutes } from "./routes/auth";
+import { billingRoutes } from "./routes/billing";
 import { tryOnRoutes } from "./routes/tryons";
 import { eventRoutes } from "./routes/events";
 import { analyticsRoutes } from "./routes/analytics";
@@ -43,6 +44,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(eventRoutes);
   await app.register(analyticsRoutes);
   await app.register(storeRoutes);
+  await app.register(billingRoutes);
   await app.register(adminRoutes);
   await app.register(sdkRoutes);
   await app.register(storageServeRoutes);

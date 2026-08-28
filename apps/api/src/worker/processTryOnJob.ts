@@ -8,6 +8,7 @@ import type { TryOnJobData } from "@lumiframe/queue";
 import { createHash } from "node:crypto";
 import { prisma, storage } from "../context";
 import { env } from "../env";
+import { checkPlanEntitlement } from "../domain/planEntitlement";
 
 const SIGNED_URL_TTL_SECONDS = 3600;
 const POLL_INTERVAL_MS = 1000;
@@ -160,6 +161,21 @@ export async function processTryOnJob({ tryOnGenerationId }: TryOnJobData): Prom
       },
     });
     await setSessionStatus(session.id, "PROCESSING", "COMPLETED");
+
+    // Before recording this generation's own usage: if the tenant's plan
+    // monthly allowance is already used up by generations before this one,
+    // this one is running on the top-up balance — decrement it.
+    // checkPlanEntitlement already gated this at creation time (an empty
+    // top-up balance would have blocked it before it got here); the
+    // `topUpCredits: { gt: 0 }` guard just keeps this update a no-op
+    // instead of going negative if two completions race each other.
+    const entitlement = await checkPlanEntitlement(session.tenantId);
+    if (entitlement.usedThisMonth >= entitlement.monthlyLimit) {
+      await prisma.tenant.updateMany({
+        where: { id: session.tenantId, topUpCredits: { gt: 0 } },
+        data: { topUpCredits: { decrement: 1 } },
+      });
+    }
 
     await prisma.usageRecord.create({
       data: {

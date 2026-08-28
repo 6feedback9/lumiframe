@@ -12,6 +12,13 @@ const updateStoreSchema = z.object({
       buttonText: z.string().max(60).optional(),
       language: z.enum(["en", "uk", "ru"]).optional(),
       showPoweredBy: z.boolean().optional(),
+      // Button appearance (product ask: merchant-configurable button
+      // color/font/glow — packages/sdk/src/index.ts applies these).
+      buttonColorStart: z.string().max(20).optional(),
+      buttonColorEnd: z.string().max(20).optional(),
+      buttonTextColor: z.string().max(20).optional(),
+      buttonFont: z.string().max(80).optional(),
+      buttonGlow: z.boolean().optional(),
     })
     .optional(),
 });

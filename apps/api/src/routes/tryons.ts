@@ -6,6 +6,7 @@ import { prisma, queue, storage } from "../context";
 import { env } from "../env";
 import { authenticateMerchant, authenticateStorePublic } from "../plugins/auth";
 import { isAllowedProductUrl } from "../domain/allowedDomains";
+import { checkPlanEntitlement } from "../domain/planEntitlement";
 import { createTryOnSchema, retryPhotoSchema } from "../schemas";
 
 const MAX_CUSTOMER_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -43,6 +44,18 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
     }
     const input = parsed.data;
     const store = request.store!;
+
+    const entitlement = await checkPlanEntitlement(store.tenantId);
+    if (!entitlement.allowed) {
+      console.warn(`[tryons] store ${store.id} (tenant ${store.tenantId}) hit its plan limit: ${entitlement.usedThisMonth}/${entitlement.monthlyLimit} used this month, 0 top-up credits left`);
+      // Never expose plan/billing internals to the shopper — this is the
+      // merchant's problem to notice (dashboard shows usage prominently)
+      // and fix, not something a customer should be told about.
+      return reply.code(402).send({
+        error: "This store is temporarily unable to process try-ons. Please try again soon.",
+        code: "PLAN_LIMIT_REACHED",
+      });
+    }
 
     if (!isAllowedProductUrl(store.allowedDomains, input.product.imageUrl)) {
       return reply.code(403).send({ error: "product.imageUrl is not on an allowed domain for this store" });
@@ -137,6 +150,15 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
     const store = request.store!;
     const session = await prisma.tryOnSession.findFirst({ where: { id, storeId: store.id } });
     if (!session) return reply.code(404).send({ error: "Try-on session not found" });
+
+    const entitlement = await checkPlanEntitlement(store.tenantId);
+    if (!entitlement.allowed) {
+      console.warn(`[tryons] store ${store.id} (tenant ${store.tenantId}) hit its plan limit on retry`);
+      return reply.code(402).send({
+        error: "This store is temporarily unable to process try-ons. Please try again soon.",
+        code: "PLAN_LIMIT_REACHED",
+      });
+    }
 
     const expiresAt = new Date(Date.now() + resultRetentionMs(store));
     const generation = await prisma.tryOnGeneration.create({
@@ -284,14 +306,34 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!session) return reply.code(404).send({ error: "Try-on session not found" });
 
-    const latest = session.generations[0];
-    const resultUrl =
-      latest?.status === "COMPLETED" && latest.resultImageKey
-        ? await storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600)
-        : null;
+    return reply.send(await buildTryOnDetailPayload(session));
+  });
+}
 
-    return reply.send({
+// Product photo — customer's uploaded photo — generated result: what a
+// merchant (and, cross-tenant, the platform admin — apps/api/src/routes/
+// admin.ts) sees on a try-on's detail view. Shared so both routes stay in
+// sync on exactly what a "detail" response contains.
+type SessionWithGenerationsAndAttribution = Awaited<ReturnType<typeof prisma.tryOnSession.findFirstOrThrow<{
+  include: { generations: true; attribution: { include: { order: true } } };
+}>>>;
+
+export async function buildTryOnDetailPayload(session: SessionWithGenerationsAndAttribution) {
+  const generations = [...session.generations].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const latest = generations[0];
+
+  const [resultUrl, customerImageUrl] = await Promise.all([
+    latest?.status === "COMPLETED" && latest.resultImageKey
+      ? storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600)
+      : Promise.resolve(null),
+    latest?.customerImageKey
+      ? storage.getSignedUrl(BUCKETS.customerPhotos, latest.customerImageKey, 3600).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  return {
       id: session.id,
+      storeId: session.storeId,
       product: {
         id: session.externalProductId,
         title: session.productTitle,
@@ -304,6 +346,10 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
       status: latest?.status ?? session.status,
       errorCode: latest?.errorCode ?? null,
       errorMessage: latest?.errorMessage ?? null,
+      // Not shown if the object was already cleared by a retention sweep
+      // (ARCHITECTURE.md §16 — not yet built, so this is always present
+      // today, but the null case is handled either way).
+      customerImageUrl,
       resultUrl,
       generationDurationMs: latest?.generationDurationMs ?? null,
       generationsCount: session.generations.length,
@@ -324,6 +370,5 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
         : null,
       createdAt: session.createdAt,
       completedAt: latest?.completedAt ?? null,
-    });
-  });
+  };
 }
