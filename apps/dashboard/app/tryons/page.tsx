@@ -98,7 +98,7 @@ function TryOnsContent() {
     <>
       <div className="page-title">{t("tryons.title")}</div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <select
           value={month}
           onChange={(e) => {
@@ -124,7 +124,16 @@ function TryOnsContent() {
         </select>
 
         {billing?.plan && (
-          <div style={{ fontSize: 12, color: "var(--mist)" }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--mist)",
+              padding: "9px 14px",
+              borderRadius: 10,
+              border: "1px solid var(--line-strong)",
+              background: "rgba(173,201,255,0.05)",
+            }}
+          >
             {t("billing.usedThisMonth")}: <strong style={{ color: "var(--paper)" }}>{billing.usedThisMonth} / {billing.plan.monthlyLimit}</strong>
             {billing.topUpCredits > 0 && (
               <>
