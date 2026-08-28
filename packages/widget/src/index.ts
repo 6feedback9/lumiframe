@@ -155,6 +155,26 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   const q = <E extends Element = Element>(sel: string) => backdrop.querySelector<E>(sel)!;
 
   const shell = q<HTMLElement>(".lf-shell");
+
+  // Belt-and-suspenders for styles.ts's `min-height: 100dvh` — a
+  // JS-measured height that doesn't depend on dvh support or behavior at
+  // all, for whatever environment still gets it wrong (some in-app /
+  // theme-preview webviews render the page inside a shorter iframe of
+  // their own, where dvh is measuring that iframe correctly but it's
+  // still shorter than the shopper expects "the screen" to be — no CSS
+  // unit fixes that, only really measuring what's actually there).
+  // visualViewport, where supported, is the more accurate of the two —
+  // it excludes an open on-screen keyboard, which innerHeight doesn't.
+  // Re-synced on resize so it tracks an address bar or keyboard
+  // showing/hiding after the initial mount, not just the state at open.
+  function syncShellHeight(): void {
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    shell.style.minHeight = `${h}px`;
+  }
+  syncShellHeight();
+  window.addEventListener("resize", syncShellHeight);
+  window.visualViewport?.addEventListener("resize", syncShellHeight);
+
   const zone = q<HTMLElement>("[data-zone]");
   const preUpload = q<HTMLElement>("[data-pre-upload]");
   const preGenerate = q<HTMLElement>("[data-pre-generate]");
@@ -294,6 +314,8 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
 
   function close(): void {
     if (pollHandle) clearTimeout(pollHandle);
+    window.removeEventListener("resize", syncShellHeight);
+    window.visualViewport?.removeEventListener("resize", syncShellHeight);
     backdrop.remove();
     document.body.style.overflow = "";
     options.onClose();

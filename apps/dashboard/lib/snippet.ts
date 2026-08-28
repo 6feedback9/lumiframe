@@ -64,11 +64,15 @@ function formatOptionsLiteral(options: Record<string, unknown>): string {
 
 export function buildSnippet(storeId: string, apiBaseUrl: string, config: WidgetConfig = {}): string {
   const options = buildInitOptions(storeId, apiBaseUrl, config);
+  // No TryOn.attach() usage comment here on purpose — this box is what a
+  // non-technical merchant pastes into their theme, and those two lines
+  // (JSON-LD/OpenGraph jargon, a manual-override example) were both
+  // meaningless to that audience and long enough to overflow the box on
+  // the onboarding screen. That advanced-usage guidance still lives in
+  // packages/sdk/README.md for whoever's actually wiring up a custom
+  // platform integration.
   return `<script src="${apiBaseUrl}/sdk.js"></script>
 <script>
   TryOn.init(${formatOptionsLiteral(options)});
-  // Optional: on an unknown platform, tell it exactly what to read —
-  // otherwise it tries JSON-LD, then OpenGraph, automatically.
-  // TryOn.attach({ productId: "...", productImageUrl: "...", ... });
 </script>`;
 }
