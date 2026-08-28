@@ -29,7 +29,11 @@ function ensureStyles(): void {
 }
 
 const POLL_INTERVAL_MS = 1200;
-const POLL_TIMEOUT_MS = 45_000;
+// The provider's own worst case is GENERATE_TIMEOUT_MS * MAX_ATTEMPTS = 50s
+// (packages/providers/real/src/index.ts) — this needs real margin above
+// that, not to equal it, or the browser gives up and shows an error to the
+// shopper right as a retried generation was about to actually succeed.
+const POLL_TIMEOUT_MS = 65_000;
 
 type PhotoState = "empty" | "selected" | "processing" | "result";
 

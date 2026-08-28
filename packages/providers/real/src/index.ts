@@ -36,15 +36,29 @@ import {
 import { GoogleGenAI, Modality, type Part } from "@google/genai";
 
 const DEFAULT_MODEL = "gemini-3.1-flash-image-preview";
-// Matches packages/widget's own POLL_TIMEOUT_MS — no point holding this
-// call open longer than the customer's browser is still polling for it.
-const GENERATE_TIMEOUT_MS = 45_000;
+// Per-attempt timeout, not the whole budget — see MAX_ATTEMPTS below. Real
+// generations observed so far complete in ~14-20s, so 25s per attempt
+// leaves real headroom for a slow one while still affording a retry.
+// packages/widget's own POLL_TIMEOUT_MS is the actual outer budget the
+// customer's browser will wait on — keep GENERATE_TIMEOUT_MS * MAX_ATTEMPTS
+// comfortably under it, not equal to it (that left zero room to retry).
+const GENERATE_TIMEOUT_MS = 25_000;
+// A timeout or a transient request failure gets one retry before giving
+// up — product feedback: an occasional slow/dropped Gemini call was
+// showing up as a hard failure in the merchant's try-on list even though
+// most requests complete in well under GENERATE_TIMEOUT_MS. Does NOT
+// retry a clean GEMINI_NO_IMAGE result (a real response Gemini returned,
+// just without an image, typically a safety/content decision) — only
+// actual exceptions (timeout, network) from runGeneration.
+const MAX_ATTEMPTS = 2;
 
 const PROMPT = `You are editing photo #1, a photo of a person, so they appear to be wearing the eyewear shown in photo #2.
 
 Photo #2 is a merchant product photo and may include packaging, a plain background, or other objects — first identify just the glasses/sunglasses in it, ignoring everything else in that photo.
 
-Then edit photo #1 so the person is wearing those glasses: match their head position, angle and scale realistically. Keep the person's face, expression, body, clothing, background and lighting in photo #1 completely unchanged — do not alter anything else about photo #1.
+Then edit photo #1 so the person is wearing those glasses: match their head position, angle and scale realistically. Preserve the glasses' exact shape and structure from photo #2 — the frame, lenses, and both temple arms (the parts that go back over the ears) must keep their real proportions and shape, with no bending, warping, gaps, or duplicated segments. Where a temple arm passes near or under the person's hair, render it as a single continuous piece occluded naturally by the hair, not distorted or broken.
+
+Keep the person's face, expression, body, clothing, background and lighting in photo #1 completely unchanged — do not alter anything else about photo #1.
 
 Output only the edited photo. No text.`;
 
@@ -117,22 +131,28 @@ export class GeminiTryOnProvider implements TryOnProvider {
     const providerJobId = `gemini_${input.tryOnGenerationId}_${Date.now().toString(36)}`;
     const startedAt = Date.now();
 
-    try {
-      const outcome = await withTimeout(
-        this.runGeneration(input, startedAt),
-        GENERATE_TIMEOUT_MS,
-        `Gemini did not respond within ${GENERATE_TIMEOUT_MS}ms`
-      );
-      this.jobs.set(providerJobId, outcome);
-    } catch (error) {
-      this.jobs.set(providerJobId, {
-        state: "failed",
-        errorCode: "GEMINI_REQUEST_FAILED",
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startedAt,
-      });
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const outcome = await withTimeout(
+          this.runGeneration(input, startedAt),
+          GENERATE_TIMEOUT_MS,
+          `Gemini did not respond within ${GENERATE_TIMEOUT_MS}ms`
+        );
+        this.jobs.set(providerJobId, outcome);
+        return { providerJobId };
+      } catch (error) {
+        lastError = error;
+        // Falls through to the next attempt, if any are left.
+      }
     }
 
+    this.jobs.set(providerJobId, {
+      state: "failed",
+      errorCode: "GEMINI_REQUEST_FAILED",
+      errorMessage: lastError instanceof Error ? lastError.message : String(lastError),
+      durationMs: Date.now() - startedAt,
+    });
     return { providerJobId };
   }
 

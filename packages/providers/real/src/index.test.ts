@@ -77,7 +77,7 @@ describe("GeminiTryOnProvider", () => {
     expect(status.errorMessage).toBe("Blocked by safety filters");
   });
 
-  it("fails cleanly when the Gemini call itself throws", async () => {
+  it("fails cleanly when the Gemini call itself throws on every attempt", async () => {
     generateContentMock.mockRejectedValue(new Error("network blip"));
 
     const provider = new GeminiTryOnProvider({ apiKey: "test-key" });
@@ -87,6 +87,35 @@ describe("GeminiTryOnProvider", () => {
     expect(status.state).toBe("failed");
     expect(status.errorCode).toBe("GEMINI_REQUEST_FAILED");
     expect(status.errorMessage).toBe("network blip");
+    // MAX_ATTEMPTS = 2 — a transient-looking failure gets one retry before
+    // giving up, not just a single shot.
+    expect(generateContentMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries once after a failed first attempt and succeeds on the second", async () => {
+    generateContentMock
+      .mockRejectedValueOnce(new Error("network blip"))
+      .mockResolvedValueOnce({
+        candidates: [{ content: { parts: [{ inlineData: { data: "ZmFrZQ==", mimeType: "image/png" } }] } }],
+      });
+
+    const provider = new GeminiTryOnProvider({ apiKey: "test-key" });
+    const { providerJobId } = await provider.generateTryOn(baseInput);
+    const status = await provider.getJobStatus(providerJobId);
+
+    expect(status.state).toBe("completed");
+    expect(generateContentMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry a clean no-image result — that's a real response, not a transient failure", async () => {
+    generateContentMock.mockResolvedValue({
+      candidates: [{ content: { parts: [{ text: "I can't do that." }] }, finishMessage: "Blocked by safety filters" }],
+    });
+
+    const provider = new GeminiTryOnProvider({ apiKey: "test-key" });
+    await provider.generateTryOn(baseInput);
+
+    expect(generateContentMock).toHaveBeenCalledTimes(1);
   });
 
   it("getJobStatus on an unknown job id reports not-found instead of throwing", async () => {
