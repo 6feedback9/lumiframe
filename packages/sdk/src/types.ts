@@ -23,6 +23,15 @@ export interface TryOnInitOptions {
    */
   buttonAnchorSelector?: string;
   /**
+   * Where the auto-injected button lands relative to its anchor (the
+   * add-to-cart button, `buttonAnchorSelector`, or the page heading
+   * fallback). `"after"` (default) matches the original behavior — right
+   * after the anchor. `"before"` puts it just above. `"floating"` ignores
+   * the anchor entirely and pins the button to the bottom-right corner of
+   * the viewport — useful on a page where no anchor placement looks right.
+   */
+  buttonPosition?: "before" | "after" | "floating";
+  /**
    * Button appearance overrides (dashboard's "Button design" page writes
    * these into the generated snippet from Store.widgetConfig). Any CSS
    * color value works for the color fields (`#hex`, `rgb()`, a named
@@ -32,7 +41,20 @@ export interface TryOnInitOptions {
   buttonColorEnd?: string;
   buttonTextColor?: string;
   buttonFont?: string;
+  /** A static glow in the accent color. Ignored when `buttonAnimation` is set to anything but `"none"` — the animation drives the same box-shadow. */
   buttonGlow?: boolean;
+  /** `"gradient"` (default) blends buttonColorStart -> buttonColorEnd; `"solid"` uses buttonColorStart flat. */
+  buttonStyle?: "gradient" | "solid";
+  /** Default `"md"`. */
+  buttonSize?: "sm" | "md" | "lg";
+  /** Default `"none"`. `"pulse"` is a soft expanding ring in the accent color; `"shimmer"` is a light sweep across the button. */
+  buttonAnimation?: "none" | "pulse" | "shimmer";
+  /** Try-on modal width in px on wide viewports (>=560px). Default 560. */
+  modalMaxWidth?: number;
+  /** Show the "Try another photo" action on the try-on result screen. Default `true`. */
+  showTryAnotherButton?: boolean;
+  /** Show the "Back to product" action on the try-on result screen. Default `true`. */
+  showBackButton?: boolean;
 }
 
 /**

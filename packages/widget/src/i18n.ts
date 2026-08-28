@@ -18,6 +18,9 @@ export interface Copy {
   errGen: string;
   aiNote: string;
   expired: string;
+  addingToCart: string;
+  addedToCart: string;
+  addToCartFallback: string;
 }
 
 const COPY: Record<MountWidgetOptions["locale"], Copy> = {
@@ -39,6 +42,9 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     errGen: "Something went wrong. Please try again.",
     aiNote: "This image is AI-generated. Actual fit may vary.",
     expired: "This preview has expired according to our privacy policy.",
+    addingToCart: "Adding…",
+    addedToCart: "Added ✓",
+    addToCartFallback: "Use the store's \"Add to cart\" button to finish your order.",
   },
   uk: {
     title: "Віртуальна примірка",
@@ -58,6 +64,9 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     errGen: "Щось пішло не так. Спробуйте ще раз.",
     aiNote: "Зображення згенеровано ШІ. Результат може відрізнятися.",
     expired: "Це прев'ю більше недоступне згідно з політикою конфіденційності.",
+    addingToCart: "Додаємо…",
+    addedToCart: "Додано ✓",
+    addToCartFallback: "Щоб завершити замовлення, натисніть «Додати до кошика» на сторінці товару.",
   },
   ru: {
     title: "Виртуальная примерка",
@@ -77,6 +86,9 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     errGen: "Что-то пошло не так. Попробуйте ещё раз.",
     aiNote: "Изображение сгенерировано ИИ. Результат может отличаться.",
     expired: "Это превью больше недоступно согласно политике конфиденциальности.",
+    addingToCart: "Добавляем…",
+    addedToCart: "Добавлено ✓",
+    addToCartFallback: "Чтобы завершить заказ, нажмите «Добавить в корзину» на странице товара.",
   },
 };
 

@@ -20,6 +20,22 @@ interface WidgetConfig {
   buttonTextColor?: string;
   buttonFont?: string;
   buttonGlow?: boolean;
+  buttonStyle?: "gradient" | "solid";
+  buttonSize?: "sm" | "md" | "lg";
+  buttonAnimation?: "none" | "pulse" | "shimmer";
+  buttonPosition?: "before" | "after" | "floating";
+  buttonAnchorSelector?: string;
+  modalMaxWidth?: number;
+  showTryAnotherButton?: boolean;
+  showBackButton?: boolean;
+}
+
+interface TenantUser {
+  id: string;
+  email: string;
+  role: string;
+  lastLoginAt: string | null;
+  createdAt: string;
 }
 
 interface TenantDetail {
@@ -28,7 +44,7 @@ interface TenantDetail {
   slug: string;
   createdAt: string;
   stores: { id: string; name: string; storeUrl: string; status: string; allowedDomains: string[]; widgetConfig?: WidgetConfig }[];
-  users: { id: string; email: string; role: string; lastLoginAt: string | null; createdAt: string }[];
+  users: TenantUser[];
   totalTryOns: number;
   totalUsageUnits: number;
   usedThisMonth: number;
@@ -149,11 +165,32 @@ const FONT_OPTIONS = [
   { value: "Georgia, serif", label: "Georgia" },
 ] as const;
 
-const WIDGET_CONFIG_DEFAULTS: Required<Pick<WidgetConfig, "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor">> = {
+const POSITION_OPTIONS = [
+  { value: "after", label: "buttonDesign.positionAfter" },
+  { value: "before", label: "buttonDesign.positionBefore" },
+  { value: "floating", label: "buttonDesign.positionFloating" },
+] as const;
+
+const MODAL_WIDTH_OPTIONS = [
+  { value: 480, label: "buttonDesign.modalWidthSm" },
+  { value: 560, label: "buttonDesign.modalWidthMd" },
+  { value: 680, label: "buttonDesign.modalWidthLg" },
+] as const;
+
+const WIDGET_CONFIG_DEFAULTS: Required<
+  Pick<
+    WidgetConfig,
+    "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor" | "buttonPosition" | "modalMaxWidth" | "showTryAnotherButton" | "showBackButton"
+  >
+> = {
   buttonText: "Try on",
   buttonColorStart: "#73b7ff",
   buttonColorEnd: "#9f8cff",
   buttonTextColor: "#ffffff",
+  buttonPosition: "after",
+  modalMaxWidth: 560,
+  showTryAnotherButton: true,
+  showBackButton: true,
 };
 
 /** Lets the platform owner edit a client's "Try on" button design directly, without needing the merchant's own dashboard (product ask: make changes to a client's store from my own console). */
@@ -183,50 +220,90 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
     }
   }
 
+  const sizeScale = config.buttonSize === "sm" ? 0.85 : config.buttonSize === "lg" ? 1.15 : 1;
+  const previewBackground =
+    config.buttonStyle === "solid" ? config.buttonColorStart : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "0.75em 1.5em",
+    padding: `${0.75 * sizeScale}em ${1.5 * sizeScale}em`,
     border: "none",
     borderRadius: 999,
-    background: `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`,
+    background: previewBackground,
     color: config.buttonTextColor,
     fontFamily: config.buttonFont || "inherit",
     fontWeight: 600,
-    fontSize: 15,
-    boxShadow: config.buttonGlow ? `0 0 18px 2px ${config.buttonColorStart}` : "none",
+    fontSize: 15 * sizeScale,
+    boxShadow: config.buttonGlow && (!config.buttonAnimation || config.buttonAnimation === "none") ? `0 0 18px 2px ${config.buttonColorStart}` : "none",
+    animation: config.buttonAnimation === "pulse" ? "lumiframe-admin-preview-pulse 1.8s ease-out infinite" : undefined,
+    position: "relative",
+    overflow: config.buttonAnimation === "shimmer" ? "hidden" : undefined,
   };
+
+  const selectStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line-strong)", background: "rgba(173,201,255,0.05)", color: "var(--paper)", fontSize: 13 };
 
   return (
     <div className="panel" style={{ padding: 24, marginBottom: 20, maxWidth: 720 }}>
       <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("buttonDesign.title")}</h3>
+      <style>{`
+        @keyframes lumiframe-admin-preview-pulse {
+          0% { box-shadow: 0 0 0 0 ${config.buttonColorStart}99; }
+          70% { box-shadow: 0 0 0 10px transparent; }
+          100% { box-shadow: 0 0 0 0 transparent; }
+        }
+        @keyframes lumiframe-admin-preview-shimmer {
+          0% { left: -150%; } 60% { left: 150%; } 100% { left: 150%; }
+        }
+        .lumiframe-admin-preview-shimmer::after {
+          content: ""; position: absolute; top: 0; left: -150%; width: 60%; height: 100%;
+          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+          animation: lumiframe-admin-preview-shimmer 2.4s ease-in-out infinite;
+        }
+      `}</style>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <div>
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.label")}</label>
             <input value={config.buttonText ?? ""} onChange={(e) => setConfig({ ...config, buttonText: e.target.value })} maxLength={60} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.style")}</label>
+            <select value={config.buttonStyle ?? "gradient"} onChange={(e) => setConfig({ ...config, buttonStyle: e.target.value as WidgetConfig["buttonStyle"] })} style={selectStyle}>
+              <option value="gradient">{t("buttonDesign.styleGradient")}</option>
+              <option value="solid">{t("buttonDesign.styleSolid")}</option>
+            </select>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: config.buttonStyle === "solid" ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div className="field">
               <label>{t("buttonDesign.color1")}</label>
               <input type="color" value={config.buttonColorStart} onChange={(e) => setConfig({ ...config, buttonColorStart: e.target.value })} style={{ height: 38, padding: 4 }} />
             </div>
-            <div className="field">
-              <label>{t("buttonDesign.color2")}</label>
-              <input type="color" value={config.buttonColorEnd} onChange={(e) => setConfig({ ...config, buttonColorEnd: e.target.value })} style={{ height: 38, padding: 4 }} />
-            </div>
+            {config.buttonStyle !== "solid" && (
+              <div className="field">
+                <label>{t("buttonDesign.color2")}</label>
+                <input type="color" value={config.buttonColorEnd} onChange={(e) => setConfig({ ...config, buttonColorEnd: e.target.value })} style={{ height: 38, padding: 4 }} />
+              </div>
+            )}
           </div>
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.textColor")}</label>
             <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 38, padding: 4 }} />
           </div>
           <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.size")}</label>
+            <select value={config.buttonSize ?? "md"} onChange={(e) => setConfig({ ...config, buttonSize: e.target.value as WidgetConfig["buttonSize"] })} style={selectStyle}>
+              <option value="sm">{t("buttonDesign.sizeSm")}</option>
+              <option value="md">{t("buttonDesign.sizeMd")}</option>
+              <option value="lg">{t("buttonDesign.sizeLg")}</option>
+            </select>
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.font")}</label>
             <select
               value={config.buttonFont ?? ""}
               onChange={(e) => setConfig({ ...config, buttonFont: e.target.value || undefined })}
-              style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line-strong)", background: "rgba(173,201,255,0.05)", color: "var(--paper)", fontSize: 13 }}
+              style={selectStyle}
             >
               {FONT_OPTIONS.map((f) => (
                 <option key={f.value} value={f.value}>
@@ -235,12 +312,97 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
               ))}
             </select>
           </div>
-          <div className="field" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
-            <input type="checkbox" id="admin-glow" checked={!!config.buttonGlow} onChange={(e) => setConfig({ ...config, buttonGlow: e.target.checked })} style={{ width: "auto" }} />
-            <label htmlFor="admin-glow" style={{ margin: 0 }}>
-              {t("buttonDesign.glow")}
-            </label>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.animation")}</label>
+            <select value={config.buttonAnimation ?? "none"} onChange={(e) => setConfig({ ...config, buttonAnimation: e.target.value as WidgetConfig["buttonAnimation"] })} style={selectStyle}>
+              <option value="none">{t("buttonDesign.animationNone")}</option>
+              <option value="pulse">{t("buttonDesign.animationPulse")}</option>
+              <option value="shimmer">{t("buttonDesign.animationShimmer")}</option>
+            </select>
           </div>
+          {(!config.buttonAnimation || config.buttonAnimation === "none") && (
+            <div className="field" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
+              <input type="checkbox" id="admin-glow" checked={!!config.buttonGlow} onChange={(e) => setConfig({ ...config, buttonGlow: e.target.checked })} style={{ width: "auto" }} />
+              <label htmlFor="admin-glow" style={{ margin: 0 }}>
+                {t("buttonDesign.glow")}
+              </label>
+            </div>
+          )}
+
+          <h4 style={{ margin: "16px 0 12px", fontSize: 13, borderTop: "1px solid var(--line)", paddingTop: 16 }}>{t("buttonDesign.placementTitle")}</h4>
+
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.position")}</label>
+            <select
+              value={config.buttonPosition ?? "after"}
+              onChange={(e) => setConfig({ ...config, buttonPosition: e.target.value as WidgetConfig["buttonPosition"] })}
+              style={selectStyle}
+            >
+              {POSITION_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {t(p.label)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {config.buttonPosition !== "floating" && (
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label>{t("buttonDesign.anchorSelector")}</label>
+              <input
+                value={config.buttonAnchorSelector ?? ""}
+                onChange={(e) => setConfig({ ...config, buttonAnchorSelector: e.target.value || undefined })}
+                placeholder=".add-to-cart"
+                maxLength={300}
+              />
+            </div>
+          )}
+
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.modalWidth")}</label>
+            <select
+              value={config.modalMaxWidth ?? 560}
+              onChange={(e) => setConfig({ ...config, modalMaxWidth: Number(e.target.value) })}
+              style={selectStyle}
+            >
+              {MODAL_WIDTH_OPTIONS.map((w) => (
+                <option key={w.value} value={w.value}>
+                  {t(w.label)} ({w.value}px)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field" style={{ marginBottom: 16 }}>
+            <label>{t("buttonDesign.modalButtons")}</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="checkbox"
+                  id="admin-show-try-another"
+                  checked={config.showTryAnotherButton !== false}
+                  onChange={(e) => setConfig({ ...config, showTryAnotherButton: e.target.checked })}
+                  style={{ width: "auto" }}
+                />
+                <label htmlFor="admin-show-try-another" style={{ margin: 0 }}>
+                  {t("buttonDesign.showTryAnother")}
+                </label>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="checkbox"
+                  id="admin-show-back"
+                  checked={config.showBackButton !== false}
+                  onChange={(e) => setConfig({ ...config, showBackButton: e.target.checked })}
+                  style={{ width: "auto" }}
+                />
+                <label htmlFor="admin-show-back" style={{ margin: 0 }}>
+                  {t("buttonDesign.showBack")}
+                </label>
+              </div>
+            </div>
+          </div>
+
           <button className="btn" style={{ width: "auto", padding: "9px 18px" }} disabled={saving} onClick={save}>
             {saving ? t("common.saving") : saved ? "✓" : t("common.save")}
           </button>
@@ -260,11 +422,111 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
   );
 }
 
+/** Add/remove a user on this client's account directly (product ask), same mechanism as the merchant's own Team page (apps/api/src/routes/team.ts) — never sets isPlatformAdmin. */
+function TeamPanel({ id, users, onUpdated }: { id: string; users: TenantUser[]; onUpdated: () => void }) {
+  const { t } = useI18n();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("MEMBER");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function addUser(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/users`, { method: "POST", body: JSON.stringify({ email, password, role }) });
+      setEmail("");
+      setPassword("");
+      setRole("MEMBER");
+      onUpdated();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeUser(userId: string) {
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/users/${userId}`, { method: "DELETE" });
+      onUpdated();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  return (
+    <div className="panel" style={{ padding: 24, maxWidth: 640 }}>
+      <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("team.title")}</h3>
+      {error && <div className="empty-state">{error}</div>}
+      <table style={{ marginBottom: 20 }}>
+        <thead>
+          <tr>
+            <th>{t("team.email")}</th>
+            <th>{t("team.role")}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.id}>
+              <td>{u.email}</td>
+              <td>{u.role}</td>
+              <td>
+                <button className="btn" style={{ width: "auto", padding: "5px 10px", fontSize: 12 }} onClick={() => removeUser(u.id)}>
+                  {t("team.remove")}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <form onSubmit={addUser} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+        <div className="field" style={{ margin: 0 }}>
+          <label>{t("team.email")}</label>
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="field" style={{ margin: 0 }}>
+          <label>{t("team.password")}</label>
+          <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <div className="field" style={{ margin: 0 }}>
+          <label>{t("team.role")}</label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line-strong)", background: "rgba(173,201,255,0.05)", color: "var(--paper)", fontSize: 13 }}
+          >
+            <option value="MEMBER">MEMBER</option>
+            <option value="ADMIN">ADMIN</option>
+            <option value="OWNER">OWNER</option>
+          </select>
+        </div>
+        <button className="btn" type="submit" style={{ width: "auto", padding: "9px 16px" }} disabled={saving}>
+          {saving ? t("common.saving") : t("team.addUser")}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+const TABS = [
+  { id: "overview", labelKey: "tenantDetail.tabOverview" },
+  { id: "plan", labelKey: "tenantDetail.tabPlan" },
+  { id: "button", labelKey: "tenantDetail.tabButton" },
+  { id: "team", labelKey: "tenantDetail.tabTeam" },
+  { id: "products", labelKey: "tenantDetail.tabProducts" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
 function TenantDetailContent({ id }: { id: string }) {
   const { t } = useI18n();
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabId>("overview");
 
   function load() {
     Promise.all([apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}`), apiFetch<{ plans: Plan[] }>("/api/v1/admin/plans")])
@@ -287,7 +549,7 @@ function TenantDetailContent({ id }: { id: string }) {
       </a>
       <div className="page-title">{tenant.name}</div>
 
-      <div className="stat-grid">
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
         <div className="stat-card">
           <div className="label">{t("tenantDetail.tryOnsAllTime")}</div>
           <div className="value">{tenant.totalTryOns}</div>
@@ -302,69 +564,98 @@ function TenantDetailContent({ id }: { id: string }) {
         </div>
       </div>
 
-      <BillingPanel id={id} tenant={tenant} plans={plans} onUpdated={load} />
-      <ButtonDesignPanel id={id} tenant={tenant} onUpdated={load} />
-
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>{t("tenantDetail.store")}</th>
-              <th>{t("tenantDetail.url")}</th>
-              <th>{t("tenantDetail.status")}</th>
-              <th>{t("tenantDetail.allowedDomains")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tenant.stores.map((s) => (
-              <tr key={s.id}>
-                <td>{s.name}</td>
-                <td>{s.storeUrl}</td>
-                <td>
-                  <span className={`badge badge-${s.status.toLowerCase()}`}>{s.status}</span>
-                </td>
-                <td>{s.allowedDomains.join(", ")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: "flex", gap: 6, marginBottom: 20, borderBottom: "1px solid var(--line)" }}>
+        {TABS.map((tb) => (
+          <button
+            key={tb.id}
+            type="button"
+            onClick={() => setTab(tb.id)}
+            style={{
+              padding: "10px 16px",
+              background: "none",
+              border: "none",
+              borderBottom: tab === tb.id ? "2px solid var(--sky)" : "2px solid transparent",
+              color: tab === tb.id ? "var(--paper)" : "var(--mist)",
+              fontSize: 13,
+              fontWeight: tab === tb.id ? 700 : 500,
+              cursor: "pointer",
+            }}
+          >
+            {t(tb.labelKey)}
+          </button>
+        ))}
       </div>
 
-      <div className="panel">
-        <table>
-          <thead>
-            <tr>
-              <th>{t("tenantDetail.product")}</th>
-              <th>{t("tenants.status")}</th>
-              <th>{t("tenantDetail.created")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tenant.recentTryOns.length === 0 ? (
+      {tab === "overview" && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <table>
+            <thead>
               <tr>
-                <td colSpan={3} className="empty-state">
-                  {t("tenantDetail.empty")}
-                </td>
+                <th>{t("tenantDetail.store")}</th>
+                <th>{t("tenantDetail.url")}</th>
+                <th>{t("tenantDetail.status")}</th>
+                <th>{t("tenantDetail.allowedDomains")}</th>
               </tr>
-            ) : (
-              tenant.recentTryOns.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.productTitle ?? "—"}</td>
+            </thead>
+            <tbody>
+              {tenant.stores.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name}</td>
+                  <td>{s.storeUrl}</td>
                   <td>
-                    <span className={`badge badge-${r.status.toLowerCase()}`}>{r.status}</span>
+                    <span className={`badge badge-${s.status.toLowerCase()}`}>{s.status}</span>
                   </td>
-                  <td>{new Date(r.createdAt).toLocaleString()}</td>
+                  <td>{s.allowedDomains.join(", ")}</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        <div style={{ padding: 16 }}>
-          <a href={`/tryons?tenantId=${id}`} style={{ fontSize: 12, color: "var(--sky)" }}>
-            {t("tenantDetail.viewAllTryOns")}
-          </a>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
+
+      {tab === "plan" && <BillingPanel id={id} tenant={tenant} plans={plans} onUpdated={load} />}
+
+      {tab === "button" && <ButtonDesignPanel id={id} tenant={tenant} onUpdated={load} />}
+
+      {tab === "team" && <TeamPanel id={id} users={tenant.users} onUpdated={load} />}
+
+      {tab === "products" && (
+        <div className="panel">
+          <table>
+            <thead>
+              <tr>
+                <th>{t("tenantDetail.product")}</th>
+                <th>{t("tenants.status")}</th>
+                <th>{t("tenantDetail.created")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tenant.recentTryOns.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="empty-state">
+                    {t("tenantDetail.empty")}
+                  </td>
+                </tr>
+              ) : (
+                tenant.recentTryOns.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.productTitle ?? "—"}</td>
+                    <td>
+                      <span className={`badge badge-${r.status.toLowerCase()}`}>{r.status}</span>
+                    </td>
+                    <td>{new Date(r.createdAt).toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <div style={{ padding: 16 }}>
+            <a href={`/tryons?tenantId=${id}`} style={{ fontSize: 12, color: "var(--sky)" }}>
+              {t("tenantDetail.viewAllTryOns")}
+            </a>
+          </div>
+        </div>
+      )}
     </>
   );
 }

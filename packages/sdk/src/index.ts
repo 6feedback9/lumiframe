@@ -49,7 +49,6 @@ function ensureButtonStylesInjected(): void {
   justify-content: center;
   gap: 0.5em;
   margin: 0.75em 0;
-  padding: 0.75em 1.5em;
   border: none;
   border-radius: var(--lumiframe-radius, 999px);
   background: var(--lumiframe-accent, linear-gradient(135deg, #73b7ff, #9f8cff));
@@ -58,10 +57,52 @@ function ensureButtonStylesInjected(): void {
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
+  position: relative;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 .lumiframe-tryon-button:hover { opacity: 0.9; }
 .lumiframe-tryon-button:active { transform: scale(0.98); }
+
+/* Position (TryOnInitOptions.buttonPosition, default "after") */
+.lumiframe-tryon-button-floating {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483000;
+  margin: 0;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+}
+
+/* Size (TryOnInitOptions.buttonSize, default "md") */
+.lumiframe-tryon-button.lumiframe-size-sm { padding: 0.5em 1em; font-size: 0.85em; }
+.lumiframe-tryon-button.lumiframe-size-md { padding: 0.75em 1.5em; font-size: 1em; }
+.lumiframe-tryon-button.lumiframe-size-lg { padding: 1em 2em; font-size: 1.15em; }
+
+/* Animation (TryOnInitOptions.buttonAnimation, default "none") */
+.lumiframe-tryon-button.lumiframe-anim-pulse {
+  animation: lumiframe-pulse 1.8s ease-out infinite;
+}
+@keyframes lumiframe-pulse {
+  0% { box-shadow: 0 0 0 0 var(--lumiframe-pulse-color, rgba(115,183,255,0.6)); }
+  70% { box-shadow: 0 0 0 10px rgba(115,183,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(115,183,255,0); }
+}
+.lumiframe-tryon-button.lumiframe-anim-shimmer { overflow: hidden; }
+.lumiframe-tryon-button.lumiframe-anim-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+  animation: lumiframe-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes lumiframe-shimmer {
+  0% { left: -150%; }
+  60% { left: 150%; }
+  100% { left: 150%; }
+}
 `.trim();
   document.head.appendChild(style);
 }
@@ -167,6 +208,9 @@ class TryOnSdkImpl implements TryOnSdk {
       apiBaseUrl: this.options!.apiBaseUrl!,
       storeId: this.options!.storeId,
       locale: this.options!.locale ?? "en",
+      modalMaxWidth: this.options!.modalMaxWidth,
+      showTryAnotherButton: this.options!.showTryAnotherButton,
+      showBackButton: this.options!.showBackButton,
       onEvent: (event, payload) => this.bus.emit(event, payload as never),
       onClose: () => this.close(),
     });
@@ -220,6 +264,19 @@ class TryOnSdkImpl implements TryOnSdk {
     const product = this.resolveProduct();
     if (!product) return; // nothing resolved yet — try again from attach()
 
+    const position = this.options?.buttonPosition ?? "after";
+    const button = this.createButton();
+
+    if (position === "floating") {
+      // No anchor needed — pinned to the viewport corner. The right spot
+      // for a page where neither an add-to-cart button nor a heading gives
+      // a sensible place to inject inline.
+      button.classList.add("lumiframe-tryon-button-floating");
+      document.body.appendChild(button);
+      this.buttonInjected = true;
+      return;
+    }
+
     const anchorSelector = this.options?.buttonAnchorSelector;
     const anchor = anchorSelector
       ? document.querySelector<HTMLElement>(anchorSelector)
@@ -227,8 +284,7 @@ class TryOnSdkImpl implements TryOnSdk {
 
     if (!anchor?.parentElement) return; // no safe place found — merchant can place a manual trigger instead
 
-    const button = this.createButton();
-    anchor.insertAdjacentElement("afterend", button);
+    anchor.insertAdjacentElement(position === "before" ? "beforebegin" : "afterend", button);
     this.buttonInjected = true;
   }
 
@@ -236,7 +292,6 @@ class TryOnSdkImpl implements TryOnSdk {
     ensureButtonStylesInjected();
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "lumiframe-tryon-button";
     button.setAttribute("data-lumiframe-tryon", "");
     button.textContent = this.options?.buttonLabel ?? "Try on";
 
@@ -244,15 +299,30 @@ class TryOnSdkImpl implements TryOnSdk {
     // default look via the same custom properties ensureButtonStylesInjected
     // already wires the base CSS to — set inline so they beat the default
     // rule's specificity without needing !important.
-    const { buttonColorStart, buttonColorEnd, buttonTextColor, buttonFont, buttonGlow } = this.options ?? {};
+    const { buttonColorStart, buttonColorEnd, buttonTextColor, buttonFont, buttonGlow, buttonStyle, buttonSize, buttonAnimation } =
+      this.options ?? {};
+
+    const size = buttonSize ?? "md";
+    const animation = buttonAnimation ?? "none";
+    button.className = `lumiframe-tryon-button lumiframe-size-${size}${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
+
     if (buttonColorStart || buttonColorEnd) {
       const start = buttonColorStart ?? buttonColorEnd!;
-      const end = buttonColorEnd ?? buttonColorStart!;
-      button.style.setProperty("--lumiframe-accent", `linear-gradient(135deg, ${start}, ${end})`);
+      // "solid" (TryOnInitOptions.buttonStyle) uses just the start color,
+      // flat — no gradient. Default/"gradient" keeps the two-color blend.
+      const background =
+        buttonStyle === "solid" ? start : `linear-gradient(135deg, ${start}, ${buttonColorEnd ?? buttonColorStart!})`;
+      button.style.setProperty("--lumiframe-accent", background);
+      // Feeds the "pulse" animation's ring color (8-digit hex = alpha,
+      // broadly supported) — harmless to set even when unused.
+      button.style.setProperty("--lumiframe-pulse-color", `${start}99`);
     }
     if (buttonTextColor) button.style.setProperty("--lumiframe-accent-contrast", buttonTextColor);
     if (buttonFont) button.style.fontFamily = buttonFont;
-    if (buttonGlow) {
+    // A static glow and an animated one both drive box-shadow — only
+    // apply the static version when no animation is going to keep
+    // overwriting it anyway.
+    if (buttonGlow && animation === "none") {
       const glowColor = buttonColorStart ?? buttonColorEnd ?? "#73b7ff";
       button.style.boxShadow = `0 0 18px 2px ${glowColor}`;
     }

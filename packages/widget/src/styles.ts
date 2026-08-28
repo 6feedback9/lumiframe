@@ -18,7 +18,7 @@ export const WIDGET_CSS = `
 .lf-modal {
   background: #fff; color: #111;
   border-radius: 20px 20px 0 0;
-  width: 100%; max-width: 460px;
+  width: 100%; max-width: var(--lf-modal-width, 560px);
   max-height: 92vh; overflow-y: auto;
   box-shadow: 0 -8px 60px rgba(0,0,0,.2);
   animation: lfUp .28s cubic-bezier(.34,1.4,.64,1);
@@ -42,6 +42,7 @@ export const WIDGET_CSS = `
 .lf-close:hover { background: #e6e6e6; color: #111; }
 
 .lf-body { padding: 16px 18px 22px; }
+@media (min-width: 560px) { .lf-body { padding: 20px 26px 28px; } }
 
 .lf-product { display: flex; gap: 12px; align-items: center; background: #f8f8f8; border-radius: 12px; padding: 10px; margin-bottom: 16px; }
 .lf-pimg { width: 48px; height: 60px; object-fit: cover; border-radius: 8px; background: #eee; flex-shrink: 0; }
@@ -87,10 +88,11 @@ export const WIDGET_CSS = `
 .lf-gen-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .lf-gen-sub { font-size: 12px; color: #aaa; }
 
-.lf-result-img { width: 100%; border-radius: 12px; display: block; max-height: 400px; object-fit: contain; background: #f8f8f8; }
+.lf-result-img { width: 100%; border-radius: 12px; display: block; max-height: 460px; object-fit: contain; background: #f8f8f8; }
 .lf-ai-note { font-size: 11px; color: #bbb; text-align: center; margin-top: 8px; }
-.lf-actions { display: flex; gap: 8px; margin-top: 12px; }
-.lf-actions .lf-btn { margin-top: 0; }
+.lf-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.lf-actions .lf-btn { margin-top: 0; flex: 1 1 140px; }
+.lf-actions:empty { margin-top: 0; }
 
 .lf-footer { text-align: center; padding: 12px 18px 18px; font-size: 10px; color: #ddd; letter-spacing: .06em; text-transform: uppercase; border-top: 1px solid #f5f5f5; margin-top: 4px; }
 `;

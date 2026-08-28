@@ -13,12 +13,24 @@ const updateStoreSchema = z.object({
       language: z.enum(["en", "uk", "ru"]).optional(),
       showPoweredBy: z.boolean().optional(),
       // Button appearance (product ask: merchant-configurable button
-      // color/font/glow — packages/sdk/src/index.ts applies these).
+      // color/font/glow/size/style/animation — packages/sdk/src/index.ts
+      // applies all of these).
       buttonColorStart: z.string().max(20).optional(),
       buttonColorEnd: z.string().max(20).optional(),
       buttonTextColor: z.string().max(20).optional(),
       buttonFont: z.string().max(80).optional(),
       buttonGlow: z.boolean().optional(),
+      buttonStyle: z.enum(["gradient", "solid"]).optional(),
+      buttonSize: z.enum(["sm", "md", "lg"]).optional(),
+      buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
+      // Button placement + try-on modal layout (product ask: merchant
+      // picks where the button lands, and how the try-on window itself is
+      // laid out — packages/sdk + packages/widget apply all of these).
+      buttonPosition: z.enum(["before", "after", "floating"]).optional(),
+      buttonAnchorSelector: z.string().max(300).optional(),
+      modalMaxWidth: z.number().int().min(360).max(900).optional(),
+      showTryAnotherButton: z.boolean().optional(),
+      showBackButton: z.boolean().optional(),
     })
     .optional(),
 });

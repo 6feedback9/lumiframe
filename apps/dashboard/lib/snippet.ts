@@ -10,6 +10,14 @@ export interface WidgetConfig {
   buttonTextColor?: string;
   buttonFont?: string;
   buttonGlow?: boolean;
+  buttonStyle?: "gradient" | "solid";
+  buttonSize?: "sm" | "md" | "lg";
+  buttonAnimation?: "none" | "pulse" | "shimmer";
+  buttonPosition?: "before" | "after" | "floating";
+  buttonAnchorSelector?: string;
+  modalMaxWidth?: number;
+  showTryAnotherButton?: boolean;
+  showBackButton?: boolean;
 }
 
 export function buildInitOptions(storeId: string, apiBaseUrl: string, config: WidgetConfig = {}): Record<string, unknown> {
@@ -20,6 +28,14 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.buttonTextColor) options.buttonTextColor = config.buttonTextColor;
   if (config.buttonFont) options.buttonFont = config.buttonFont;
   if (config.buttonGlow) options.buttonGlow = true;
+  if (config.buttonStyle) options.buttonStyle = config.buttonStyle;
+  if (config.buttonSize) options.buttonSize = config.buttonSize;
+  if (config.buttonAnimation && config.buttonAnimation !== "none") options.buttonAnimation = config.buttonAnimation;
+  if (config.buttonPosition && config.buttonPosition !== "after") options.buttonPosition = config.buttonPosition;
+  if (config.buttonAnchorSelector) options.buttonAnchorSelector = config.buttonAnchorSelector;
+  if (config.modalMaxWidth) options.modalMaxWidth = config.modalMaxWidth;
+  if (config.showTryAnotherButton === false) options.showTryAnotherButton = false;
+  if (config.showBackButton === false) options.showBackButton = false;
   return options;
 }
 

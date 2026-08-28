@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { prisma } from "../context";
-import { verifyPassword } from "../auth/password";
+import { BUCKETS } from "@lumiframe/storage";
+import { prisma, storage } from "../context";
+import { verifyPassword, hashPassword } from "../auth/password";
 import { signMerchantToken } from "../auth/jwt";
 import { authenticateAdmin } from "../plugins/auth";
 import { loginSchema } from "../schemas";
@@ -10,6 +11,16 @@ import { buildTryOnDetailPayload } from "./tryons";
 
 const setPlanSchema = z.object({ planId: z.string().nullable() });
 const addCreditsSchema = z.object({ addCredits: z.number().int() });
+const addUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  role: z.enum(["OWNER", "ADMIN", "MEMBER"]).default("MEMBER"),
+});
+
+// The reserved tenant apps/api/scripts/createPlatformAdmin.mjs creates to
+// hold platform-admin accounts — never a real merchant, so it's excluded
+// from every client-facing list/aggregate below.
+const PLATFORM_TENANT_SLUG = "lumiframe-platform";
 
 // Same shape as apps/api/src/routes/store.ts's own PATCH /api/v1/store —
 // duplicated rather than imported since that route's schema is merchant-
@@ -24,6 +35,14 @@ const setWidgetConfigSchema = z.object({
   buttonTextColor: z.string().max(20).optional(),
   buttonFont: z.string().max(80).optional(),
   buttonGlow: z.boolean().optional(),
+  buttonStyle: z.enum(["gradient", "solid"]).optional(),
+  buttonSize: z.enum(["sm", "md", "lg"]).optional(),
+  buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
+  buttonPosition: z.enum(["before", "after", "floating"]).optional(),
+  buttonAnchorSelector: z.string().max(300).optional(),
+  modalMaxWidth: z.number().int().min(360).max(900).optional(),
+  showTryAnotherButton: z.boolean().optional(),
+  showBackButton: z.boolean().optional(),
 });
 
 // The platform-owner's own view across every tenant (ARCHITECTURE.md §11
@@ -50,8 +69,13 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/api/v1/admin/tenants", { preHandler: authenticateAdmin }, async (_request, reply) => {
-    const [tenants, tryOnCounts, usageSums, usedThisMonthByTenant] = await Promise.all([
+    const startOfMonth = startOfCurrentMonthUtc();
+    const [tenants, tryOnCounts, usageSums, usedThisMonthByTenant, tryOnsThisMonthPlatformWide] = await Promise.all([
+      // Never list the reserved platform-admin tenant here — it's not a
+      // client (see the schema comment on User.isPlatformAdmin) and was
+      // only ever showing up because nothing filtered it.
       prisma.tenant.findMany({
+        where: { slug: { not: PLATFORM_TENANT_SLUG } },
         orderBy: { createdAt: "desc" },
         include: {
           plan: true,
@@ -63,7 +87,10 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       prisma.usageRecord.groupBy({
         by: ["tenantId"],
         _count: { _all: true },
-        where: { createdAt: { gte: startOfCurrentMonthUtc() } },
+        where: { createdAt: { gte: startOfMonth } },
+      }),
+      prisma.tryOnSession.count({
+        where: { createdAt: { gte: startOfMonth }, tenant: { slug: { not: PLATFORM_TENANT_SLUG } } },
       }),
     ]);
 
@@ -71,7 +98,23 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const usageByTenant = new Map(usageSums.map((u) => [u.tenantId, u._sum.units ?? 0]));
     const usedThisMonthMap = new Map(usedThisMonthByTenant.map((u) => [u.tenantId, u._count._all]));
 
+    // What actually matters to a SaaS owner at a glance: how many paying
+    // clients, how many are live, how fast that's growing, how much
+    // activity is happening right now, and who's waiting on me — not raw
+    // all-time totals (product ask: "подумай что важно для меня как для
+    // владельца"). MRR is "if everyone with an assigned plan pays for it"
+    // — honest given billing is still manual (DEPLOYMENT.md §8).
+    const summary = {
+      totalClients: tenants.length,
+      activeClients: tenants.filter((t) => t.stores.some((s) => s.status === "ACTIVE")).length,
+      newThisMonth: tenants.filter((t) => t.createdAt >= startOfMonth).length,
+      tryOnsThisMonth: tryOnsThisMonthPlatformWide,
+      pendingRequests: tenants.filter((t) => t.planRequestNote).length,
+      mrrUsd: tenants.reduce((sum, t) => sum + (t.plan ? Number(t.plan.priceUsd) : 0), 0),
+    };
+
     return reply.send({
+      summary,
       tenants: tenants.map((t) => ({
         id: t.id,
         name: t.name,
@@ -222,23 +265,74 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       prisma.tryOnSession.count({ where }),
     ]);
 
-    return reply.send({
-      items: items.map((session) => ({
-        id: session.id,
-        tenantId: session.tenantId,
-        tenantName: session.tenant.name,
-        storeName: session.store.name,
-        productTitle: session.productTitle,
-        productImageUrl: session.productImageUrl,
-        status: session.generations[0]?.status ?? session.status,
-        errorCode: session.generations[0]?.errorCode ?? null,
-        errorMessage: session.generations[0]?.errorMessage ?? null,
-        createdAt: session.createdAt,
-      })),
-      total,
-      page,
-      limit,
+    // Product ask: the platform owner should see the customer photo and
+    // the result right in the list, not just after clicking through.
+    const rows = await Promise.all(
+      items.map(async (session) => {
+        const latest = session.generations[0];
+        const [resultUrl, customerImageUrl] = await Promise.all([
+          latest?.status === "COMPLETED" && latest.resultImageKey
+            ? storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600).catch(() => null)
+            : Promise.resolve(null),
+          latest?.customerImageKey
+            ? storage.getSignedUrl(BUCKETS.customerPhotos, latest.customerImageKey, 3600).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        return {
+          id: session.id,
+          tenantId: session.tenantId,
+          tenantName: session.tenant.name,
+          storeName: session.store.name,
+          productTitle: session.productTitle,
+          productImageUrl: session.productImageUrl,
+          customerImageUrl,
+          resultUrl,
+          status: latest?.status ?? session.status,
+          errorCode: latest?.errorCode ?? null,
+          errorMessage: latest?.errorMessage ?? null,
+          createdAt: session.createdAt,
+        };
+      })
+    );
+
+    return reply.send({ items: rows, total, page, limit });
+  });
+
+  // ── Team management: the platform owner can add/remove a user on any
+  // tenant directly (product ask), the same mechanism the merchant's own
+  // "Team" page uses (apps/api/src/routes/team.ts) — never sets
+  // isPlatformAdmin (that stays script-only, see the schema comment on
+  // User.isPlatformAdmin — this endpoint cannot create another admin
+  // account no matter what the request body says). ────────────────────
+  app.post("/api/v1/admin/tenants/:id/users", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = addUserSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const existing = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
+    if (existing) return reply.code(409).send({ error: "An account with this email already exists" });
+
+    const passwordHash = await hashPassword(parsed.data.password);
+    const user = await prisma.user.create({
+      data: { tenantId: id, email: parsed.data.email.toLowerCase(), passwordHash, role: parsed.data.role },
     });
+    await prisma.auditLog.create({
+      data: { tenantId: id, action: "user.created_by_admin", targetType: "User", targetId: user.id },
+    });
+    return reply.code(201).send({ id: user.id, email: user.email, role: user.role, createdAt: user.createdAt });
+  });
+
+  app.delete("/api/v1/admin/tenants/:id/users/:userId", { preHandler: authenticateAdmin }, async (request, reply) => {
+    const { id, userId } = request.params as { id: string; userId: string };
+    const user = await prisma.user.findFirst({ where: { id: userId, tenantId: id } });
+    if (!user) return reply.code(404).send({ error: "User not found on this tenant" });
+    if (user.isPlatformAdmin) return reply.code(403).send({ error: "Cannot remove a platform admin account from here" });
+
+    await prisma.user.delete({ where: { id: userId } });
+    await prisma.auditLog.create({
+      data: { tenantId: id, action: "user.removed_by_admin", targetType: "User", targetId: userId },
+    });
+    return reply.send({ ok: true });
   });
 
   app.get("/api/v1/admin/tryons/:id", { preHandler: authenticateAdmin }, async (request, reply) => {

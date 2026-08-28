@@ -23,6 +23,12 @@ export interface MountWidgetOptions {
   locale: "en" | "uk" | "ru";
   onEvent: (event: WidgetEventName, payload: unknown) => void;
   onClose: () => void;
+  /** Modal width in px on wide viewports (>=560px). Default 560. */
+  modalMaxWidth?: number;
+  /** Show the "Try another photo" action on the result screen. Default true. */
+  showTryAnotherButton?: boolean;
+  /** Show the "Back to product" action on the result screen. Default true. */
+  showBackButton?: boolean;
 }
 
 export interface WidgetHandle {

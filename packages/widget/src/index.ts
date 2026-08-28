@@ -36,9 +36,15 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   let tryOnId: string | null = null;
   let pollHandle: ReturnType<typeof setTimeout> | null = null;
 
+  const showTryAnother = options.showTryAnotherButton ?? true;
+  const showBack = options.showBackButton ?? true;
+
   const backdrop = document.createElement("div");
   backdrop.className = "lf-backdrop";
   backdrop.setAttribute("data-lumiframe-widget", "");
+  if (options.modalMaxWidth) {
+    backdrop.style.setProperty("--lf-modal-width", `${options.modalMaxWidth}px`);
+  }
   backdrop.innerHTML = `
     <div class="lf-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(T.title)}">
       <div class="lf-header">
@@ -87,8 +93,8 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
           <img class="lf-result-img" data-result-img alt="Try-on result">
           <div class="lf-ai-note">${escapeHtml(T.aiNote)}</div>
           <div class="lf-actions">
-            <button type="button" class="lf-btn lf-btn-secondary" data-retry>${escapeHtml(T.tryAnother)}</button>
-            <button type="button" class="lf-btn lf-btn-secondary" data-back>${escapeHtml(T.backToProduct)}</button>
+            ${showTryAnother ? `<button type="button" class="lf-btn lf-btn-secondary" data-retry>${escapeHtml(T.tryAnother)}</button>` : ""}
+            ${showBack ? `<button type="button" class="lf-btn lf-btn-secondary" data-back>${escapeHtml(T.backToProduct)}</button>` : ""}
           </div>
           <button type="button" class="lf-btn lf-btn-primary" data-add-to-cart>${escapeHtml(T.addToCart)}</button>
         </div>
@@ -221,6 +227,66 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     options.onClose();
   }
 
+  /**
+   * Finds the variant id Shopify's own AJAX Cart API needs. Every stock
+   * Shopify theme's product form carries a `[name="id"]` field with the
+   * selected variant — the same field the theme's own "Add to cart" button
+   * submits. Gated on `window.Shopify` existing so a non-Shopify page that
+   * happens to have an unrelated `name="id"` field never gets a false hit.
+   */
+  function detectShopifyVariantId(): string | null {
+    if (typeof window === "undefined" || !(window as unknown as { Shopify?: unknown }).Shopify) return null;
+    const field = document.querySelector<HTMLInputElement | HTMLSelectElement>(
+      'form[action*="/cart/add"] [name="id"], form[action*="/cart/add"] select[name="id"], [name="id"]'
+    );
+    return field?.value || null;
+  }
+
+  async function addToCart(): Promise<void> {
+    options.onEvent("tryon:add-to-cart", { product: options.product, tryOnId: tryOnId ?? undefined });
+    void api.postEvent({
+      type: "TRYON_ADD_TO_CART",
+      tryOnSessionId: tryOnId ?? undefined,
+      externalProductId: options.product.productId,
+      visitorId,
+      browserSessionId,
+    });
+
+    const btn = q<HTMLButtonElement>("[data-add-to-cart]");
+    const originalLabel = btn.textContent;
+    const variantId = detectShopifyVariantId();
+
+    if (!variantId) {
+      // Not a storefront we can add to directly (or no variant resolved) —
+      // don't fake a success state. Tell the shopper what to do and let
+      // them use the store's own button.
+      showError(T.addToCartFallback);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = T.addingToCart;
+    clearError();
+    try {
+      const res = await fetch("/cart/add.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ items: [{ id: variantId, quantity: 1 }] }),
+      });
+      if (!res.ok) throw new Error(`cart add failed: ${res.status}`);
+      btn.textContent = T.addedToCart;
+      // Most Shopify themes listen for one of these to refresh a cart
+      // drawer/count bubble — harmless no-op on themes that don't.
+      document.dispatchEvent(new CustomEvent("cart:refresh"));
+      document.dispatchEvent(new CustomEvent("cart:updated"));
+      setTimeout(close, 1100);
+    } catch {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+      showError(T.errGen);
+    }
+  }
+
   // ── Wire up events ──────────────────────────────────────────────────
   q("[data-close]").addEventListener("click", close);
   backdrop.addEventListener("click", (e) => {
@@ -247,18 +313,9 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   });
 
   q("[data-generate]").addEventListener("click", () => void generate());
-  q("[data-retry]").addEventListener("click", () => void retry());
-  q("[data-back]").addEventListener("click", close);
-  q("[data-add-to-cart]").addEventListener("click", () => {
-    options.onEvent("tryon:add-to-cart", { product: options.product, tryOnId: tryOnId ?? undefined });
-    void api.postEvent({
-      type: "TRYON_ADD_TO_CART",
-      tryOnSessionId: tryOnId ?? undefined,
-      externalProductId: options.product.productId,
-      visitorId,
-      browserSessionId,
-    });
-  });
+  backdrop.querySelector("[data-retry]")?.addEventListener("click", () => void retry());
+  backdrop.querySelector("[data-back]")?.addEventListener("click", close);
+  q("[data-add-to-cart]").addEventListener("click", () => void addToCart());
 
   return { close };
 }
