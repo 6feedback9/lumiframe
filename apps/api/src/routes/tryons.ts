@@ -7,7 +7,7 @@ import { env } from "../env";
 import { authenticateMerchant, authenticateStorePublic } from "../plugins/auth";
 import { isAllowedProductUrl } from "../domain/allowedDomains";
 import { checkPlanEntitlement } from "../domain/planEntitlement";
-import { createTryOnSchema, retryPhotoSchema } from "../schemas";
+import { createTryOnSchema, feedbackSchema, retryPhotoSchema } from "../schemas";
 
 const MAX_CUSTOMER_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -243,10 +243,37 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ tryOnId: session.id, generationId: latest.id, status: latest.status });
   });
 
+  // ── Public: shopper likes/dislikes their own result (product ask) ───
+  app.post("/api/v1/tryons/:id/feedback", { preHandler: authenticateStorePublic }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = feedbackSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const store = request.store!;
+    const session = await prisma.tryOnSession.findFirst({ where: { id, storeId: store.id } });
+    if (!session) return reply.code(404).send({ error: "Try-on session not found" });
+    // Only makes sense once there's a result to react to — and keeps this
+    // endpoint from being usable to spam a session that never generated.
+    if (session.status !== "COMPLETED") return reply.code(409).send({ error: "This try-on has no result yet" });
+
+    await prisma.tryOnSession.update({
+      where: { id },
+      data: { feedback: parsed.data.rating, feedbackAt: new Date() },
+    });
+    return reply.send({ ok: true });
+  });
+
   // ── Merchant dashboard: list try-ons for the authenticated tenant ────
   app.get("/api/v1/tryons", { preHandler: authenticateMerchant }, async (request, reply) => {
     const { tenantId } = request.merchant!;
-    const query = request.query as { page?: string; limit?: string; storeId?: string; from?: string; to?: string };
+    const query = request.query as {
+      page?: string;
+      limit?: string;
+      storeId?: string;
+      from?: string;
+      to?: string;
+      feedback?: string;
+    };
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
 
@@ -264,7 +291,15 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
           }
         : {};
 
-    const where = { tenantId, ...(query.storeId ? { storeId: query.storeId } : {}), ...createdAtFilter };
+    const feedbackFilter =
+      query.feedback === "LIKE"
+        ? { feedback: "LIKE" as const }
+        : query.feedback === "DISLIKE"
+          ? { feedback: "DISLIKE" as const }
+          : query.feedback === "ANY"
+            ? { feedback: { not: null } }
+            : {};
+    const where = { tenantId, ...(query.storeId ? { storeId: query.storeId } : {}), ...createdAtFilter, ...feedbackFilter };
     const [items, total] = await Promise.all([
       prisma.tryOnSession.findMany({
         where,
@@ -295,6 +330,7 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
           errorCode: latest?.errorCode ?? null,
           errorMessage: latest?.errorMessage ?? null,
           generationDurationMs: latest?.generationDurationMs ?? null,
+          feedback: session.feedback,
           utmSource: session.utmSource,
           utmCampaign: session.utmCampaign,
           createdAt: session.createdAt,
@@ -370,6 +406,7 @@ export async function buildTryOnDetailPayload(
       // today, but the null case is handled either way).
       customerImageUrl,
       resultUrl,
+      feedback: session.feedback,
       generationDurationMs: latest?.generationDurationMs ?? null,
       generationsCount: session.generations.length,
       utm: {

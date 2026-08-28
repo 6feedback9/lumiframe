@@ -43,6 +43,8 @@ const setWidgetConfigSchema = z.object({
   modalMaxWidth: z.number().int().min(360).max(900).optional(),
   showTryAnotherButton: z.boolean().optional(),
   showBackButton: z.boolean().optional(),
+  modalHeading: z.string().max(120).optional(),
+  modalSubheading: z.string().max(200).optional(),
 });
 
 // The platform-owner's own view across every tenant (ARCHITECTURE.md §11
@@ -245,10 +247,18 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ── Cross-tenant try-on browsing (product ask: platform owner sees
   // every store's try-ons, photos included) ────────────────────────────
   app.get("/api/v1/admin/tryons", { preHandler: authenticateAdmin }, async (request, reply) => {
-    const query = request.query as { page?: string; limit?: string; tenantId?: string };
+    const query = request.query as { page?: string; limit?: string; tenantId?: string; feedback?: string };
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
-    const where = query.tenantId ? { tenantId: query.tenantId } : {};
+    const feedbackFilter =
+      query.feedback === "LIKE"
+        ? { feedback: "LIKE" as const }
+        : query.feedback === "DISLIKE"
+          ? { feedback: "DISLIKE" as const }
+          : query.feedback === "ANY"
+            ? { feedback: { not: null } }
+            : {};
+    const where = { ...(query.tenantId ? { tenantId: query.tenantId } : {}), ...feedbackFilter };
 
     const [items, total] = await Promise.all([
       prisma.tryOnSession.findMany({
@@ -287,6 +297,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
           productImageUrl: session.productImageUrl,
           customerImageUrl,
           resultUrl,
+          feedback: session.feedback,
           status: latest?.status ?? session.status,
           errorCode: latest?.errorCode ?? null,
           errorMessage: latest?.errorMessage ?? null,

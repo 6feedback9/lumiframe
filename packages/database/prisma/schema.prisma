@@ -60,6 +60,14 @@ enum TryOnStatus {
   EXPIRED
 }
 
+// The shopper's own reaction to their try-on result (product ask: let the
+// customer like/dislike a try-on, and give the merchant/platform owner a
+// feedback view). Set once a result exists — never before COMPLETED.
+enum TryOnFeedback {
+  LIKE
+  DISLIKE
+}
+
 // Mirrors ARCHITECTURE.md §9 (Events), plus the two attribution-specific
 // event kinds named explicitly in the product spec (§26): TRYON_ADD_TO_CART
 // and TRYON_ORDER are recorded in addition to the generic ADD_TO_CART /
@@ -305,6 +313,12 @@ model TryOnSession {
   // kept in sync by the worker. Source of truth is still TryOnGeneration.
   status TryOnStatus @default(CREATED)
 
+  // The shopper's like/dislike on their own result (public, unauthenticated
+  // POST from the widget — see apps/api/src/routes/tryons.ts's /feedback
+  // route). Null until they tap one.
+  feedback   TryOnFeedback?
+  feedbackAt DateTime?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   expiresAt DateTime?
@@ -318,6 +332,7 @@ model TryOnSession {
   @@index([tenantId, storeId, createdAt(sort: Desc)])
   @@index([storeId, externalProductId])
   @@index([visitorId])
+  @@index([tenantId, feedback])
   @@map("tryon_sessions")
 }
 

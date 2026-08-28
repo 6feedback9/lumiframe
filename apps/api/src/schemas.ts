@@ -52,6 +52,10 @@ export const retryPhotoSchema = z.object({
   customerImage: z.string().startsWith("data:image/", "customerImage must be a data:image/... URI"),
 });
 
+export const feedbackSchema = z.object({
+  rating: z.enum(["LIKE", "DISLIKE"]),
+});
+
 export const eventSchema = z.object({
   type: z.enum([
     "WIDGET_OPENED",
