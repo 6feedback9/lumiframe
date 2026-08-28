@@ -1,12 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiFetch, clearToken, getToken } from "@/lib/api";
 import { useI18n, type Locale } from "@/lib/i18n";
 
+// useState's initializer can't safely read localStorage — this page is
+// statically pre-rendered (no window at build time), so reading it there
+// would make the client's first render disagree with the pre-rendered
+// HTML (a React hydration mismatch). useLayoutEffect below reads it
+// instead: it still runs before the browser paints, so there's no visible
+// flash, it just avoids claiming a browser-only value during SSR.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 interface StoreInfo {
   name: string;
+}
+
+// Avoids the sidebar flashing "Lumi Frame" (the fallback) and then
+// jumping to the real store name once GET /api/v1/store resolves, on
+// every single page load — product-reported "скачет". The store's own
+// name barely ever changes, so caching the last one we saw and using it
+// as the initial render is correct almost all the time, and the effect
+// below still fetches fresh and re-syncs the cache regardless.
+const STORE_NAME_CACHE_KEY = "lumiframe_dashboard_storename";
+
+function readCachedStoreName(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(STORE_NAME_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function cacheStoreName(name: string): void {
+  try {
+    localStorage.setItem(STORE_NAME_CACHE_KEY, name);
+  } catch {
+    // Best-effort only — private browsing, storage disabled, whatever.
+    // The sidebar still works, it just won't skip the flash next time.
+  }
 }
 
 // Just enough of GET /api/v1/billing to show the trial-active badge below
@@ -25,12 +59,25 @@ export function Sidebar() {
 
   const hidden = pathname === "/login" || pathname === "/register";
 
+  // Before paint, not just "early": this runs synchronously right after
+  // the DOM is updated but before the browser shows anything, so a
+  // cache hit renders the real store name from the very first frame —
+  // no "Lumi Frame" flash to jump away from (product-reported "скачет").
+  useIsomorphicLayoutEffect(() => {
+    const cached = readCachedStoreName();
+    if (cached) setStoreName(cached);
+  }, []);
+
   useEffect(() => {
     if (hidden || !getToken()) return;
     apiFetch<StoreInfo>("/api/v1/store")
-      .then((store) => setStoreName(store.name))
+      .then((store) => {
+        setStoreName(store.name);
+        cacheStoreName(store.name);
+      })
       .catch(() => {
-        // Not fatal — the sidebar just falls back to the platform name.
+        // Not fatal — the sidebar just falls back to the platform name
+        // (or the cached one, if there is one).
       });
     apiFetch<BillingSummary>("/api/v1/billing")
       .then(setBilling)
