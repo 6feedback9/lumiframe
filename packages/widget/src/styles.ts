@@ -46,14 +46,14 @@ export const WIDGET_CSS = `
 /* clamp(), not a flat 56px, on the vertical padding — shrinks it on a
    shorter viewport instead of eating into the same fixed 112px no matter
    how little vertical room there is. */
-@media (min-width: 760px) { .lf-photo-panel { padding: clamp(24px, 6vh, 56px) 48px; } }
+@media (min-width: 760px) { .lf-photo-panel { padding: clamp(16px, 4vh, 48px) 48px; } }
 
 .lf-product-panel {
   flex: 1; min-width: 0; background: #fff;
   padding: 28px 22px 40px; display: flex; flex-direction: column; justify-content: flex-start;
   border-top: 1px solid #ececec;
 }
-@media (min-width: 760px) { .lf-product-panel { padding: clamp(24px, 6vh, 56px) 48px; border-top: none; border-left: 1px solid #ececec; } }
+@media (min-width: 760px) { .lf-product-panel { padding: clamp(16px, 4vh, 48px) 48px; border-top: none; border-left: 1px solid #ececec; } }
 
 /* margin: auto (not justify-content: center on the parent) — auto margins
    on a flex item absorb free space when there's room, giving the same
@@ -62,21 +62,23 @@ export const WIDGET_CSS = `
    flush at the top rather than overflowing above the fold too. */
 .lf-col { width: 100%; max-width: 360px; margin: auto auto; }
 
-.lf-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #aaa; margin-bottom: 12px; }
-.lf-head { font-size: 21px; font-weight: 800; letter-spacing: -.01em; text-transform: uppercase; margin-bottom: 8px; color: #111; }
-.lf-desc { font-size: 13px; color: #8a8a8a; line-height: 1.55; margin-bottom: 22px; }
+.lf-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #aaa; margin-bottom: 8px; }
+.lf-head { font-size: 21px; font-weight: 800; letter-spacing: -.01em; text-transform: uppercase; margin-bottom: 6px; color: #111; }
+.lf-desc { font-size: 13px; color: #8a8a8a; line-height: 1.45; margin-bottom: 14px; }
 
 .lf-zone {
   position: relative; border-radius: 18px; overflow: hidden;
   background: #e7e7e6; aspect-ratio: 3 / 4;
   /* Caps how tall this gets on a short viewport — a plain 3:4 box at the
-     column's full 360px width runs to 480px alone, which is most of a
-     laptop-height window before the tips list or the upload button even
-     start. The image still crops to fill via object-fit below; this just
-     stops the placeholder box from dictating the whole panel's height. */
-  max-height: 46vh;
+     column's full 360px width runs to 480px alone, more than the whole
+     panel needs to fit a typical laptop window without scrolling at all
+     once the tips list, the upload button and the privacy line below it
+     are added back in. The image still crops to fill via object-fit
+     below; this just stops the placeholder box from dictating the whole
+     panel's height. */
+  max-height: 32vh;
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 .lf-finput { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
 .lf-preview, .lf-result-img { width: 100%; height: 100%; object-fit: cover; display: none; }
@@ -105,11 +107,11 @@ export const WIDGET_CSS = `
 .lf-gen-title { font-size: 13px; font-weight: 700; color: #222; margin-bottom: 4px; }
 .lf-gen-sub { font-size: 11px; color: #999; }
 
-.lf-tips { list-style: none; margin: 0 0 18px; padding: 0; }
-.lf-tips li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; margin-bottom: 7px; }
+.lf-tips { list-style: none; margin: 0 0 10px; padding: 0; }
+.lf-tips li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; margin-bottom: 4px; }
 .lf-tips li::before { content: "✓"; color: var(--lf-accent-1, #73b7ff); font-weight: 700; flex-shrink: 0; }
 
-.lf-privacy { font-size: 11px; color: #b8b8b8; margin-top: 10px; line-height: 1.5; }
+.lf-privacy { font-size: 11px; color: #b8b8b8; margin-top: 8px; line-height: 1.4; }
 .lf-error { background: #fff2f2; color: #d00; border-radius: 10px; padding: 10px 14px; font-size: 12px; margin-top: 10px; }
 
 .lf-consent { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
@@ -119,7 +121,7 @@ export const WIDGET_CSS = `
 .lf-btn {
   width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
   letter-spacing: .02em; text-transform: uppercase;
-  cursor: pointer; margin-top: 12px; transition: filter .15s, opacity .15s, background .15s;
+  cursor: pointer; margin-top: 10px; transition: filter .15s, opacity .15s, background .15s;
   font-family: inherit;
 }
 .lf-btn:disabled { opacity: .45; cursor: default; }
@@ -147,7 +149,12 @@ export const WIDGET_CSS = `
 .lf-actions:empty { display: none; }
 
 .lf-product { display: flex; gap: 16px; align-items: center; margin-bottom: 26px; }
-.lf-pimg { width: 84px; height: 104px; object-fit: cover; border-radius: 12px; background: #eee; flex-shrink: 0; }
+/* object-fit: contain, not cover, in a roughly square box — a merchant's
+   product photo can be any aspect ratio (glasses shots especially tend to
+   be wide/landscape), and cover into a taller-than-wide 84x104 box was
+   cropping real content out (e.g. one temple arm). contain always shows
+   the whole photo; the background fills whatever letterbox space is left. */
+.lf-pimg { width: 84px; height: 84px; object-fit: contain; border-radius: 12px; background: #f2f2f1; flex-shrink: 0; }
 .lf-pname { font-size: 15px; font-weight: 700; line-height: 1.35; margin-bottom: 4px; color: #111; }
 .lf-pprice { font-size: 15px; font-weight: 700; color: #111; }
 
