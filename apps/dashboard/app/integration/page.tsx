@@ -24,10 +24,9 @@ const FONT_OPTIONS = [
   { value: "Georgia, serif", labelKey: "customize.fontGeorgia" },
 ] as const;
 
-const SIZE_OPTIONS = [
-  { value: "sm", labelKey: "customize.sizeSm" },
-  { value: "md", labelKey: "customize.sizeMd" },
-  { value: "lg", labelKey: "customize.sizeLg" },
+const SHAPE_OPTIONS = [
+  { value: "rounded", labelKey: "customize.shapeRounded" },
+  { value: "rectangular", labelKey: "customize.shapeRectangular" },
 ] as const;
 
 const ANIMATION_OPTIONS = [
@@ -42,12 +41,14 @@ const POSITION_OPTIONS = [
   { value: "floating", labelKey: "customize.positionFloating" },
 ] as const;
 
-// Presets rather than a raw px input — friendlier for a non-technical
-// merchant, and the SDK only needs a number either way.
+// The try-on window is full-bleed by default (fills the screen) — these
+// are only for a merchant who explicitly wants it capped on very wide
+// monitors. value 0 means "no cap" and is simply omitted from the saved
+// config (see buildInitOptions in lib/snippet.ts).
 const MODAL_WIDTH_OPTIONS = [
-  { value: 480, labelKey: "customize.modalWidthSm" },
-  { value: 560, labelKey: "customize.modalWidthMd" },
-  { value: 680, labelKey: "customize.modalWidthLg" },
+  { value: 0, labelKey: "customize.modalWidthAuto" },
+  { value: 1200, labelKey: "customize.modalWidthMd" },
+  { value: 1600, labelKey: "customize.modalWidthLg" },
 ] as const;
 
 const DEFAULTS: Required<
@@ -59,9 +60,9 @@ const DEFAULTS: Required<
     | "buttonTextColor"
     | "buttonStyle"
     | "buttonSize"
+    | "buttonShape"
     | "buttonAnimation"
     | "buttonPosition"
-    | "modalMaxWidth"
     | "showTryAnotherButton"
     | "showBackButton"
   >
@@ -71,10 +72,10 @@ const DEFAULTS: Required<
   buttonColorEnd: "#9f8cff",
   buttonTextColor: "#ffffff",
   buttonStyle: "gradient",
-  buttonSize: "md",
+  buttonSize: 100,
+  buttonShape: "rounded",
   buttonAnimation: "none",
   buttonPosition: "after",
-  modalMaxWidth: 560,
   showTryAnotherButton: true,
   showBackButton: true,
 };
@@ -130,7 +131,7 @@ function IntegrationContent() {
   if (error) return <div className="empty-state">{error}</div>;
   if (!store) return <div className="empty-state">{t("common.loading")}</div>;
 
-  const sizeScale = config.buttonSize === "sm" ? 0.85 : config.buttonSize === "lg" ? 1.15 : 1;
+  const sizeScale = (config.buttonSize ?? 100) / 100;
   const previewBackground =
     config.buttonStyle === "solid" ? config.buttonColorStart : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
@@ -139,7 +140,7 @@ function IntegrationContent() {
     justifyContent: "center",
     padding: `${0.75 * sizeScale}em ${1.5 * sizeScale}em`,
     border: "none",
-    borderRadius: 999,
+    borderRadius: config.buttonShape === "rectangular" ? 8 : 999,
     background: previewBackground,
     color: config.buttonTextColor,
     fontFamily: config.buttonFont || "inherit",
@@ -243,9 +244,28 @@ function IntegrationContent() {
           </div>
 
           <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("customize.size")}</label>
-            <select value={config.buttonSize} onChange={(e) => setConfig({ ...config, buttonSize: e.target.value as WidgetConfig["buttonSize"] })} style={SELECT_STYLE}>
-              {SIZE_OPTIONS.map((s) => (
+            <label>
+              {t("customize.size")} — {config.buttonSize ?? 100}%
+            </label>
+            <input
+              type="range"
+              min={70}
+              max={160}
+              step={5}
+              value={config.buttonSize ?? 100}
+              onChange={(e) => setConfig({ ...config, buttonSize: Number(e.target.value) })}
+              style={{ width: "100%", accentColor: "var(--sky)" }}
+            />
+          </div>
+
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label>{t("customize.shape")}</label>
+            <select
+              value={config.buttonShape ?? "rounded"}
+              onChange={(e) => setConfig({ ...config, buttonShape: e.target.value as WidgetConfig["buttonShape"] })}
+              style={SELECT_STYLE}
+            >
+              {SHAPE_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
                   {t(s.labelKey)}
                 </option>
@@ -323,13 +343,14 @@ function IntegrationContent() {
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.modalWidth")}</label>
             <select
-              value={config.modalMaxWidth ?? 560}
-              onChange={(e) => setConfig({ ...config, modalMaxWidth: Number(e.target.value) })}
+              value={config.modalMaxWidth ?? 0}
+              onChange={(e) => setConfig({ ...config, modalMaxWidth: Number(e.target.value) || undefined })}
               style={SELECT_STYLE}
             >
               {MODAL_WIDTH_OPTIONS.map((w) => (
                 <option key={w.value} value={w.value}>
-                  {t(w.labelKey)} ({w.value}px)
+                  {t(w.labelKey)}
+                  {w.value ? ` (${w.value}px)` : ""}
                 </option>
               ))}
             </select>
@@ -440,61 +461,109 @@ function IntegrationContent() {
                 </button>
               </div>
             ) : (
-              <div style={{ padding: 20, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center", marginBottom: 20 }}>
+              <div style={{ padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)", marginBottom: 20 }}>
                 <div
                   style={{
-                    width: "100%",
-                    maxWidth: config.modalMaxWidth ?? 560,
-                    background: "#fff",
-                    color: "#111",
-                    borderRadius: 16,
-                    overflow: "hidden",
-                    boxShadow: "0 20px 60px rgba(0,0,0,.35)",
+                    display: "flex",
+                    minHeight: 380,
                     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid #f0f0f0" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>{t("customize.previewModalBrand")}</span>
-                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#f2f2f2", color: "#777", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      ✕
-                    </span>
-                  </div>
-                  <div style={{ padding: 18 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{config.modalHeading || t("customize.modalHeadingPlaceholder")}</div>
-                    <div style={{ fontSize: 12, color: "#999", marginBottom: 14, lineHeight: 1.5 }}>
+                  {/* Photo panel */}
+                  <div style={{ flex: 1, background: "#f6f6f5", color: "#111", padding: "24px 18px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#aaa", marginBottom: 8 }}>
+                      {t("customize.previewModalBrand")}
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, textTransform: "uppercase", marginBottom: 6 }}>
+                      {config.modalHeading || t("customize.modalHeadingPlaceholder")}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#8a8a8a", marginBottom: 12, lineHeight: 1.5 }}>
                       {config.modalSubheading || t("customize.modalSubheadingPlaceholder")}
                     </div>
                     <div
                       style={{
-                        border: `1.5px solid ${modalAccentStart}`,
-                        borderRadius: 12,
-                        background: "#fff",
-                        minHeight: 100,
+                        position: "relative",
+                        borderRadius: 10,
+                        background: "#e7e7e6",
+                        aspectRatio: "3 / 4",
+                        maxHeight: 140,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        marginBottom: 14,
-                        fontSize: 26,
+                        marginBottom: 10,
+                        fontSize: 20,
                       }}
                     >
-                      📷
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          left: 6,
+                          background: "rgba(255,255,255,.94)",
+                          fontSize: 8,
+                          fontWeight: 700,
+                          letterSpacing: ".04em",
+                          textTransform: "uppercase",
+                          padding: "3px 7px",
+                          borderRadius: 999,
+                          color: "#444",
+                        }}
+                      >
+                        {t("customize.previewModalBadge")}
+                      </span>
+                      🧍
+                    </div>
+                    <div style={{ fontSize: 9, color: "#999", marginBottom: 10 }}>
+                      ✓ {t("customize.previewModalTip")}
                     </div>
                     <button
                       type="button"
                       disabled
                       style={{
                         width: "100%",
-                        padding: "12px",
+                        padding: "9px",
                         border: "none",
-                        borderRadius: 10,
+                        borderRadius: config.buttonShape === "rectangular" ? 6 : 8,
                         fontWeight: 700,
-                        fontSize: 13,
+                        fontSize: 10,
+                        letterSpacing: ".02em",
+                        textTransform: "uppercase",
                         background: modalBtnBackground,
                         color: modalAccentText,
                         fontFamily: "inherit",
                       }}
                     >
                       {t("customize.previewModalCta")}
+                    </button>
+                  </div>
+
+                  {/* Product panel */}
+                  <div style={{ flex: 1, background: "#fff", color: "#111", padding: "24px 18px", display: "flex", flexDirection: "column", justifyContent: "center", borderLeft: "1px solid #ececec" }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
+                      <div style={{ width: 36, height: 44, borderRadius: 8, background: "#eee", flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700 }}>{t("customize.previewProductName")}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>$49</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                      style={{
+                        width: "100%",
+                        padding: "9px",
+                        border: "none",
+                        borderRadius: config.buttonShape === "rectangular" ? 6 : 8,
+                        fontWeight: 700,
+                        fontSize: 10,
+                        letterSpacing: ".02em",
+                        textTransform: "uppercase",
+                        background: modalBtnBackground,
+                        color: modalAccentText,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {t("customize.previewModalAddToCart")}
                     </button>
                   </div>
                 </div>

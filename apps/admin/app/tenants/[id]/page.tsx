@@ -21,7 +21,9 @@ interface WidgetConfig {
   buttonFont?: string;
   buttonGlow?: boolean;
   buttonStyle?: "gradient" | "solid";
-  buttonSize?: "sm" | "md" | "lg";
+  /** Continuous scale, percent of the default size. 100 = default. */
+  buttonSize?: number;
+  buttonShape?: "rounded" | "rectangular";
   buttonAnimation?: "none" | "pulse" | "shimmer";
   buttonPosition?: "before" | "after" | "floating";
   buttonAnchorSelector?: string;
@@ -176,16 +178,22 @@ const POSITION_OPTIONS = [
   { value: "floating", label: "buttonDesign.positionFloating" },
 ] as const;
 
+// value 0 means "no cap" and is simply omitted from the saved config
 const MODAL_WIDTH_OPTIONS = [
-  { value: 480, label: "buttonDesign.modalWidthSm" },
-  { value: 560, label: "buttonDesign.modalWidthMd" },
-  { value: 680, label: "buttonDesign.modalWidthLg" },
+  { value: 0, label: "buttonDesign.modalWidthAuto" },
+  { value: 1200, label: "buttonDesign.modalWidthMd" },
+  { value: 1600, label: "buttonDesign.modalWidthLg" },
+] as const;
+
+const SHAPE_OPTIONS = [
+  { value: "rounded", label: "buttonDesign.shapeRounded" },
+  { value: "rectangular", label: "buttonDesign.shapeRectangular" },
 ] as const;
 
 const WIDGET_CONFIG_DEFAULTS: Required<
   Pick<
     WidgetConfig,
-    "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor" | "buttonPosition" | "modalMaxWidth" | "showTryAnotherButton" | "showBackButton"
+    "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor" | "buttonPosition" | "buttonSize" | "buttonShape" | "showTryAnotherButton" | "showBackButton"
   >
 > = {
   buttonText: "Try on",
@@ -193,7 +201,8 @@ const WIDGET_CONFIG_DEFAULTS: Required<
   buttonColorEnd: "#9f8cff",
   buttonTextColor: "#ffffff",
   buttonPosition: "after",
-  modalMaxWidth: 560,
+  buttonSize: 100,
+  buttonShape: "rounded",
   showTryAnotherButton: true,
   showBackButton: true,
 };
@@ -225,7 +234,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
     }
   }
 
-  const sizeScale = config.buttonSize === "sm" ? 0.85 : config.buttonSize === "lg" ? 1.15 : 1;
+  const sizeScale = (config.buttonSize ?? 100) / 100;
   const previewBackground =
     config.buttonStyle === "solid" ? config.buttonColorStart : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
@@ -234,7 +243,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
     justifyContent: "center",
     padding: `${0.75 * sizeScale}em ${1.5 * sizeScale}em`,
     border: "none",
-    borderRadius: 999,
+    borderRadius: config.buttonShape === "rectangular" ? 8 : 999,
     background: previewBackground,
     color: config.buttonTextColor,
     fontFamily: config.buttonFont || "inherit",
@@ -296,11 +305,27 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
             <input type="color" value={config.buttonTextColor} onChange={(e) => setConfig({ ...config, buttonTextColor: e.target.value })} style={{ height: 38, padding: 4 }} />
           </div>
           <div className="field" style={{ marginBottom: 12 }}>
-            <label>{t("buttonDesign.size")}</label>
-            <select value={config.buttonSize ?? "md"} onChange={(e) => setConfig({ ...config, buttonSize: e.target.value as WidgetConfig["buttonSize"] })} style={selectStyle}>
-              <option value="sm">{t("buttonDesign.sizeSm")}</option>
-              <option value="md">{t("buttonDesign.sizeMd")}</option>
-              <option value="lg">{t("buttonDesign.sizeLg")}</option>
+            <label>
+              {t("buttonDesign.size")}: {config.buttonSize ?? 100}%
+            </label>
+            <input
+              type="range"
+              min={70}
+              max={160}
+              step={5}
+              value={config.buttonSize ?? 100}
+              onChange={(e) => setConfig({ ...config, buttonSize: Number(e.target.value) })}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{t("buttonDesign.shape")}</label>
+            <select value={config.buttonShape ?? "rounded"} onChange={(e) => setConfig({ ...config, buttonShape: e.target.value as WidgetConfig["buttonShape"] })} style={selectStyle}>
+              {SHAPE_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {t(s.label)}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field" style={{ marginBottom: 12 }}>
@@ -366,13 +391,14 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.modalWidth")}</label>
             <select
-              value={config.modalMaxWidth ?? 560}
-              onChange={(e) => setConfig({ ...config, modalMaxWidth: Number(e.target.value) })}
+              value={config.modalMaxWidth ?? 0}
+              onChange={(e) => setConfig({ ...config, modalMaxWidth: Number(e.target.value) || undefined })}
               style={selectStyle}
             >
               {MODAL_WIDTH_OPTIONS.map((w) => (
                 <option key={w.value} value={w.value}>
-                  {t(w.label)} ({w.value}px)
+                  {t(w.label)}
+                  {w.value ? ` (${w.value}px)` : ""}
                 </option>
               ))}
             </select>

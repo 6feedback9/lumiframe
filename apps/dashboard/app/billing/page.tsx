@@ -205,14 +205,7 @@ function BillingContent() {
             </p>
           </>
         ) : (
-          <>
-            <p style={{ fontSize: 13, color: "var(--danger, #ff6b6b)", marginBottom: data.trialAvailable ? 14 : 0 }}>{t("billing.noPlan")}</p>
-            {data.trialAvailable && (
-              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={startingTrial} onClick={startTrial}>
-                {startingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${data.trialCredits})`}
-              </button>
-            )}
-          </>
+          <p style={{ fontSize: 13, color: "var(--danger, #ff6b6b)", margin: 0 }}>{t("billing.noPlan")}</p>
         )}
 
         {(data.planRequestNote || requestSent) && (
@@ -221,10 +214,17 @@ function BillingContent() {
           </p>
         )}
 
-        <button className="btn" style={{ marginTop: 16, width: "auto", padding: "8px 16px" }} disabled={requesting === "topup"} onClick={requestTopUp}>
-          {t("billing.requestTopUp")}
-          {data.plan ? ` (+${data.plan.topUpPackSize} — $${data.plan.topUpPackPriceUsd})` : ""}
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
+          {!data.plan && data.trialAvailable && (
+            <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={startingTrial} onClick={startTrial}>
+              {startingTrial ? t("common.saving") : `${t("billing.startTrial")} (+${data.trialCredits})`}
+            </button>
+          )}
+          <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={requesting === "topup"} onClick={requestTopUp}>
+            {t("billing.requestTopUp")}
+            {data.plan ? ` (+${data.plan.topUpPackSize} — $${data.plan.topUpPackPriceUsd})` : ""}
+          </button>
+        </div>
       </div>
 
       <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("billing.plans")}</h3>

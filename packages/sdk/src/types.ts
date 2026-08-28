@@ -45,11 +45,13 @@ export interface TryOnInitOptions {
   buttonGlow?: boolean;
   /** `"gradient"` (default) blends buttonColorStart -> buttonColorEnd; `"solid"` uses buttonColorStart flat. */
   buttonStyle?: "gradient" | "solid";
-  /** Default `"md"`. */
-  buttonSize?: "sm" | "md" | "lg";
+  /** Continuous scale, percent of the default size. 100 = default. Range 70-160. */
+  buttonSize?: number;
+  /** `"rounded"` (default) is a fully rounded pill. `"rectangular"` is a normal ~8px corner radius. */
+  buttonShape?: "rounded" | "rectangular";
   /** Default `"none"`. `"pulse"` is a soft expanding ring in the accent color; `"shimmer"` is a light sweep across the button. */
   buttonAnimation?: "none" | "pulse" | "shimmer";
-  /** Try-on modal width in px on wide viewports (>=560px). Default 560. */
+  /** Caps the try-on window's width on very wide viewports, in px. Default: no cap — the window fills the screen. */
   modalMaxWidth?: number;
   /** Show the "Try another photo" action on the try-on result screen. Default `true`. */
   showTryAnotherButton?: boolean;

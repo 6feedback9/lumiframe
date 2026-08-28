@@ -49,6 +49,7 @@ function ensureButtonStylesInjected(): void {
   justify-content: center;
   gap: 0.5em;
   margin: 0.75em 0;
+  padding: 0.75em 1.5em;
   border: none;
   border-radius: var(--lumiframe-radius, 999px);
   background: var(--lumiframe-accent, linear-gradient(135deg, #73b7ff, #9f8cff));
@@ -73,10 +74,10 @@ function ensureButtonStylesInjected(): void {
   box-shadow: 0 8px 28px rgba(0,0,0,0.22);
 }
 
-/* Size (TryOnInitOptions.buttonSize, default "md") */
-.lumiframe-tryon-button.lumiframe-size-sm { padding: 0.5em 1em; font-size: 0.85em; }
-.lumiframe-tryon-button.lumiframe-size-md { padding: 0.75em 1.5em; font-size: 1em; }
-.lumiframe-tryon-button.lumiframe-size-lg { padding: 1em 2em; font-size: 1.15em; }
+/* Size (TryOnInitOptions.buttonSize, a 70-160 percent scale, default 100)
+   is applied inline via --lumiframe-scale below instead of a class, so it
+   can vary continuously rather than in fixed steps. */
+.lumiframe-tryon-button { font-size: calc(1em * var(--lumiframe-scale, 1)); }
 
 /* Animation (TryOnInitOptions.buttonAnimation, default "none") */
 .lumiframe-tryon-button.lumiframe-anim-pulse {
@@ -207,7 +208,10 @@ class TryOnSdkImpl implements TryOnSdk {
       product,
       apiBaseUrl: this.options!.apiBaseUrl!,
       storeId: this.options!.storeId,
-      locale: this.options!.locale ?? "en",
+      // Default to Ukrainian, not English — this platform's merchants and
+      // their customers are overwhelmingly Ukrainian-speaking, and an
+      // unconfigured widget should read that way out of the box.
+      locale: this.options!.locale ?? "uk",
       modalMaxWidth: this.options!.modalMaxWidth,
       showTryAnotherButton: this.options!.showTryAnotherButton,
       showBackButton: this.options!.showBackButton,
@@ -308,12 +312,26 @@ class TryOnSdkImpl implements TryOnSdk {
     // default look via the same custom properties ensureButtonStylesInjected
     // already wires the base CSS to — set inline so they beat the default
     // rule's specificity without needing !important.
-    const { buttonColorStart, buttonColorEnd, buttonTextColor, buttonFont, buttonGlow, buttonStyle, buttonSize, buttonAnimation } =
-      this.options ?? {};
+    const {
+      buttonColorStart,
+      buttonColorEnd,
+      buttonTextColor,
+      buttonFont,
+      buttonGlow,
+      buttonStyle,
+      buttonSize,
+      buttonShape,
+      buttonAnimation,
+    } = this.options ?? {};
 
-    const size = buttonSize ?? "md";
     const animation = buttonAnimation ?? "none";
-    button.className = `lumiframe-tryon-button lumiframe-size-${size}${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
+    button.className = `lumiframe-tryon-button${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
+
+    // Continuous size (70-160% of the default), not fixed sm/md/lg steps —
+    // em-based padding on .lumiframe-tryon-button scales along with this.
+    const scale = Math.max(0.5, (buttonSize ?? 100) / 100);
+    button.style.setProperty("--lumiframe-scale", String(scale));
+    if (buttonShape) button.style.setProperty("--lumiframe-radius", buttonShape === "rectangular" ? "8px" : "999px");
 
     if (buttonColorStart || buttonColorEnd) {
       const start = buttonColorStart ?? buttonColorEnd!;

@@ -21,14 +21,18 @@ const updateStoreSchema = z.object({
       buttonFont: z.string().max(80).optional(),
       buttonGlow: z.boolean().optional(),
       buttonStyle: z.enum(["gradient", "solid"]).optional(),
-      buttonSize: z.enum(["sm", "md", "lg"]).optional(),
+      // Continuous scale (percent of default), not fixed sm/md/lg steps.
+      buttonSize: z.number().int().min(70).max(160).optional(),
+      buttonShape: z.enum(["rounded", "rectangular"]).optional(),
       buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
       // Button placement + try-on modal layout (product ask: merchant
       // picks where the button lands, and how the try-on window itself is
       // laid out — packages/sdk + packages/widget apply all of these).
       buttonPosition: z.enum(["before", "after", "floating"]).optional(),
       buttonAnchorSelector: z.string().max(300).optional(),
-      modalMaxWidth: z.number().int().min(360).max(900).optional(),
+      // The try-on window is full-bleed by default (no cap) — this only
+      // caps it on very wide viewports for a merchant who wants that.
+      modalMaxWidth: z.number().int().min(900).max(2000).optional(),
       showTryAnotherButton: z.boolean().optional(),
       showBackButton: z.boolean().optional(),
       // Try-on window text + color overrides (product ask: "цвета/текст/

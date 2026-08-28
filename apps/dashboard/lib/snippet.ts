@@ -4,6 +4,8 @@
 // TryOn.init(...) actually gets called with.
 
 export interface WidgetConfig {
+  /** Try-on window language. Defaults to Ukrainian when unset — see packages/sdk. */
+  language?: "en" | "uk" | "ru";
   buttonText?: string;
   buttonColorStart?: string;
   buttonColorEnd?: string;
@@ -11,7 +13,9 @@ export interface WidgetConfig {
   buttonFont?: string;
   buttonGlow?: boolean;
   buttonStyle?: "gradient" | "solid";
-  buttonSize?: "sm" | "md" | "lg";
+  /** Continuous scale, percent of the default size. 100 = default. */
+  buttonSize?: number;
+  buttonShape?: "rounded" | "rectangular";
   buttonAnimation?: "none" | "pulse" | "shimmer";
   buttonPosition?: "before" | "after" | "floating";
   buttonAnchorSelector?: string;
@@ -27,6 +31,7 @@ export interface WidgetConfig {
 
 export function buildInitOptions(storeId: string, apiBaseUrl: string, config: WidgetConfig = {}): Record<string, unknown> {
   const options: Record<string, unknown> = { storeId, apiBaseUrl };
+  if (config.language && config.language !== "uk") options.locale = config.language;
   if (config.buttonText) options.buttonLabel = config.buttonText;
   if (config.buttonColorStart) options.buttonColorStart = config.buttonColorStart;
   if (config.buttonColorEnd) options.buttonColorEnd = config.buttonColorEnd;
@@ -34,7 +39,8 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.buttonFont) options.buttonFont = config.buttonFont;
   if (config.buttonGlow) options.buttonGlow = true;
   if (config.buttonStyle) options.buttonStyle = config.buttonStyle;
-  if (config.buttonSize) options.buttonSize = config.buttonSize;
+  if (config.buttonSize && config.buttonSize !== 100) options.buttonSize = config.buttonSize;
+  if (config.buttonShape && config.buttonShape !== "rounded") options.buttonShape = config.buttonShape;
   if (config.buttonAnimation && config.buttonAnimation !== "none") options.buttonAnimation = config.buttonAnimation;
   if (config.buttonPosition && config.buttonPosition !== "after") options.buttonPosition = config.buttonPosition;
   if (config.buttonAnchorSelector) options.buttonAnchorSelector = config.buttonAnchorSelector;
