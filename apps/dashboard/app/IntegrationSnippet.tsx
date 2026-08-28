@@ -9,7 +9,7 @@ export function IntegrationSnippet({ storeId }: { storeId: string }) {
 
   const snippet = `<script src="${API_BASE_URL}/sdk.js"></script>
 <script>
-  TryOn.init({ storeId: "${storeId}" });
+  TryOn.init({ storeId: "${storeId}", apiBaseUrl: "${API_BASE_URL}" });
   // Optional: on an unknown platform, tell it exactly what to read —
   // otherwise it tries JSON-LD, then OpenGraph, automatically.
   // TryOn.attach({ productId: "...", productImageUrl: "...", ... });
