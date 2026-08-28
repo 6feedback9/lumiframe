@@ -7,6 +7,7 @@ import { tryOnRoutes } from "./routes/tryons";
 import { eventRoutes } from "./routes/events";
 import { analyticsRoutes } from "./routes/analytics";
 import { storeRoutes } from "./routes/store";
+import { teamRoutes } from "./routes/team";
 import { adminRoutes } from "./routes/admin";
 import { sdkRoutes } from "./routes/sdk";
 import { healthRoutes } from "./routes/health";
@@ -44,6 +45,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(eventRoutes);
   await app.register(analyticsRoutes);
   await app.register(storeRoutes);
+  await app.register(teamRoutes);
   await app.register(billingRoutes);
   await app.register(adminRoutes);
   await app.register(sdkRoutes);

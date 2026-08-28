@@ -276,23 +276,33 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
       prisma.tryOnSession.count({ where }),
     ]);
 
-    return reply.send({
-      items: items.map((session) => ({
-        id: session.id,
-        productTitle: session.productTitle,
-        productImageUrl: session.productImageUrl,
-        status: session.generations[0]?.status ?? session.status,
-        errorCode: session.generations[0]?.errorCode ?? null,
-        errorMessage: session.generations[0]?.errorMessage ?? null,
-        generationDurationMs: session.generations[0]?.generationDurationMs ?? null,
-        utmSource: session.utmSource,
-        utmCampaign: session.utmCampaign,
-        createdAt: session.createdAt,
-      })),
-      total,
-      page,
-      limit,
-    });
+    // Product ask: the list itself should show the result thumbnail, not
+    // just the row you click into. Never the customer's raw photo here
+    // either — same privacy split as buildTryOnDetailPayload below.
+    const rows = await Promise.all(
+      items.map(async (session) => {
+        const latest = session.generations[0];
+        const resultUrl =
+          latest?.status === "COMPLETED" && latest.resultImageKey
+            ? await storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600).catch(() => null)
+            : null;
+        return {
+          id: session.id,
+          productTitle: session.productTitle,
+          productImageUrl: session.productImageUrl,
+          resultUrl,
+          status: latest?.status ?? session.status,
+          errorCode: latest?.errorCode ?? null,
+          errorMessage: latest?.errorMessage ?? null,
+          generationDurationMs: latest?.generationDurationMs ?? null,
+          utmSource: session.utmSource,
+          utmCampaign: session.utmCampaign,
+          createdAt: session.createdAt,
+        };
+      })
+    );
+
+    return reply.send({ items: rows, total, page, limit });
   });
 
   // ── Merchant dashboard: one try-on's full detail ─────────────────────

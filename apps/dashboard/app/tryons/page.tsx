@@ -10,6 +10,7 @@ interface TryOnRow {
   id: string;
   productTitle: string | null;
   productImageUrl: string;
+  resultUrl: string | null;
   status: string;
   errorCode: string | null;
   errorMessage: string | null;
@@ -105,8 +106,9 @@ function TryOnsContent() {
         <table>
           <thead>
             <tr>
-              <th>{t("tryons.image")}</th>
               <th>{t("tryons.product")}</th>
+              <th>{t("tryons.image")}</th>
+              <th>{t("tryons.result")}</th>
               <th>{t("tryons.status")}</th>
               <th>{t("tryons.duration")}</th>
               <th>{t("tryons.utm")}</th>
@@ -116,17 +118,18 @@ function TryOnsContent() {
           <tbody>
             {items.length === 0 && !error ? (
               <tr>
-                <td colSpan={6} className="empty-state">
+                <td colSpan={7} className="empty-state">
                   {month ? t("tryons.emptyMonth") : t("tryons.empty")}
                 </td>
               </tr>
             ) : (
               items.map((item) => (
                 <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.id}`)}>
+                  <td>{item.productTitle ?? "—"}</td>
                   <td>
                     <img className="thumb" src={item.productImageUrl} alt="" />
                   </td>
-                  <td>{item.productTitle ?? "—"}</td>
+                  <td>{item.resultUrl ? <img className="thumb" src={item.resultUrl} alt="" /> : "—"}</td>
                   <td>
                     <span className={badgeClass(item.status)}>{item.status}</span>
                     {item.status === "FAILED" && (item.errorMessage || item.errorCode) && (

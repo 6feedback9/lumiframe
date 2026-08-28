@@ -35,15 +35,28 @@ interface Tenant {
   planRequestedAt: string | null;
 }
 
+interface Summary {
+  totalClients: number;
+  activeClients: number;
+  newThisMonth: number;
+  tryOnsThisMonth: number;
+  pendingRequests: number;
+  mrrUsd: number;
+}
+
 function TenantsContent() {
   const router = useRouter();
   const { t } = useI18n();
   const [tenants, setTenants] = useState<Tenant[] | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<{ tenants: Tenant[] }>("/api/v1/admin/tenants")
-      .then((res) => setTenants(res.tenants))
+    apiFetch<{ tenants: Tenant[]; summary: Summary }>("/api/v1/admin/tenants")
+      .then((res) => {
+        setTenants(res.tenants);
+        setSummary(res.summary);
+      })
       .catch((err) => setError(err.message));
   }, []);
 
@@ -51,18 +64,34 @@ function TenantsContent() {
     <>
       <div className="page-title">{t("tenants.title")}</div>
 
+      {/* What actually matters at a glance for the platform owner — see
+          apps/api/src/routes/admin.ts's comment on this endpoint. */}
       <div className="stat-grid">
         <div className="stat-card">
           <div className="label">{t("tenants.total")}</div>
-          <div className="value">{tenants?.length ?? "—"}</div>
+          <div className="value">{summary?.totalClients ?? "—"}</div>
         </div>
         <div className="stat-card">
-          <div className="label">{t("tenants.totalTryOns")}</div>
-          <div className="value">{tenants?.reduce((s, t) => s + t.totalTryOns, 0) ?? "—"}</div>
+          <div className="label">{t("tenants.active")}</div>
+          <div className="value">{summary?.activeClients ?? "—"}</div>
         </div>
         <div className="stat-card">
-          <div className="label">{t("tenants.totalUnits")}</div>
-          <div className="value">{tenants?.reduce((s, t) => s + t.totalUsageUnits, 0) ?? "—"}</div>
+          <div className="label">{t("tenants.newThisMonth")}</div>
+          <div className="value">{summary?.newThisMonth ?? "—"}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">{t("tenants.tryOnsThisMonth")}</div>
+          <div className="value">{summary?.tryOnsThisMonth ?? "—"}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">{t("tenants.pendingRequests")}</div>
+          <div className="value" style={{ color: summary && summary.pendingRequests > 0 ? "var(--sky)" : undefined }}>
+            {summary?.pendingRequests ?? "—"}
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="label">{t("tenants.mrr")}</div>
+          <div className="value">{summary ? `$${summary.mrrUsd}` : "—"}</div>
         </div>
       </div>
 

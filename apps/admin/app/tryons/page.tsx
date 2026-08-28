@@ -13,6 +13,8 @@ interface TryOnRow {
   storeName: string;
   productTitle: string | null;
   productImageUrl: string;
+  customerImageUrl: string | null;
+  resultUrl: string | null;
   status: string;
   errorCode: string | null;
   errorMessage: string | null;
@@ -112,10 +114,12 @@ function TryOnsContent() {
         <table>
           <thead>
             <tr>
-              <th></th>
               <th>{t("tryons.tenant")}</th>
               <th>{t("tryons.store")}</th>
               <th>{t("tryons.product")}</th>
+              <th>{t("detail.customerPhoto")}</th>
+              <th>{t("detail.productPhoto")}</th>
+              <th>{t("detail.resultPhoto")}</th>
               <th>{t("tryons.status")}</th>
               <th>{t("tryons.createdAt")}</th>
             </tr>
@@ -123,19 +127,21 @@ function TryOnsContent() {
           <tbody>
             {items.length === 0 && !error ? (
               <tr>
-                <td colSpan={6} className="empty-state">
+                <td colSpan={8} className="empty-state">
                   {t("tryons.empty")}
                 </td>
               </tr>
             ) : (
               items.map((item) => (
                 <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.id}`)}>
-                  <td>
-                    <img className="thumb" src={item.productImageUrl} alt="" />
-                  </td>
                   <td>{item.tenantName}</td>
                   <td>{item.storeName}</td>
                   <td>{item.productTitle ?? "—"}</td>
+                  <td>{item.customerImageUrl ? <img className="thumb" src={item.customerImageUrl} alt="" /> : "—"}</td>
+                  <td>
+                    <img className="thumb" src={item.productImageUrl} alt="" />
+                  </td>
+                  <td>{item.resultUrl ? <img className="thumb" src={item.resultUrl} alt="" /> : "—"}</td>
                   <td>
                     <span className={badgeClass(item.status)}>{item.status}</span>
                   </td>

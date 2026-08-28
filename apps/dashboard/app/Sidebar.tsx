@@ -30,8 +30,8 @@ export function Sidebar() {
   const links = [
     { href: "/", label: t("nav.overview") },
     { href: "/tryons", label: t("nav.tryons") },
-    { href: "/customize", label: t("nav.customize") },
     { href: "/integration", label: t("nav.integration") },
+    { href: "/team", label: t("nav.team") },
     { href: "/billing", label: t("nav.billing") },
   ];
 
