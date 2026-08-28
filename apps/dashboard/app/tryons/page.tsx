@@ -9,6 +9,8 @@ interface TryOnRow {
   productTitle: string | null;
   productImageUrl: string;
   status: string;
+  errorCode: string | null;
+  errorMessage: string | null;
   generationDurationMs: number | null;
   utmSource: string | null;
   utmCampaign: string | null;
@@ -124,6 +126,23 @@ function TryOnsContent() {
                   <td>{item.productTitle ?? "—"}</td>
                   <td>
                     <span className={badgeClass(item.status)}>{item.status}</span>
+                    {item.status === "FAILED" && (item.errorMessage || item.errorCode) && (
+                      <div
+                        title={item.errorMessage ?? undefined}
+                        style={{
+                          fontSize: 11,
+                          color: "var(--danger, #ff6b6b)",
+                          marginTop: 4,
+                          maxWidth: 240,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.errorCode ? `${item.errorCode}: ` : ""}
+                        {item.errorMessage ?? ""}
+                      </div>
+                    )}
                   </td>
                   <td>{item.generationDurationMs ? `${(item.generationDurationMs / 1000).toFixed(1)}s` : "—"}</td>
                   <td>{item.utmSource ? `${item.utmSource}${item.utmCampaign ? ` / ${item.utmCampaign}` : ""}` : "—"}</td>

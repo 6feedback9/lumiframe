@@ -120,6 +120,14 @@ export async function processTryOnJob({ tryOnGenerationId }: TryOnJobData): Prom
     }
 
     if (status.state !== "completed" || !status.resultImageUrl) {
+      // A provider reporting "failed"/"timeout" cleanly isn't an exception
+      // (the outer catch below never sees it), so without this the only
+      // record of why a real customer's try-on failed is a DB column no
+      // one's looking at — log it too, so it shows up in Render/hosting
+      // logs the same way an actual crash would.
+      console.error(
+        `[worker] generation ${generation.id}: provider "${provider.name}" reported ${status.state} — ${status.errorCode ?? "PROVIDER_FAILED"}: ${status.errorMessage ?? "(no message)"}`
+      );
       await failGeneration(
         generation.id,
         session.id,
