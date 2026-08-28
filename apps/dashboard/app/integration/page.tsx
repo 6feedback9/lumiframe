@@ -152,6 +152,13 @@ function IntegrationContent() {
     overflow: config.buttonAnimation === "shimmer" ? "hidden" : undefined,
   };
 
+  // Mirrors packages/widget's own fallback: modal-specific colors win when
+  // set, otherwise the button's own colors — see packages/sdk/src/index.ts.
+  const modalAccentStart = config.modalAccentColorStart ?? config.buttonColorStart ?? "#73b7ff";
+  const modalAccentEnd = config.modalAccentColorEnd ?? config.buttonColorEnd ?? "#9f8cff";
+  const modalAccentText = config.modalAccentTextColor ?? config.buttonTextColor ?? "#ffffff";
+  const modalBtnBackground = config.buttonStyle === "solid" ? modalAccentStart : `linear-gradient(135deg, ${modalAccentStart}, ${modalAccentEnd})`;
+
   return (
     <>
       <div className="page-title">{t("integration.title")}</div>
@@ -426,11 +433,73 @@ function IntegrationContent() {
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--mist-dim)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".06em" }}>
               {t("customize.preview")}
             </div>
-            <div style={{ padding: 40, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center", marginBottom: 20 }}>
-              <button type="button" style={previewStyle} className={config.buttonAnimation === "shimmer" ? "lumiframe-preview-shimmer" : undefined} disabled>
-                {config.buttonText || "Try on"}
-              </button>
-            </div>
+            {tab === "button" ? (
+              <div style={{ padding: 40, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center", marginBottom: 20 }}>
+                <button type="button" style={previewStyle} className={config.buttonAnimation === "shimmer" ? "lumiframe-preview-shimmer" : undefined} disabled>
+                  {config.buttonText || "Try on"}
+                </button>
+              </div>
+            ) : (
+              <div style={{ padding: 20, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center", marginBottom: 20 }}>
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: config.modalMaxWidth ?? 560,
+                    background: "#fff",
+                    color: "#111",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    boxShadow: "0 20px 60px rgba(0,0,0,.35)",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid #f0f0f0" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>{t("customize.previewModalBrand")}</span>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#f2f2f2", color: "#777", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      ✕
+                    </span>
+                  </div>
+                  <div style={{ padding: 18 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{config.modalHeading || t("customize.modalHeadingPlaceholder")}</div>
+                    <div style={{ fontSize: 12, color: "#999", marginBottom: 14, lineHeight: 1.5 }}>
+                      {config.modalSubheading || t("customize.modalSubheadingPlaceholder")}
+                    </div>
+                    <div
+                      style={{
+                        border: `1.5px solid ${modalAccentStart}`,
+                        borderRadius: 12,
+                        background: "#fff",
+                        minHeight: 100,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 14,
+                        fontSize: 26,
+                      }}
+                    >
+                      📷
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        border: "none",
+                        borderRadius: 10,
+                        fontWeight: 700,
+                        fontSize: 13,
+                        background: modalBtnBackground,
+                        color: modalAccentText,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {t("customize.previewModalCta")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("integration.snippetTitle")}</h3>
             <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 14 }}>{t("integration.snippetDesc")}</p>
             <IntegrationSnippet storeId={store.id} widgetConfig={config} />

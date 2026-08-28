@@ -90,15 +90,18 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
 
     const { tenantId } = request.merchant!;
 
+    // This note is only ever read by the platform owner in her own admin
+    // (apps/admin) — never by the merchant — so it's written in Ukrainian
+    // directly rather than run through the (merchant-facing) i18n system.
     let note: string;
     if (parsed.data.kind === "upgrade") {
-      note = `Requested upgrade to ${parsed.data.planKey ?? "a higher plan"}.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+      note = `Запит на підвищення тарифу до ${parsed.data.planKey ?? "вищого тарифу"}.${parsed.data.message ? ` Коментар: ${parsed.data.message}` : ""}`;
     } else if (parsed.data.kind === "topup") {
-      note = `Requested a top-up pack.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+      note = `Запит на пакет додаткових примірок.${parsed.data.message ? ` Коментар: ${parsed.data.message}` : ""}`;
     } else {
       const paidPlan = parsed.data.planKey ? await prisma.plan.findUnique({ where: { key: parsed.data.planKey } }) : null;
-      const target = paidPlan ? `the ${paidPlan.name} plan` : parsed.data.topUp ? "a top-up pack" : "their plan";
-      note = `💰 Merchant confirms payment sent for ${target} — please verify and activate.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+      const target = paidPlan ? `тариф «${paidPlan.name}»` : parsed.data.topUp ? "пакет додаткових примірок" : "свій тариф";
+      note = `💰 Клієнт підтверджує оплату за ${target} — перевірте надходження і активуйте.${parsed.data.message ? ` Коментар: ${parsed.data.message}` : ""}`;
     }
 
     const tenant = await prisma.tenant.update({
