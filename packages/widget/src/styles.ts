@@ -20,9 +20,19 @@ export const WIDGET_CSS = `
   position: relative;
   width: 100%;
   margin: 0 auto;
+  /* min-height: 100vh unconditionally, not just on the ≥760px split-view —
+     on mobile this was left off, so a short empty-state (just the photo
+     box + upload button, no description/tips anymore) sized to its own
+     content and left the rest of the screen a flat white gap below it
+     instead of centering the box in the screen (product ask:
+     "централизуй рамку"). With this, .lf-photo-panel (flex: 1) actually
+     has real height to work with, so .lf-col's auto margins (below) can
+     center its content inside it — same auto-margin mechanism already
+     used for the desktop panels. */
+  min-height: 100vh;
   display: flex; flex-direction: column;
 }
-@media (min-width: 760px) { .lf-shell { flex-direction: row; min-height: 100vh; } }
+@media (min-width: 760px) { .lf-shell { flex-direction: row; } }
 
 .lf-close {
   position: absolute; top: 16px; right: 16px; z-index: 3;
