@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AuthGuard } from "../AuthGuard";
 import { apiFetch } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 interface TryOnRow {
   id: string;
@@ -21,16 +23,15 @@ function badgeClass(status: string): string {
   return `badge badge-${status.toLowerCase()}`;
 }
 
-const MONTH_FORMATTER = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" });
-
 /** Last 12 months (this one first), as { value: "2026-08", label: "August 2026" }. */
-function recentMonths(count = 12): { value: string; label: string }[] {
+function recentMonths(locale: string, count = 12): { value: string; label: string }[] {
+  const formatter = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" });
   const months = [];
   const now = new Date();
   for (let i = 0; i < count; i++) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
     const value = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-    months.push({ value, label: MONTH_FORMATTER.format(d) });
+    months.push({ value, label: formatter.format(d) });
   }
   return months;
 }
@@ -44,13 +45,15 @@ function monthRange(value: string): { from: string; to: string } {
 }
 
 function TryOnsContent() {
+  const router = useRouter();
+  const { t, locale } = useI18n();
   const [items, setItems] = useState<TryOnRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [month, setMonth] = useState(""); // "" = all time
   const [error, setError] = useState<string | null>(null);
   const limit = 10;
-  const monthOptions = useMemo(() => recentMonths(), []);
+  const monthOptions = useMemo(() => recentMonths(locale), [locale]);
 
   useEffect(() => {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
@@ -69,7 +72,7 @@ function TryOnsContent() {
 
   return (
     <>
-      <div className="page-title">Try-ons</div>
+      <div className="page-title">{t("tryons.title")}</div>
 
       <div style={{ marginBottom: 16 }}>
         <select
@@ -88,7 +91,7 @@ function TryOnsContent() {
             fontFamily: "inherit",
           }}
         >
-          <option value="">All time</option>
+          <option value="">{t("common.allTime")}</option>
           {monthOptions.map((m) => (
             <option key={m.value} value={m.value}>
               {m.label}
@@ -102,24 +105,24 @@ function TryOnsContent() {
         <table>
           <thead>
             <tr>
-              <th>Image</th>
-              <th>Product</th>
-              <th>Status</th>
-              <th>Duration</th>
-              <th>UTM</th>
-              <th>Created At</th>
+              <th>{t("tryons.image")}</th>
+              <th>{t("tryons.product")}</th>
+              <th>{t("tryons.status")}</th>
+              <th>{t("tryons.duration")}</th>
+              <th>{t("tryons.utm")}</th>
+              <th>{t("tryons.createdAt")}</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && !error ? (
               <tr>
                 <td colSpan={6} className="empty-state">
-                  {month ? "No try-ons in this month." : "No try-ons yet."}
+                  {month ? t("tryons.emptyMonth") : t("tryons.empty")}
                 </td>
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id}>
+                <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.id}`)}>
                   <td>
                     <img className="thumb" src={item.productImageUrl} alt="" />
                   </td>
@@ -157,7 +160,7 @@ function TryOnsContent() {
       {total > limit && (
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <button className="btn" style={{ width: "auto", padding: "8px 14px" }} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            Previous
+            {t("common.previous")}
           </button>
           <button
             className="btn"
@@ -165,7 +168,7 @@ function TryOnsContent() {
             disabled={page * limit >= total}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next
+            {t("common.next")}
           </button>
         </div>
       )}

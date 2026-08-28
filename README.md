@@ -24,8 +24,8 @@ Phase 2/3/4 (real AI provider, Shopify/WooCommerce, billing/white-label).
 apps/
   api/            Fastify — public API + TryOnWorker (ARCHITECTURE.md §7)
   demo-store/     Fake eyewear store embedding the SDK, for testing the loop
-  dashboard/      Merchant dashboard (Overview, Try-ons)
-  admin/          Internal ops console — not yet built (Phase 4)
+  dashboard/      Merchant dashboard (Overview, Try-ons, Button design, Plan)
+  admin/          Internal ops console — every tenant, cross-store Try-ons, plan management
 packages/
   database/       Prisma schema (Tenant/Store/TryOnSession/…)
   tryon/          TryOnProvider interface, TryOnSession state machine

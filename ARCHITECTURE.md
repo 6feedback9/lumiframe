@@ -421,9 +421,54 @@ error — never silently returns a broken image.
   cutout), and the product image content-hash cache.
 - **Phase 3** — Shopify app, WooCommerce plugin, `OrderTrackingAdapter`
   implementations, UTM/attribution wired to real orders.
-- **Phase 4** — billing (`UsageRecord` → invoicing), white-label, the
-  Integration Checker diagnostics page, analytics polish.
+- **Phase 4** — billing — **plans/usage limits done** (§17); still
+  outstanding: real payment collection (Stripe — currently manual, see
+  DEPLOYMENT.md §8), white-label beyond button appearance (`Store.
+  widgetConfig` already carries `logo`/`showPoweredBy`, not yet surfaced in
+  the dashboard), the Integration Checker diagnostics page, analytics
+  polish.
 
 Nothing in Phase 1 should require re-architecting for Phase 2/3 — that's
 the point of §6, §8 and §10 being interfaces/strategies rather than
 inline code.
+
+## 17. Plans / usage limits
+
+Every `Tenant` has an optional `planId` (`Plan` — `STARTER`/`GROWTH`/`PRO`,
+seeded by migration, priced with Gemini's per-image cost plus margin — see
+DEPLOYMENT.md §8) and a persistent `topUpCredits` balance. Enforcement
+(`apps/api/src/domain/planEntitlement.ts`) runs at try-on **creation**
+(`POST /api/v1/tryons` and `/retry`), before anything is enqueued — never
+after the fact — so a blocked request never reaches the AI provider and
+never costs anything:
+
+1. Count `UsageRecord` rows for the tenant since the start of the current
+   calendar month (UsageRecord is only ever created once a generation
+   actually `COMPLETED` — real cost already incurred — matching how it's
+   used elsewhere, e.g. the admin dashboard's billable-units total).
+2. If under `plan.monthlyLimit`, allow.
+3. Otherwise, allow only if `topUpCredits > 0`; the worker
+   (`processTryOnJob.ts`) decrements it by one when *that* generation
+   completes — a top-up credit is spent by completions past the monthly
+   line, not by attempts.
+4. A blocked request gets `402 { error, code: "PLAN_LIMIT_REACHED" }` —
+   the `error` string is intentionally generic (never mentions plans,
+   quota, or billing) since it reaches the shopper's browser via the
+   widget; the merchant is expected to notice from their own dashboard
+   (`GET /api/v1/billing` — plan, usage this month, top-up balance) rather
+   than from anything shown to their customer.
+
+A tenant with no plan (`planId: null`) has a monthly limit of 0 — i.e. is
+fully blocked. Every new signup is assigned Starter automatically
+(`POST /api/v1/auth/register`); the one migration-time exception is
+existing tenants from before Plans existed, defaulted onto Starter by the
+`default_plan_for_existing_tenants` migration so a deploy never silently
+cuts off an already-live merchant.
+
+Payment itself is manual for now (DEPLOYMENT.md §8): a merchant requests
+an upgrade or top-up from their dashboard (`POST /api/v1/billing/request`
+— just records a note + timestamp on the tenant), and the platform admin
+fulfills it by hand from `apps/admin` (`PATCH .../plan`,
+`POST .../topup`) once payment is confirmed outside the system — either
+admin action clears the pending request note, since both are "the request
+being handled," whether by granting it as asked or by a manual override.

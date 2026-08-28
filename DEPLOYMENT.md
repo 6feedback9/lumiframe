@@ -154,6 +154,32 @@ code (`GEMINI_NO_IMAGE`, `GEMINI_REQUEST_FAILED`, etc.) and Gemini's own
 message, which is usually specific enough to act on (a safety-filter
 refusal on a particular photo, an invalid/unbilled API key, etc.).
 
+## 8. Plans/billing, button design, cross-store visibility
+
+This update adds pricing plans + usage limits, a merchant-facing button
+design page, per-tenant photo review (product/customer/result), and
+platform-wide try-on browsing in `apps/admin`. Two things to do once:
+
+1. **Apply the schema update.** Paste `lumiframe-billing-migration.sql`
+   into Supabase's SQL Editor and run it (same place you ran the first
+   schema setup). It adds the `plans` table, seeds Starter/Growth/Pro, and
+   defaults every existing tenant onto Starter so nobody already live gets
+   silently blocked.
+2. **Redeploy all three apps** — `apps/api` (Render → Manual Deploy),
+   `apps/dashboard` and `apps/admin` (Vercel → Deployments → Create
+   Deployment → the branch).
+
+After that: a merchant sees their plan/usage under **Plan** in their
+dashboard and can request an upgrade or a top-up pack (payment is manual —
+see the numbers in `packages/database/prisma/migrations/*_seed_plans` —
+you action their request from `apps/admin` → that tenant → **Plan &
+usage**). Every merchant now also gets a **Try-ons** detail view showing
+the product photo, the customer's uploaded photo, and the result
+side-by-side, and a **Button design** page to customize the "Try on"
+button's color/font/glow with a live preview before copying the updated
+snippet. From `apps/admin`, **Try-ons** lists every try-on across every
+tenant with the same 3-photo detail view.
+
 ## Rough cost to start
 
 - Supabase free tier: fine initially (500MB DB, 1GB storage).

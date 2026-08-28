@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import { AuthGuard } from "../../AuthGuard";
 import { apiFetch } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+
+interface Plan {
+  id: string;
+  key: string;
+  name: string;
+  monthlyLimit: number;
+  priceUsd: number;
+}
 
 interface TenantDetail {
   id: string;
@@ -13,52 +22,168 @@ interface TenantDetail {
   users: { id: string; email: string; role: string; lastLoginAt: string | null; createdAt: string }[];
   totalTryOns: number;
   totalUsageUnits: number;
+  usedThisMonth: number;
+  topUpCredits: number;
+  plan: Plan | null;
+  planRequestNote: string | null;
+  planRequestedAt: string | null;
   recentTryOns: { id: string; productTitle: string | null; status: string; createdAt: string }[];
 }
 
+function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: TenantDetail; plans: Plan[]; onUpdated: () => void }) {
+  const { t } = useI18n();
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [creditsInput, setCreditsInput] = useState("");
+  const [savingCredits, setSavingCredits] = useState(false);
+
+  async function changePlan(planId: string) {
+    setSavingPlan(true);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/plan`, { method: "PATCH", body: JSON.stringify({ planId: planId || null }) });
+      onUpdated();
+    } finally {
+      setSavingPlan(false);
+    }
+  }
+
+  async function addCredits() {
+    const amount = Number(creditsInput);
+    if (!Number.isFinite(amount) || amount === 0) return;
+    setSavingCredits(true);
+    try {
+      await apiFetch(`/api/v1/admin/tenants/${id}/topup`, { method: "POST", body: JSON.stringify({ addCredits: amount }) });
+      setCreditsInput("");
+      onUpdated();
+    } finally {
+      setSavingCredits(false);
+    }
+  }
+
+  return (
+    <div className="panel" style={{ padding: 24, marginBottom: 20, maxWidth: 640 }}>
+      <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("tenantDetail.billingTitle")}</h3>
+
+      {tenant.planRequestNote && (
+        <div
+          style={{
+            background: "rgba(115,183,255,0.08)",
+            border: "1px solid var(--sky)",
+            borderRadius: 10,
+            padding: 12,
+            fontSize: 12,
+            marginBottom: 16,
+          }}
+        >
+          <strong>{t("tenantDetail.pendingRequestTitle")}</strong>
+          <div style={{ marginTop: 4, color: "var(--mist)" }}>{tenant.planRequestNote}</div>
+          {tenant.planRequestedAt && (
+            <div style={{ marginTop: 4, color: "var(--mist-dim)" }}>{new Date(tenant.planRequestedAt).toLocaleString()}</div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="field">
+          <label>{t("tenantDetail.assignPlan")}</label>
+          <select
+            value={tenant.plan?.id ?? ""}
+            disabled={savingPlan}
+            onChange={(e) => changePlan(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "9px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--line-strong)",
+              background: "rgba(173,201,255,0.05)",
+              color: "var(--paper)",
+              fontSize: 13,
+            }}
+          >
+            <option value="">{t("tenantDetail.noPlan")}</option>
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.monthlyLimit}/mo, ${p.priceUsd})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field">
+          <label>{t("tenantDetail.addCredits")}</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="number"
+              value={creditsInput}
+              onChange={(e) => setCreditsInput(e.target.value)}
+              placeholder={t("tenantDetail.addCreditsPlaceholder")}
+            />
+            <button className="btn" style={{ width: "auto", padding: "9px 14px" }} disabled={savingCredits} onClick={addCredits}>
+              {savingCredits ? t("common.saving") : t("common.save")}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 12, color: "var(--mist)", marginTop: 16 }}>
+        {t("tenantDetail.usedThisMonth")}: {tenant.usedThisMonth}
+        {tenant.plan ? ` / ${tenant.plan.monthlyLimit}` : ""} · {t("tenantDetail.topUpCredits")}: {tenant.topUpCredits}
+      </p>
+    </div>
+  );
+}
+
 function TenantDetailContent({ id }: { id: string }) {
+  const { t } = useI18n();
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}`)
-      .then(setTenant)
+  function load() {
+    Promise.all([apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}`), apiFetch<{ plans: Plan[] }>("/api/v1/admin/plans")])
+      .then(([t, p]) => {
+        setTenant(t);
+        setPlans(p.plans);
+      })
       .catch((err) => setError(err.message));
-  }, [id]);
+  }
+
+  useEffect(load, [id]);
 
   if (error) return <div className="empty-state">{error}</div>;
-  if (!tenant) return <div className="empty-state">Loading…</div>;
+  if (!tenant) return <div className="empty-state">{t("common.loading")}</div>;
 
   return (
     <>
       <a className="back-link" href="/">
-        ← All tenants
+        {t("tenants.back")}
       </a>
       <div className="page-title">{tenant.name}</div>
 
       <div className="stat-grid">
         <div className="stat-card">
-          <div className="label">Try-ons (all time)</div>
+          <div className="label">{t("tenantDetail.tryOnsAllTime")}</div>
           <div className="value">{tenant.totalTryOns}</div>
         </div>
         <div className="stat-card">
-          <div className="label">Billable units</div>
+          <div className="label">{t("tenantDetail.billableUnits")}</div>
           <div className="value">{tenant.totalUsageUnits}</div>
         </div>
         <div className="stat-card">
-          <div className="label">Team members</div>
+          <div className="label">{t("tenantDetail.teamMembers")}</div>
           <div className="value">{tenant.users.length}</div>
         </div>
       </div>
+
+      <BillingPanel id={id} tenant={tenant} plans={plans} onUpdated={load} />
 
       <div className="panel" style={{ marginBottom: 20 }}>
         <table>
           <thead>
             <tr>
-              <th>Store</th>
-              <th>URL</th>
-              <th>Status</th>
-              <th>Allowed domains</th>
+              <th>{t("tenantDetail.store")}</th>
+              <th>{t("tenantDetail.url")}</th>
+              <th>{t("tenantDetail.status")}</th>
+              <th>{t("tenantDetail.allowedDomains")}</th>
             </tr>
           </thead>
           <tbody>
@@ -80,16 +205,16 @@ function TenantDetailContent({ id }: { id: string }) {
         <table>
           <thead>
             <tr>
-              <th>Product</th>
-              <th>Status</th>
-              <th>Created</th>
+              <th>{t("tenantDetail.product")}</th>
+              <th>{t("tenants.status")}</th>
+              <th>{t("tenantDetail.created")}</th>
             </tr>
           </thead>
           <tbody>
             {tenant.recentTryOns.length === 0 ? (
               <tr>
                 <td colSpan={3} className="empty-state">
-                  No try-ons yet.
+                  {t("tenantDetail.empty")}
                 </td>
               </tr>
             ) : (
@@ -105,6 +230,11 @@ function TenantDetailContent({ id }: { id: string }) {
             )}
           </tbody>
         </table>
+        <div style={{ padding: 16 }}>
+          <a href={`/tryons?tenantId=${id}`} style={{ fontSize: 12, color: "var(--sky)" }}>
+            {t("tenantDetail.viewAllTryOns")}
+          </a>
+        </div>
       </div>
     </>
   );

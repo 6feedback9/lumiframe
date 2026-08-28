@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AuthGuard } from "./AuthGuard";
 import { apiFetch } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 interface Analytics {
   period: string;
@@ -18,6 +19,7 @@ interface Analytics {
 }
 
 function OverviewContent() {
+  const { t } = useI18n();
   const [data, setData] = useState<Analytics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,22 +30,22 @@ function OverviewContent() {
   }, []);
 
   if (error) return <div className="empty-state">{error}</div>;
-  if (!data) return <div className="empty-state">Loading…</div>;
+  if (!data) return <div className="empty-state">{t("common.loading")}</div>;
 
   const stats = [
-    { label: "Try-ons (30d)", value: data.totalTryOns },
-    { label: "Unique visitors", value: data.uniqueVisitors },
-    { label: "Completed", value: data.completed },
-    { label: "Failed", value: data.failed },
-    { label: "Add to cart", value: data.addToCart },
-    { label: "Orders", value: data.orders },
-    { label: "Conversion rate", value: `${data.conversionRate}%` },
-    { label: "Revenue attributed", value: data.revenue },
+    { label: t("overview.tryons30d"), value: data.totalTryOns },
+    { label: t("overview.uniqueVisitors"), value: data.uniqueVisitors },
+    { label: t("overview.completed"), value: data.completed },
+    { label: t("overview.failed"), value: data.failed },
+    { label: t("overview.addToCart"), value: data.addToCart },
+    { label: t("overview.orders"), value: data.orders },
+    { label: t("overview.conversionRate"), value: `${data.conversionRate}%` },
+    { label: t("overview.revenue"), value: data.revenue },
   ];
 
   return (
     <>
-      <div className="page-title">Overview</div>
+      <div className="page-title">{t("overview.title")}</div>
       <div className="stat-grid">
         {stats.map((s) => (
           <div className="stat-card" key={s.label}>
@@ -57,17 +59,17 @@ function OverviewContent() {
         <table>
           <thead>
             <tr>
-              <th>Product</th>
-              <th>Try-ons</th>
-              <th>Orders</th>
-              <th>Revenue</th>
+              <th>{t("overview.product")}</th>
+              <th>{t("overview.tryOnsCol")}</th>
+              <th>{t("overview.ordersCol")}</th>
+              <th>{t("overview.revenueCol")}</th>
             </tr>
           </thead>
           <tbody>
             {data.topProducts.length === 0 ? (
               <tr>
                 <td colSpan={4} className="empty-state">
-                  No try-ons yet.
+                  {t("overview.empty")}
                 </td>
               </tr>
             ) : (
