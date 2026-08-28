@@ -144,6 +144,7 @@ export function detectProduct(doc: Document, options: DetectProductOptions = {})
     options.explicit ?? null,
     options.platformAdapterResult ?? null,
     readJsonLdProduct(doc),
+    readMicrodataProduct(doc),
     readOpenGraphProduct(doc),
     options.domSelectors ? readSelectorProduct(doc, options.domSelectors) : null,
   ];
@@ -162,4 +163,42 @@ export function detectProduct(doc: Document, options: DetectProductOptions = {})
   if (!merged.productId) merged.productId = merged.productUrl ?? merged.productImageUrl;
 
   return merged as AttachProductInput;
+}
+
+/**
+ * Best-effort live enrichment via Shopify's own product JSON endpoint —
+ * every Shopify storefront publishes `/products/<handle>.js`, public and
+ * unauthenticated, with an always-accurate price straight from the
+ * catalog. Not every theme emits price in JSON-LD/OpenGraph/microdata (a
+ * theme can render "$49" as plain text with no machine-readable tag at
+ * all), so this is the reliable fallback specifically for Shopify stores
+ * rather than another guess at page markup — packages/integrations/shopify
+ * is the eventual real Shopify App (Phase 3, OAuth'd), but this needs none
+ * of that: it's the same JSON the storefront's own theme can fetch.
+ *
+ * Only tried when `window.Shopify` is present (Shopify injects this on
+ * every storefront page — a reliable "this is a Shopify site" signal) and
+ * the URL is a product page. Only fills `price`/`currency` if still
+ * missing — never overrides what detectProduct() already found. Fails
+ * silently on any error: this must never block the widget from opening.
+ */
+export async function enrichFromShopify(product: AttachProductInput): Promise<AttachProductInput> {
+  if (typeof window === "undefined" || !(window as unknown as { Shopify?: unknown }).Shopify) return product;
+  if (product.price !== undefined) return product;
+
+  const match = window.location.pathname.match(/\/products\/([^/?#]+)/);
+  if (!match) return product;
+
+  try {
+    const res = await fetch(`${window.location.origin}/products/${match[1]}.js`, { credentials: "omit" });
+    if (!res.ok) return product;
+    const shopifyProduct = await res.json();
+    // Shopify returns price in the smallest currency unit (cents).
+    const price = typeof shopifyProduct.price === "number" ? shopifyProduct.price / 100 : undefined;
+    if (price === undefined) return product;
+    const currency = (window as unknown as { Shopify?: { currency?: { active?: string } } }).Shopify?.currency?.active;
+    return { ...product, price, currency: product.currency ?? currency };
+  } catch {
+    return product;
+  }
 }

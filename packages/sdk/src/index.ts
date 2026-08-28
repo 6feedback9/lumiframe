@@ -10,7 +10,7 @@
 //     TryOn.attach({ productId: "RB-001", productImageUrl: "..." });
 //   </script>
 
-import { detectProduct, type DomSelectorConfig } from "./detectProduct";
+import { detectProduct, enrichFromShopify, type DomSelectorConfig } from "./detectProduct";
 import type {
   AttachProductInput,
   SdkEventListener,
@@ -203,13 +203,18 @@ class TryOnSdkImpl implements TryOnSdk {
   }
 
   private async mountWidget(product: AttachProductInput): Promise<void> {
+    // Best-effort: fills in price/currency from Shopify's own product JSON
+    // when the page's own markup didn't have it (see detectProduct.ts) —
+    // a no-op on any non-Shopify store or if price was already found.
+    const enriched = await enrichFromShopify(product);
+
     // packages/widget ships its real implementation in Phase 1. The
     // contract is fixed now so neither side has to change when it lands:
     // it receives the resolved product + SDK options, and reports back
     // through the same event names this module already emits.
     const { mountWidget } = await import("@lumiframe/widget");
     mountWidget({
-      product,
+      product: enriched,
       apiBaseUrl: this.options!.apiBaseUrl!,
       storeId: this.options!.storeId,
       // Default to Ukrainian, not English — this platform's merchants and
