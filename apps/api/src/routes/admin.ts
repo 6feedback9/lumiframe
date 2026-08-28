@@ -45,6 +45,9 @@ const setWidgetConfigSchema = z.object({
   showBackButton: z.boolean().optional(),
   modalHeading: z.string().max(120).optional(),
   modalSubheading: z.string().max(200).optional(),
+  modalAccentColorStart: z.string().max(20).optional(),
+  modalAccentColorEnd: z.string().max(20).optional(),
+  modalAccentTextColor: z.string().max(20).optional(),
 });
 
 // The platform-owner's own view across every tenant (ARCHITECTURE.md §11

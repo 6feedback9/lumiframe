@@ -110,7 +110,8 @@ const DICT = {
     "buttonDesign.showTryAnother": "«Спробувати інше фото»",
     "buttonDesign.showBack": "«Повернутись до товару»",
     "buttonDesign.modalTextTitle": "Текст вікна примірки",
-    "buttonDesign.colorsInherited": "Кольори вікна примірки успадковуються від оформлення кнопки вище.",
+    "buttonDesign.modalColorTitle": "Кольори вікна примірки",
+    "buttonDesign.modalColorNote": "За замовчуванням — ті самі кольори, що й у кнопки. Змініть тут для окремого кольору вікна.",
     "buttonDesign.modalHeading": "Заголовок",
     "buttonDesign.modalSubheading": "Підзаголовок",
 
@@ -254,7 +255,8 @@ const DICT = {
     "buttonDesign.showTryAnother": "\"Try another photo\"",
     "buttonDesign.showBack": "\"Back to product\"",
     "buttonDesign.modalTextTitle": "Try-on window text",
-    "buttonDesign.colorsInherited": "The try-on window's colors are inherited from the button design above.",
+    "buttonDesign.modalColorTitle": "Try-on window colors",
+    "buttonDesign.modalColorNote": "Defaults to the same colors as the button. Change them here for a window-specific color.",
     "buttonDesign.modalHeading": "Heading",
     "buttonDesign.modalSubheading": "Subheading",
 

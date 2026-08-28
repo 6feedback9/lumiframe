@@ -358,8 +358,41 @@ function IntegrationContent() {
             </div>
           </div>
 
-          <h3 style={{ margin: "20px 0 10px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.modalTextTitle")}</h3>
-          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginBottom: 14 }}>{t("customize.colorsInherited")}</p>
+          <h3 style={{ margin: "20px 0 10px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.modalColorTitle")}</h3>
+          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginBottom: 14 }}>{t("customize.modalColorNote")}</p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div className="field">
+              <label>{t("customize.color1")}</label>
+              <input
+                type="color"
+                value={config.modalAccentColorStart ?? config.buttonColorStart ?? "#73b7ff"}
+                onChange={(e) => setConfig({ ...config, modalAccentColorStart: e.target.value })}
+                style={{ height: 40, padding: 4 }}
+              />
+            </div>
+            <div className="field">
+              <label>{t("customize.color2")}</label>
+              <input
+                type="color"
+                value={config.modalAccentColorEnd ?? config.buttonColorEnd ?? "#9f8cff"}
+                onChange={(e) => setConfig({ ...config, modalAccentColorEnd: e.target.value })}
+                style={{ height: 40, padding: 4 }}
+              />
+            </div>
+          </div>
+
+          <div className="field" style={{ marginBottom: 20 }}>
+            <label>{t("customize.textColor")}</label>
+            <input
+              type="color"
+              value={config.modalAccentTextColor ?? config.buttonTextColor ?? "#ffffff"}
+              onChange={(e) => setConfig({ ...config, modalAccentTextColor: e.target.value })}
+              style={{ height: 40, padding: 4 }}
+            />
+          </div>
+
+          <h3 style={{ margin: "0 0 10px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.modalTextTitle")}</h3>
 
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.modalHeading")}</label>

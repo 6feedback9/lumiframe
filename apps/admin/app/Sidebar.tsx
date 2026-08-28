@@ -28,7 +28,7 @@ export function Sidebar() {
           {t("nav.feedback")}
         </a>
       </nav>
-      <div style={{ marginTop: "auto", padding: "16px 20px", display: "flex", gap: 6 }}>
+      <div style={{ padding: "12px 20px", display: "flex", gap: 6 }}>
         {(["uk", "en"] as Locale[]).map((l) => (
           <button
             key={l}

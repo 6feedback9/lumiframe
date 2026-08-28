@@ -30,6 +30,9 @@ interface WidgetConfig {
   showBackButton?: boolean;
   modalHeading?: string;
   modalSubheading?: string;
+  modalAccentColorStart?: string;
+  modalAccentColorEnd?: string;
+  modalAccentTextColor?: string;
 }
 
 interface TenantUser {
@@ -405,8 +408,41 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
             </div>
           </div>
 
-          <h4 style={{ margin: "16px 0 8px", fontSize: 13, borderTop: "1px solid var(--line)", paddingTop: 16 }}>{t("buttonDesign.modalTextTitle")}</h4>
-          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginBottom: 12 }}>{t("buttonDesign.colorsInherited")}</p>
+          <h4 style={{ margin: "16px 0 8px", fontSize: 13, borderTop: "1px solid var(--line)", paddingTop: 16 }}>{t("buttonDesign.modalColorTitle")}</h4>
+          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginBottom: 12 }}>{t("buttonDesign.modalColorNote")}</p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div className="field">
+              <label>{t("buttonDesign.color1")}</label>
+              <input
+                type="color"
+                value={config.modalAccentColorStart ?? config.buttonColorStart ?? "#73b7ff"}
+                onChange={(e) => setConfig({ ...config, modalAccentColorStart: e.target.value })}
+                style={{ height: 38, padding: 4 }}
+              />
+            </div>
+            <div className="field">
+              <label>{t("buttonDesign.color2")}</label>
+              <input
+                type="color"
+                value={config.modalAccentColorEnd ?? config.buttonColorEnd ?? "#9f8cff"}
+                onChange={(e) => setConfig({ ...config, modalAccentColorEnd: e.target.value })}
+                style={{ height: 38, padding: 4 }}
+              />
+            </div>
+          </div>
+
+          <div className="field" style={{ marginBottom: 16 }}>
+            <label>{t("buttonDesign.textColor")}</label>
+            <input
+              type="color"
+              value={config.modalAccentTextColor ?? config.buttonTextColor ?? "#ffffff"}
+              onChange={(e) => setConfig({ ...config, modalAccentTextColor: e.target.value })}
+              style={{ height: 38, padding: 4 }}
+            />
+          </div>
+
+          <h4 style={{ margin: "0 0 8px", fontSize: 13, borderTop: "1px solid var(--line)", paddingTop: 16 }}>{t("buttonDesign.modalTextTitle")}</h4>
 
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.modalHeading")}</label>

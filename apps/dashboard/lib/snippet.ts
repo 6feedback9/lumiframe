@@ -20,6 +20,9 @@ export interface WidgetConfig {
   showBackButton?: boolean;
   modalHeading?: string;
   modalSubheading?: string;
+  modalAccentColorStart?: string;
+  modalAccentColorEnd?: string;
+  modalAccentTextColor?: string;
 }
 
 export function buildInitOptions(storeId: string, apiBaseUrl: string, config: WidgetConfig = {}): Record<string, unknown> {
@@ -40,6 +43,9 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.showBackButton === false) options.showBackButton = false;
   if (config.modalHeading) options.modalHeading = config.modalHeading;
   if (config.modalSubheading) options.modalSubheading = config.modalSubheading;
+  if (config.modalAccentColorStart) options.modalAccentColorStart = config.modalAccentColorStart;
+  if (config.modalAccentColorEnd) options.modalAccentColorEnd = config.modalAccentColorEnd;
+  if (config.modalAccentTextColor) options.modalAccentTextColor = config.modalAccentTextColor;
   return options;
 }
 

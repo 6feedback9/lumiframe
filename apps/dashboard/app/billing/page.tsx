@@ -95,12 +95,21 @@ function BillingContent() {
   const [requestSent, setRequestSent] = useState(false);
   const [paidNote, setPaidNote] = useState("");
   const [paidSent, setPaidSent] = useState(false);
+  // What the merchant is confirming payment for — "" means unset, "topup"
+  // means the top-up pack, anything else is a plan key. Needed so the
+  // admin's pending-request note actually names a plan (product ask: she
+  // couldn't tell which plan a merchant had paid for).
+  const [payFor, setPayFor] = useState("");
 
   function load() {
     apiFetch<BillingInfo>("/api/v1/billing").then(setData).catch((err) => setError(err.message));
   }
 
   useEffect(load, []);
+
+  useEffect(() => {
+    if (data && !payFor) setPayFor(data.plan?.key ?? data.allPlans[0]?.key ?? "topup");
+  }, [data, payFor]);
 
   async function requestUpgrade(planKey: string) {
     setRequesting(planKey);
@@ -136,7 +145,12 @@ function BillingContent() {
     try {
       await apiFetch("/api/v1/billing/request", {
         method: "POST",
-        body: JSON.stringify({ kind: "paid", message: paidNote || undefined }),
+        body: JSON.stringify({
+          kind: "paid",
+          planKey: payFor !== "topup" ? payFor : undefined,
+          topUp: payFor === "topup",
+          message: paidNote || undefined,
+        }),
       });
       setPaidSent(true);
       setPaidNote("");
@@ -196,6 +210,33 @@ function BillingContent() {
           <CopyRow label={t("billing.purpose")} value={t("billing.purposeValue")} />
 
           <div className="field" style={{ marginTop: 14, marginBottom: 12 }}>
+            <label>{t("billing.payingFor")}</label>
+            <select
+              value={payFor}
+              onChange={(e) => setPayFor(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "9px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--line-strong)",
+                background: "rgba(173,201,255,0.05)",
+                color: "var(--paper)",
+                fontSize: 13,
+              }}
+            >
+              {data.allPlans.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name} — ${p.priceUsd}
+                  {t("billing.perMonth")}
+                </option>
+              ))}
+              <option value="topup">
+                {t("billing.topUpPack")} (+{data.plan?.topUpPackSize ?? "…"} — ${data.plan?.topUpPackPriceUsd ?? "…"})
+              </option>
+            </select>
+          </div>
+
+          <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("billing.paidNote")}</label>
             <input value={paidNote} onChange={(e) => setPaidNote(e.target.value)} placeholder={t("billing.paidNotePlaceholder")} maxLength={300} />
           </div>
@@ -208,50 +249,55 @@ function BillingContent() {
         </div>
       </div>
 
-      <div className="panel" style={{ padding: 24, maxWidth: 720 }}>
-        <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("billing.plans")}</h3>
-        <table>
-          <thead>
-            <tr>
-              <th></th>
-              <th>{t("billing.monthlyLimit")}</th>
-              <th>{t("billing.price")}</th>
-              <th>{t("billing.topUpPack")}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.allPlans.map((p) => (
-              <tr key={p.key}>
-                <td style={{ fontWeight: 600 }}>
-                  {p.name}
-                  {data.plan?.key === p.key && (
-                    <span className="badge badge-completed" style={{ marginLeft: 8 }}>
-                      {t("billing.currentBadge")}
-                    </span>
-                  )}
-                </td>
-                <td>{p.monthlyLimit}</td>
-                <td>${p.priceUsd}</td>
-                <td>
-                  +{p.topUpPackSize} / ${p.topUpPackPriceUsd}
-                </td>
-                <td>
-                  {data.plan?.key !== p.key && (
-                    <button
-                      className="btn"
-                      style={{ width: "auto", padding: "6px 12px", fontSize: 12 }}
-                      disabled={requesting === p.key}
-                      onClick={() => requestUpgrade(p.key)}
-                    >
-                      {t("billing.choosePlan")}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("billing.plans")}</h3>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.allPlans.length}, 1fr)`, gap: 16, maxWidth: 900 }}>
+        {data.allPlans.map((p) => {
+          const isCurrent = data.plan?.key === p.key;
+          return (
+            <div
+              key={p.key}
+              className="panel"
+              style={{
+                padding: 22,
+                display: "flex",
+                flexDirection: "column",
+                border: isCurrent ? "1px solid var(--sky)" : "1px solid var(--line)",
+                background: isCurrent ? "rgba(115,183,255,0.06)" : undefined,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{p.name}</span>
+                {isCurrent && (
+                  <span className="badge badge-completed" style={{ fontSize: 10 }}>
+                    {t("billing.currentBadge")}
+                  </span>
+                )}
+              </div>
+              <div style={{ margin: "6px 0 18px" }}>
+                <span style={{ fontSize: 26, fontWeight: 800 }}>${p.priceUsd}</span>
+                <span style={{ fontSize: 12, color: "var(--mist)" }}>{t("billing.perMonth")}</span>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--mist)", display: "flex", flexDirection: "column", gap: 6, marginBottom: 20, flex: 1 }}>
+                <span>
+                  {t("billing.monthlyLimit")}: <strong style={{ color: "var(--paper)" }}>{p.monthlyLimit}</strong>
+                </span>
+                <span>
+                  {t("billing.topUpPack")}: <strong style={{ color: "var(--paper)" }}>+{p.topUpPackSize}</strong> — ${p.topUpPackPriceUsd}
+                </span>
+              </div>
+              {!isCurrent && (
+                <button
+                  className="btn"
+                  style={{ width: "100%", padding: "9px 12px", fontSize: 13 }}
+                  disabled={requesting === p.key}
+                  onClick={() => requestUpgrade(p.key)}
+                >
+                  {t("billing.choosePlan")}
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </>
   );

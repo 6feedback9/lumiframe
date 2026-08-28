@@ -20,6 +20,11 @@ const requestSchema = z.object({
   // owner verifies and activates the plan herself).
   kind: z.enum(["upgrade", "topup", "paid"]),
   planKey: z.enum(["STARTER", "GROWTH", "PRO"]).optional(),
+  // "paid" needs to say what was paid for, so the admin's pending-request
+  // note actually names a plan instead of just "payment sent" (product
+  // ask: the owner couldn't tell which plan a merchant had paid for).
+  // planKey doubles as this when paying for a plan; topUp covers a pack.
+  topUp: z.boolean().optional(),
 });
 
 export async function billingRoutes(app: FastifyInstance): Promise<void> {
@@ -84,12 +89,17 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
     if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
 
     const { tenantId } = request.merchant!;
-    const note =
-      parsed.data.kind === "upgrade"
-        ? `Requested upgrade to ${parsed.data.planKey ?? "a higher plan"}.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`
-        : parsed.data.kind === "topup"
-          ? `Requested a top-up pack.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`
-          : `💰 Merchant confirms payment sent — please verify and activate.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+
+    let note: string;
+    if (parsed.data.kind === "upgrade") {
+      note = `Requested upgrade to ${parsed.data.planKey ?? "a higher plan"}.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+    } else if (parsed.data.kind === "topup") {
+      note = `Requested a top-up pack.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+    } else {
+      const paidPlan = parsed.data.planKey ? await prisma.plan.findUnique({ where: { key: parsed.data.planKey } }) : null;
+      const target = paidPlan ? `the ${paidPlan.name} plan` : parsed.data.topUp ? "a top-up pack" : "their plan";
+      note = `💰 Merchant confirms payment sent for ${target} — please verify and activate.${parsed.data.message ? ` Note: ${parsed.data.message}` : ""}`;
+    }
 
     const tenant = await prisma.tenant.update({
       where: { id: tenantId },

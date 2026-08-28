@@ -58,6 +58,16 @@ export interface TryOnInitOptions {
   /** Overrides the try-on window's default upload-step heading/subheading text. */
   modalHeading?: string;
   modalSubheading?: string;
+  /**
+   * The try-on window's own accent color (its primary button, spinner,
+   * upload-zone border) — independent of the page button's colors above.
+   * Defaults to the button's colors when omitted, so a merchant who never
+   * touches these still gets a consistent look; set explicitly for a
+   * window that should look different from the page button.
+   */
+  modalAccentColorStart?: string;
+  modalAccentColorEnd?: string;
+  modalAccentTextColor?: string;
 }
 
 /**

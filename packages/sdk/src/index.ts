@@ -213,12 +213,13 @@ class TryOnSdkImpl implements TryOnSdk {
       showBackButton: this.options!.showBackButton,
       modalHeading: this.options!.modalHeading,
       modalSubheading: this.options!.modalSubheading,
-      // Same accent as the auto-injected page button, so the try-on window
-      // reads as the same product rather than a mismatched second theme.
-      accentColorStart: this.options!.buttonColorStart,
-      accentColorEnd: this.options!.buttonColorEnd,
+      // Modal-specific colors win when set; otherwise falls back to the
+      // auto-injected page button's colors, so the window still reads as
+      // the same product by default without needing separate setup.
+      accentColorStart: this.options!.modalAccentColorStart ?? this.options!.buttonColorStart,
+      accentColorEnd: this.options!.modalAccentColorEnd ?? this.options!.buttonColorEnd,
       accentStyle: this.options!.buttonStyle,
-      accentTextColor: this.options!.buttonTextColor,
+      accentTextColor: this.options!.modalAccentTextColor ?? this.options!.buttonTextColor,
       onEvent: (event, payload) => this.bus.emit(event, payload as never),
       onClose: () => this.close(),
     });
