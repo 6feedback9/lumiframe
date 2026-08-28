@@ -53,7 +53,7 @@ const DICT = {
     "register.haveAccount": "Вже є акаунт?",
     "register.signIn": "Увійти",
     "register.readyTitle": "готовий",
-    "register.readyDesc": "Залишилось одне: додайте це на свій сайт (у шаблон сторінки товару), потім натисніть «Продовжити».",
+    "register.readyDesc": "Магазин створено. Код для встановлення на сайт ти знайдеш у кабінеті, в розділі «Дизайн і інтеграція».",
     "register.continue": "Перейти в кабінет",
 
     "overview.title": "Огляд",
@@ -310,7 +310,7 @@ const DICT = {
     "register.haveAccount": "Already have an account?",
     "register.signIn": "Sign in",
     "register.readyTitle": "is ready",
-    "register.readyDesc": "One thing left: add this to your site (product page template), then click Continue.",
+    "register.readyDesc": "Your store is set up. You'll find the install code in your dashboard, under Design & Integration.",
     "register.continue": "Continue to dashboard",
 
     "overview.title": "Overview",

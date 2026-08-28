@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { setToken } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import { IntegrationSnippet } from "../IntegrationSnippet";
 import { LocaleToggle } from "../LocaleToggle";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
@@ -47,13 +46,12 @@ export default function RegisterPage() {
     return (
       <div className="login-page">
         <LocaleToggle />
-        <div className="login-card" style={{ width: 480 }}>
+        <div className="login-card">
           <h1>
             {result.store.name} {t("register.readyTitle")}
           </h1>
           <p style={{ fontSize: 13, color: "var(--mist)", marginBottom: 18 }}>{t("register.readyDesc")}</p>
-          <IntegrationSnippet storeId={result.store.id} />
-          <a className="btn" href="/" style={{ display: "block", textAlign: "center", marginTop: 16 }}>
+          <a className="btn" href="/" style={{ display: "block", textAlign: "center" }}>
             {t("register.continue")}
           </a>
         </div>
