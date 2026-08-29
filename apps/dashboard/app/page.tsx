@@ -126,9 +126,15 @@ function OverviewContent() {
         <LineTrendChart title={t("overview.dailyTryOns")} points={dailyPoints} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+      {/* Used to sit next to a second "Використання кредитів" chart that
+          rendered this exact same monthlyPoints array under a different
+          title — an honest duplicate, not a second metric (there's no
+          credit-specific consumption tracked separately from try-on
+          count), and one more thing for the page to fetch/render/paint
+          for zero extra information (product report: "нахера це?" —
+          fair question, removed rather than answered). */}
+      <div style={{ marginBottom: 20 }}>
         <BarTrendChart title={t("overview.monthlyTryOns")} points={monthlyPoints} />
-        <BarTrendChart title={t("overview.creditsUsage")} points={monthlyPoints} />
       </div>
 
       <div className="panel">

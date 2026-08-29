@@ -95,7 +95,6 @@ export function Sidebar() {
     { href: "/feedback", label: t("nav.feedback") },
     { href: "/team", label: t("nav.team") },
     { href: "/billing", label: t("nav.billing") },
-    { href: "/help", label: t("nav.help") },
   ];
 
   return (

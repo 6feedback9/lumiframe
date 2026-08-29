@@ -75,7 +75,6 @@ const DICT = {
     "overview.creditsLeft": "Запас додаткових примірок",
     "overview.dailyTryOns": "Примірки по днях (14 днів)",
     "overview.monthlyTryOns": "Примірки по місяцях (6 місяців)",
-    "overview.creditsUsage": "Використання кредитів (6 місяців)",
 
     "tryons.title": "Примірки",
     "tryons.image": "Фото товару",
@@ -348,7 +347,6 @@ const DICT = {
     "overview.creditsLeft": "Extra try-ons (balance)",
     "overview.dailyTryOns": "Daily try-ons (last 14 days)",
     "overview.monthlyTryOns": "Monthly try-ons (last 6 months)",
-    "overview.creditsUsage": "Credits usage (last 6 months)",
 
     "tryons.title": "Try-ons",
     "tryons.image": "Product photo",
