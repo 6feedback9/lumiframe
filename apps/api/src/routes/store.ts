@@ -51,6 +51,12 @@ const updateStoreSchema = z.object({
       modalAccentColorStart: z.string().max(20).optional(),
       modalAccentColorEnd: z.string().max(20).optional(),
       modalAccentTextColor: z.string().max(20).optional(),
+      // A "Try on" affordance on every catalog-card thumbnail, not just the
+      // product page's own button (packages/sdk's detectCards.ts). Reuses
+      // the buttonColorStart/End/TextColor/Style fields above — no
+      // separate color config.
+      cardButtonEnabled: z.boolean().optional(),
+      cardButtonVariant: z.enum(["corner", "drawer", "scrim"]).optional(),
     })
     .optional(),
 });
