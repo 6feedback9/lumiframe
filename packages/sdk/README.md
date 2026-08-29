@@ -104,7 +104,11 @@ button).
 cards later (infinite scroll, an AJAX filter) won't pick those up. No
 platform-specific enrichment yet (unlike the single product page's
 `enrichFromShopify`), so price shown before opening the widget is whatever
-the card's own markup says.
+the card's own markup says. A cart drawer/mini-cart line item links to the
+same `/products/...` URL a catalog card does and is deliberately excluded
+— anything inside a container whose id/class/tag mentions "cart" is
+skipped, so a shopper never gets a "Try on" button on an item already in
+their cart.
 
 ## API
 

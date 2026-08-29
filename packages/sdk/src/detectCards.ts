@@ -72,10 +72,21 @@ function fromManualMarkers(doc: Document): CardMatch[] {
 // was verified against. Anything else needs data-lumiframe-card.
 const PRODUCT_LINK_SELECTOR = 'a[href*="/products/"], a[href*="/product/"]';
 
+// A cart drawer/mini-cart line item links to the exact same /products/...
+// URL and has its own thumbnail — a real store's cart, with a button
+// injected on its own line-item photo, was the first thing a merchant
+// caught this on. Every cart implementation seen in the wild — Shopify's
+// own cart-drawer/cart-notification, WooCommerce's mini-cart widget, and
+// every generic "cart drawer" — names itself "cart" somewhere in an id,
+// class, or the container tag itself, so that's the signal excluded here
+// rather than trying to enumerate every theme's markup.
+const CART_CONTAINER_SELECTOR = '[id*="cart" i], [class*="cart" i], [data-cart], cart-drawer, cart-notification, cart-items';
+
 function fromLinkHeuristic(doc: Document): CardMatch[] {
   const seen = new Set<string>();
   const matches: CardMatch[] = [];
   for (const link of Array.from(doc.querySelectorAll<HTMLAnchorElement>(PRODUCT_LINK_SELECTOR))) {
+    if (link.closest(CART_CONTAINER_SELECTOR)) continue; // a cart line item, not a catalog card — see above
     const img = link.querySelector("img");
     if (!img) continue; // the card's *title* link, not its thumbnail — the image link covers this same product
     const imageUrl = resolveImageUrl(img);
