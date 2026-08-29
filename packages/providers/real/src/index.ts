@@ -66,6 +66,8 @@ Photo #2 is a merchant product photo and may include packaging, a plain backgrou
 
 Then edit photo #1 so the person is wearing those glasses: match their head position, angle and scale realistically. Preserve the glasses' exact shape and structure from photo #2 — the frame, lenses, and both temple arms (the parts that go back over the ears) must keep their real proportions and shape, with no bending, warping, gaps, or duplicated segments. Where a temple arm passes near or under the person's hair, render it as a single continuous piece occluded naturally by the hair, not distorted or broken.
 
+Match the frame's exact rim style too — if photo #2 shows a rimless or half-rim frame (lenses held by thin arms or a bridge only, with no rim running around the lens edge), do not add a visible rim around the lens in the output; if it shows a full rim, keep the rim's actual thickness. Match the frame's material and color (metal tone, plastic color, or pattern) and the lenses' exact tint color and opacity precisely as shown in photo #2 — do not substitute a different color, finish, or tint.
+
 Keep the person's face, expression, body, clothing, background and lighting in photo #1 completely unchanged — do not alter anything else about photo #1.
 
 Output only the edited photo. No text.`;
