@@ -73,20 +73,38 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
 
   // Last 6 calendar months' completed try-ons (== billed units, since one
   // UsageRecord is exactly one completed generation) — feeds the
-  // dashboard's Overview trend charts. Computed as 6 small count queries
-  // rather than a SQL date_trunc, matching this route's existing "bounded
-  // window, JS-side aggregation" style (see apps/api/src/routes/
-  // analytics.ts's top comment) — fine at Phase 1 data volumes.
+  // dashboard's Overview trend charts. Used to run 6 separate `count`
+  // queries, one per month, each one a full sequential round trip to the
+  // database — noticeably slow over a real network to Supabase (product
+  // report: pages taking "several seconds" to load), even though each
+  // individual query was cheap. One query for the whole 6-month window,
+  // bucketed into months here in JS, is one round trip instead of six —
+  // still fine at Phase 1 data volumes (this route's existing "bounded
+  // window, JS-side aggregation" style, see apps/api/src/routes/
+  // analytics.ts's top comment), and there's no plausible tenant at this
+  // stage with enough monthly usage rows to make that bucketing itself
+  // the bottleneck.
   app.get("/api/v1/billing/history", { preHandler: authenticateMerchant }, async (request, reply) => {
     const { tenantId } = request.merchant!;
     const now = new Date();
-    const months: { month: string; tryOns: number }[] = [];
+    const windowStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
 
+    const records = await prisma.usageRecord.findMany({
+      where: { tenantId, createdAt: { gte: windowStart } },
+      select: { createdAt: true },
+    });
+
+    const counts = new Map<string, number>();
+    for (const r of records) {
+      const key = `${r.createdAt.getUTCFullYear()}-${String(r.createdAt.getUTCMonth() + 1).padStart(2, "0")}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    const months: { month: string; tryOns: number }[] = [];
     for (let i = 5; i >= 0; i--) {
-      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i + 1, 1));
-      const count = await prisma.usageRecord.count({ where: { tenantId, createdAt: { gte: start, lt: end } } });
-      months.push({ month: `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`, tryOns: count });
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      months.push({ month: key, tryOns: counts.get(key) ?? 0 });
     }
 
     return reply.send({ months });
