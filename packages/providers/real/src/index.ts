@@ -97,6 +97,24 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
+/** Milliseconds to wait before the next retry attempt, after `attempt` has
+ * just failed (1-indexed: called with 1 after the first failure, etc.).
+ * Every observed failure so far (merchant report, with the exact same
+ * "did not respond within 25000ms" on all 3 attempts, back to back, four
+ * generations in a row) has the same shape: not one slow call, but Gemini
+ * not answering at all for a sustained stretch — the kind of thing a
+ * short-lived server-side rate limit or overload produces. Retrying
+ * immediately when that's the cause just adds to the same burst; a short,
+ * growing pause between attempts costs little on a genuinely one-off slow
+ * call and gives an actual rate limit room to clear before the next try. */
+function backoffMs(attempt: number): number {
+  return 800 * attempt;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Prefers bytes the caller already has in hand (StoredImageRef.buffer) over
  * fetching by URL — the worker sets this for the product image, since it
@@ -156,17 +174,29 @@ export class GeminiTryOnProvider implements TryOnProvider {
 
     let lastError: unknown;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // Aborted if our own timeout below fires first. Per @google/genai's
+      // own doc comment on GenerateContentConfig.abortSignal, this does
+      // NOT cancel the request (or its billing) on Google's side — but it
+      // does free the local socket/connection immediately instead of
+      // leaving it dangling until Gemini eventually answers on its own,
+      // which matters here specifically: a run of back-to-back timeouts
+      // otherwise leaves that many abandoned in-flight requests piling up.
+      const abortController = new AbortController();
       try {
         const outcome = await withTimeout(
-          this.runGeneration(input, startedAt),
+          this.runGeneration(input, startedAt, abortController.signal),
           GENERATE_TIMEOUT_MS,
           `Gemini did not respond within ${GENERATE_TIMEOUT_MS}ms`
         );
         this.jobs.set(providerJobId, outcome);
         return { providerJobId };
       } catch (error) {
+        abortController.abort();
         lastError = error;
-        // Falls through to the next attempt, if any are left.
+        console.warn(
+          `[gemini] generation ${input.tryOnGenerationId}: attempt ${attempt}/${MAX_ATTEMPTS} failed after ${Date.now() - startedAt}ms — ${error instanceof Error ? error.message : String(error)}`
+        );
+        if (attempt < MAX_ATTEMPTS) await sleep(backoffMs(attempt));
       }
     }
 
@@ -179,7 +209,7 @@ export class GeminiTryOnProvider implements TryOnProvider {
     return { providerJobId };
   }
 
-  private async runGeneration(input: TryOnGenerationInput, startedAt: number): Promise<Outcome> {
+  private async runGeneration(input: TryOnGenerationInput, startedAt: number, abortSignal: AbortSignal): Promise<Outcome> {
     const fetchStartedAt = Date.now();
     const [face, eyewear] = await Promise.all([resolveImageBytes(input.faceImage), resolveImageBytes(input.eyewearImage)]);
     const fetchMs = Date.now() - fetchStartedAt;
@@ -206,6 +236,7 @@ export class GeminiTryOnProvider implements TryOnProvider {
       ],
       config: {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
+        abortSignal,
       },
     });
     const generateMs = Date.now() - generateStartedAt;
