@@ -215,6 +215,58 @@ const DESIGN_TABS = [
 ] as const;
 type DesignTabId = (typeof DESIGN_TABS)[number]["id"];
 
+// Same fix as apps/dashboard/app/integration/page.tsx's own PREVIEW_CSS —
+// a plain, non-interpolated string, module-scope, so React never touches
+// this <style> tag once mounted. Live colors come in as CSS custom
+// properties set inline on the panel below instead of baked into this
+// text, which used to get rebuilt (and reparsed by the browser) on every
+// keystroke or color-picker drag (product report: the app "подлагивает").
+const ADMIN_PREVIEW_CSS = `
+  @keyframes lumiframe-admin-preview-pulse {
+    0% { box-shadow: 0 0 0 0 var(--lumi-pulse-color, rgba(115,183,255,.6)); }
+    70% { box-shadow: 0 0 0 10px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  @keyframes lumiframe-admin-preview-shimmer {
+    0% { left: -150%; } 60% { left: 150%; } 100% { left: 150%; }
+  }
+  .lumiframe-admin-preview-shimmer::after {
+    content: ""; position: absolute; top: 0; left: -150%; width: 60%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+    animation: lumiframe-admin-preview-shimmer 2.4s ease-in-out infinite;
+  }
+  .lumi-admin-card-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .lumi-admin-card-thumb { position: relative; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; background: #f2f1ee; }
+  .lumi-admin-card-name { font-size: 11px; font-weight: 600; margin-top: 8px; color: var(--paper); }
+  .lumi-admin-card-badge {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 8px rgba(20,20,30,.16);
+    display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
+    color: var(--lumi-accent-1, #73b7ff); transition: width .2s ease;
+  }
+  .lumi-admin-card-badge span { font-size: 10.5px; font-weight: 700; color: #171923; opacity: 0; max-width: 0; margin-left: 0; transition: opacity .15s ease, max-width .2s ease; }
+  .lumi-admin-card-thumb:hover .lumi-admin-card-badge { width: 118px; border-radius: 14px; }
+  .lumi-admin-card-thumb:hover .lumi-admin-card-badge span { opacity: 1; max-width: 84px; margin-left: 6px; }
+  .lumi-admin-card-drawer {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
+    background: var(--lumi-accent-bg, linear-gradient(135deg, #73b7ff, #9f8cff)); color: var(--lumi-accent-contrast, #fff);
+    display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 700;
+    transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1);
+  }
+  .lumi-admin-card-thumb:hover .lumi-admin-card-drawer { transform: translateY(0); }
+  .lumi-admin-card-scrim {
+    position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px;
+    background: transparent; transition: background .2s ease;
+  }
+  .lumi-admin-card-thumb:hover .lumi-admin-card-scrim { background: rgba(17,19,25,.22); }
+  .lumi-admin-card-scrim-pill {
+    display: flex; align-items: center; gap: 6px; background: #fff; color: #171923; font-size: 10.5px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+    opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
+  }
+  .lumi-admin-card-thumb:hover .lumi-admin-card-scrim-pill { opacity: 1; transform: translateY(0); }
+`;
+
 const WIDGET_CONFIG_DEFAULTS: Required<
   Pick<
     WidgetConfig,
@@ -321,53 +373,23 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
   const modalBtnBackground = config.buttonStyle === "solid" ? modalAccentStart : `linear-gradient(135deg, ${modalAccentStart}, ${modalAccentEnd})`;
 
   return (
-    <div className="panel" style={{ padding: 24, marginBottom: 20 }}>
+    <div
+      className="panel"
+      style={
+        {
+          padding: 24,
+          marginBottom: 20,
+          // Feeds ADMIN_PREVIEW_CSS above — only these custom properties
+          // change as the admin edits colors, not the stylesheet text.
+          "--lumi-accent-1": config.buttonColorStart,
+          "--lumi-accent-bg": previewBackground,
+          "--lumi-accent-contrast": config.buttonTextColor,
+          "--lumi-pulse-color": `${config.buttonColorStart}99`,
+        } as React.CSSProperties
+      }
+    >
       <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("buttonDesign.title")}</h3>
-      <style>{`
-        @keyframes lumiframe-admin-preview-pulse {
-          0% { box-shadow: 0 0 0 0 ${config.buttonColorStart}99; }
-          70% { box-shadow: 0 0 0 10px transparent; }
-          100% { box-shadow: 0 0 0 0 transparent; }
-        }
-        @keyframes lumiframe-admin-preview-shimmer {
-          0% { left: -150%; } 60% { left: 150%; } 100% { left: 150%; }
-        }
-        .lumiframe-admin-preview-shimmer::after {
-          content: ""; position: absolute; top: 0; left: -150%; width: 60%; height: 100%;
-          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
-          animation: lumiframe-admin-preview-shimmer 2.4s ease-in-out infinite;
-        }
-        .lumi-admin-card-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .lumi-admin-card-thumb { position: relative; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; background: #f2f1ee; }
-        .lumi-admin-card-name { font-size: 11px; font-weight: 600; margin-top: 8px; color: var(--paper); }
-        .lumi-admin-card-badge {
-          position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
-          background: #fff; box-shadow: 0 2px 8px rgba(20,20,30,.16);
-          display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
-          color: ${config.buttonColorStart}; transition: width .2s ease;
-        }
-        .lumi-admin-card-badge span { font-size: 10.5px; font-weight: 700; color: #171923; opacity: 0; max-width: 0; margin-left: 0; transition: opacity .15s ease, max-width .2s ease; }
-        .lumi-admin-card-thumb:hover .lumi-admin-card-badge { width: 118px; border-radius: 14px; }
-        .lumi-admin-card-thumb:hover .lumi-admin-card-badge span { opacity: 1; max-width: 84px; margin-left: 6px; }
-        .lumi-admin-card-drawer {
-          position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
-          background: ${previewBackground}; color: ${config.buttonTextColor};
-          display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 700;
-          transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1);
-        }
-        .lumi-admin-card-thumb:hover .lumi-admin-card-drawer { transform: translateY(0); }
-        .lumi-admin-card-scrim {
-          position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px;
-          background: transparent; transition: background .2s ease;
-        }
-        .lumi-admin-card-thumb:hover .lumi-admin-card-scrim { background: rgba(17,19,25,.22); }
-        .lumi-admin-card-scrim-pill {
-          display: flex; align-items: center; gap: 6px; background: #fff; color: #171923; font-size: 10.5px; font-weight: 700;
-          padding: 7px 12px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
-          opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
-        }
-        .lumi-admin-card-thumb:hover .lumi-admin-card-scrim-pill { opacity: 1; transform: translateY(0); }
-      `}</style>
+      <style>{ADMIN_PREVIEW_CSS}</style>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)" }}>
         {DESIGN_TABS.map((tb) => (

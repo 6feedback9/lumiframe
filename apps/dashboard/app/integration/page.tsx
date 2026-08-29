@@ -93,6 +93,76 @@ const SELECT_STYLE: React.CSSProperties = {
   fontSize: 13,
 };
 
+// A plain, non-interpolated string — the exact same reference on every
+// render, so React never touches this <style> tag's DOM node at all once
+// mounted (a primitive child that hasn't changed is a no-op update). The
+// handful of values that actually vary with the merchant's chosen colors
+// come in as CSS custom properties, set inline on a wrapper further down
+// instead of baked into this text — updating a custom property is a cheap
+// style recalculation, not a full stylesheet re-parse. This used to be a
+// template literal rebuilt with the live color values on every render,
+// which meant retyping a hex code or dragging the color picker reparsed
+// this whole block on every keystroke/drag frame (product report: the
+// page "подлагивает" — this was the actual cause on this page).
+const PREVIEW_CSS = `
+  @keyframes lumiframe-preview-pulse {
+    0% { box-shadow: 0 0 0 0 var(--lumi-pulse-color, rgba(115,183,255,.6)); }
+    70% { box-shadow: 0 0 0 10px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  @keyframes lumiframe-preview-shimmer {
+    0% { left: -150%; }
+    60% { left: 150%; }
+    100% { left: 150%; }
+  }
+  .lumiframe-preview-shimmer::after {
+    content: "";
+    position: absolute;
+    top: 0; left: -150%;
+    width: 60%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+    animation: lumiframe-preview-shimmer 2.4s ease-in-out infinite;
+  }
+
+  /* Mini-card preview (tab === "card") — same three variants
+     packages/sdk/src/index.ts injects on a real storefront, scoped
+     under .lumi-card-preview so it can't leak into the rest of this
+     settings page. */
+  .lumi-card-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .lumi-card-thumb { position: relative; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; background: #f2f1ee; }
+  .lumi-card-name { font-size: 11px; font-weight: 600; margin-top: 8px; color: var(--paper); }
+
+  .lumi-card-badge {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 8px rgba(20,20,30,.16);
+    display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
+    color: var(--lumi-accent-1, #73b7ff); transition: width .2s ease;
+  }
+  .lumi-card-badge span { font-size: 10.5px; font-weight: 700; color: #171923; opacity: 0; max-width: 0; margin-left: 0; transition: opacity .15s ease, max-width .2s ease; }
+  .lumi-card-thumb:hover .lumi-card-badge { width: 118px; border-radius: 14px; }
+  .lumi-card-thumb:hover .lumi-card-badge span { opacity: 1; max-width: 84px; margin-left: 6px; }
+
+  .lumi-card-drawer {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
+    background: var(--lumi-accent-bg, linear-gradient(135deg, #73b7ff, #9f8cff)); color: var(--lumi-accent-contrast, #fff);
+    display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 700;
+    transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1);
+  }
+  .lumi-card-thumb:hover .lumi-card-drawer { transform: translateY(0); }
+
+  .lumi-card-scrim {
+    position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px;
+    background: transparent; transition: background .2s ease;
+  }
+  .lumi-card-thumb:hover .lumi-card-scrim { background: rgba(17,19,25,.22); }
+  .lumi-card-scrim-pill {
+    display: flex; align-items: center; gap: 6px; background: #fff; color: #171923; font-size: 10.5px; font-weight: 700;
+    padding: 7px 12px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+    opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
+  }
+  .lumi-card-thumb:hover .lumi-card-scrim-pill { opacity: 1; transform: translateY(0); }
+`;
+
 const TABS = [
   { id: "button", labelKey: "integration.tabButton" },
   { id: "modal", labelKey: "integration.tabModal" },
@@ -200,66 +270,25 @@ function IntegrationContent() {
       <div className="page-title">{t("integration.title")}</div>
       <p style={{ fontSize: 13, color: "var(--mist)", marginBottom: 20, maxWidth: 560 }}>{t("customize.desc")}</p>
 
-      <style>{`
-        @keyframes lumiframe-preview-pulse {
-          0% { box-shadow: 0 0 0 0 ${config.buttonColorStart}99; }
-          70% { box-shadow: 0 0 0 10px transparent; }
-          100% { box-shadow: 0 0 0 0 transparent; }
-        }
-        @keyframes lumiframe-preview-shimmer {
-          0% { left: -150%; }
-          60% { left: 150%; }
-          100% { left: 150%; }
-        }
-        .lumiframe-preview-shimmer::after {
-          content: "";
-          position: absolute;
-          top: 0; left: -150%;
-          width: 60%; height: 100%;
-          background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
-          animation: lumiframe-preview-shimmer 2.4s ease-in-out infinite;
-        }
+      <style>{PREVIEW_CSS}</style>
 
-        /* Mini-card preview (tab === "card") — same three variants
-           packages/sdk/src/index.ts injects on a real storefront, scoped
-           under .lumi-card-preview so it can't leak into the rest of this
-           settings page. */
-        .lumi-card-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .lumi-card-thumb { position: relative; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; background: #f2f1ee; }
-        .lumi-card-name { font-size: 11px; font-weight: 600; margin-top: 8px; color: var(--paper); }
-
-        .lumi-card-badge {
-          position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
-          background: #fff; box-shadow: 0 2px 8px rgba(20,20,30,.16);
-          display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
-          color: ${config.buttonColorStart}; transition: width .2s ease;
+      <div
+        style={
+          {
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 20,
+            alignItems: "start",
+            // Feeds PREVIEW_CSS above — only these three custom properties
+            // change as the merchant edits colors, so only they get
+            // touched on each keystroke/drag, not the stylesheet text.
+            "--lumi-accent-1": config.buttonColorStart,
+            "--lumi-accent-bg": previewBackground,
+            "--lumi-accent-contrast": config.buttonTextColor,
+            "--lumi-pulse-color": `${config.buttonColorStart}99`,
+          } as React.CSSProperties
         }
-        .lumi-card-badge span { font-size: 10.5px; font-weight: 700; color: #171923; opacity: 0; max-width: 0; margin-left: 0; transition: opacity .15s ease, max-width .2s ease; }
-        .lumi-card-thumb:hover .lumi-card-badge { width: 118px; border-radius: 14px; }
-        .lumi-card-thumb:hover .lumi-card-badge span { opacity: 1; max-width: 84px; margin-left: 6px; }
-
-        .lumi-card-drawer {
-          position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
-          background: ${previewBackground}; color: ${config.buttonTextColor};
-          display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 700;
-          transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1);
-        }
-        .lumi-card-thumb:hover .lumi-card-drawer { transform: translateY(0); }
-
-        .lumi-card-scrim {
-          position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px;
-          background: transparent; transition: background .2s ease;
-        }
-        .lumi-card-thumb:hover .lumi-card-scrim { background: rgba(17,19,25,.22); }
-        .lumi-card-scrim-pill {
-          display: flex; align-items: center; gap: 6px; background: #fff; color: #171923; font-size: 10.5px; font-weight: 700;
-          padding: 7px 12px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
-          opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
-        }
-        .lumi-card-thumb:hover .lumi-card-scrim-pill { opacity: 1; transform: translateY(0); }
-      `}</style>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+      >
         <div className="panel" style={{ padding: 24 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)" }}>
             {TABS.map((tb) => (
