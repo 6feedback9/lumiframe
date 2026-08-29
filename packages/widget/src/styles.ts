@@ -131,13 +131,6 @@ export const WIDGET_CSS = `
 .lf-zone.has-photo .lf-placeholder, .lf-zone.has-result .lf-placeholder { display: none; }
 .lf-placeholder-icon { font-size: 40px; margin-bottom: 10px; opacity: .55; }
 
-.lf-photo-badge {
-  position: absolute; top: 12px; left: 12px; z-index: 1;
-  background: rgba(255,255,255,.94); color: #444; font-size: 10px; font-weight: 700;
-  letter-spacing: .05em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
-}
-.lf-zone.has-photo .lf-photo-badge, .lf-zone.has-result .lf-photo-badge { display: none; }
-
 .lf-processing-overlay {
   position: absolute; inset: 0; z-index: 3;
   background: rgba(255,255,255,.88);

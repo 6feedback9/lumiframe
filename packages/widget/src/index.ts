@@ -88,7 +88,6 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
 
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
-            <div class="lf-photo-badge">${escapeHtml(T.examplePhoto)}</div>
             <div class="lf-placeholder" data-placeholder>
               <div class="lf-placeholder-icon">🧍</div>
             </div>
