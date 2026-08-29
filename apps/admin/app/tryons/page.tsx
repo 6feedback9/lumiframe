@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n";
 
 interface TryOnRow {
   id: string;
+  sessionId: string;
   tenantId: string;
   tenantName: string;
   storeName: string;
@@ -135,7 +136,7 @@ function TryOnsContent() {
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.id}`)}>
+                <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.sessionId}`)}>
                   <td>{item.tenantName}</td>
                   <td>{item.storeName}</td>
                   <td>{item.productTitle ?? "—"}</td>

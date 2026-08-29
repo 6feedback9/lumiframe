@@ -275,6 +275,12 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Merchant dashboard: list try-ons for the authenticated tenant ────
+  //
+  // One row per TryOnGeneration (attempt), not per TryOnSession — see the
+  // matching comment on GET /api/v1/admin/tryons (routes/admin.ts) for
+  // why: a session showed only its latest attempt, so a successful
+  // generation that was later retried (and failed) had no row anywhere
+  // that a merchant could find it.
   app.get("/api/v1/tryons", { preHandler: authenticateMerchant }, async (request, reply) => {
     const { tenantId } = request.merchant!;
     const query = request.query as {
@@ -304,22 +310,24 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
 
     const feedbackFilter =
       query.feedback === "LIKE"
-        ? { feedback: "LIKE" as const }
+        ? { session: { feedback: "LIKE" as const } }
         : query.feedback === "DISLIKE"
-          ? { feedback: "DISLIKE" as const }
+          ? { session: { feedback: "DISLIKE" as const } }
           : query.feedback === "ANY"
-            ? { feedback: { not: null } }
+            ? { session: { feedback: { not: null } } }
             : {};
     const where = { tenantId, ...(query.storeId ? { storeId: query.storeId } : {}), ...createdAtFilter, ...feedbackFilter };
     const [items, total] = await Promise.all([
-      prisma.tryOnSession.findMany({
+      prisma.tryOnGeneration.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
-        include: { generations: { orderBy: { createdAt: "desc" }, take: 1 } },
+        include: {
+          session: { select: { id: true, productTitle: true, productImageUrl: true, feedback: true, utmSource: true, utmCampaign: true } },
+        },
       }),
-      prisma.tryOnSession.count({ where }),
+      prisma.tryOnGeneration.count({ where }),
     ]);
 
     // Product ask: the list itself should show the result thumbnail, not
@@ -330,30 +338,24 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
     // per row — the Supabase adapter's getSignedUrl is a real network call,
     // so this page was firing up to `limit` concurrent requests to Supabase
     // Storage and feeling like it hangs (product-reported slowness).
-    const resultKeys = items
-      .map((s) => s.generations[0])
-      .filter((g): g is NonNullable<typeof g> => g?.status === "COMPLETED" && !!g.resultImageKey)
-      .map((g) => g.resultImageKey!);
+    const resultKeys = items.filter((g) => g.status === "COMPLETED" && g.resultImageKey).map((g) => g.resultImageKey!);
     const resultUrls = await storage.getSignedUrls(BUCKETS.tryonResults, resultKeys, 3600).catch(() => ({}) as Record<string, string>);
 
-    const rows = items.map((session) => {
-      const latest = session.generations[0];
-      const resultUrl = (latest?.resultImageKey && resultUrls[latest.resultImageKey]) ?? null;
-      return {
-        id: session.id,
-        productTitle: session.productTitle,
-        productImageUrl: session.productImageUrl,
-        resultUrl,
-        status: latest?.status ?? session.status,
-        errorCode: latest?.errorCode ?? null,
-        errorMessage: latest?.errorMessage ?? null,
-        generationDurationMs: latest?.generationDurationMs ?? null,
-        feedback: session.feedback,
-        utmSource: session.utmSource,
-        utmCampaign: session.utmCampaign,
-        createdAt: session.createdAt,
-      };
-    });
+    const rows = items.map((gen) => ({
+      id: gen.id,
+      sessionId: gen.session.id,
+      productTitle: gen.session.productTitle,
+      productImageUrl: gen.session.productImageUrl,
+      resultUrl: (gen.resultImageKey && resultUrls[gen.resultImageKey]) ?? null,
+      status: gen.status,
+      errorCode: gen.errorCode,
+      errorMessage: gen.errorMessage,
+      generationDurationMs: gen.generationDurationMs,
+      feedback: gen.session.feedback,
+      utmSource: gen.session.utmSource,
+      utmCampaign: gen.session.utmCampaign,
+      createdAt: gen.createdAt,
+    }));
 
     return reply.send({ items: rows, total, page, limit });
   });

@@ -400,33 +400,52 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   // ── Cross-tenant try-on browsing (product ask: platform owner sees
   // every store's try-ons, photos included) ────────────────────────────
+  //
+  // One row per TryOnGeneration (attempt), not per TryOnSession. Used to
+  // be the other way round — one row per session, showing only its
+  // latest attempt — which silently buried an earlier successful
+  // generation the moment a shopper hit "Спробувати інше фото" and that
+  // retry failed: the merchant's own report, with screenshots, was that
+  // a result she'd seen succeed was showing as FAILED with no way to
+  // find it. buildTryOnDetailPayload (see routes/tryons.ts) now exposes
+  // the same full history when you click into one row; this is that
+  // same fix at the list level, so every attempt has its own row instead
+  // of only being reachable by clicking through.
   app.get("/api/v1/admin/tryons", { preHandler: authenticateAdmin }, async (request, reply) => {
     const query = request.query as { page?: string; limit?: string; tenantId?: string; feedback?: string };
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const feedbackFilter =
       query.feedback === "LIKE"
-        ? { feedback: "LIKE" as const }
+        ? { session: { feedback: "LIKE" as const } }
         : query.feedback === "DISLIKE"
-          ? { feedback: "DISLIKE" as const }
+          ? { session: { feedback: "DISLIKE" as const } }
           : query.feedback === "ANY"
-            ? { feedback: { not: null } }
+            ? { session: { feedback: { not: null } } }
             : {};
     const where = { ...(query.tenantId ? { tenantId: query.tenantId } : {}), ...feedbackFilter };
 
     const [items, total] = await Promise.all([
-      prisma.tryOnSession.findMany({
+      prisma.tryOnGeneration.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          generations: { orderBy: { createdAt: "desc" }, take: 1 },
-          tenant: { select: { name: true } },
-          store: { select: { name: true } },
+          session: {
+            select: {
+              id: true,
+              tenantId: true,
+              productTitle: true,
+              productImageUrl: true,
+              feedback: true,
+              tenant: { select: { name: true } },
+              store: { select: { name: true } },
+            },
+          },
         },
       }),
-      prisma.tryOnSession.count({ where }),
+      prisma.tryOnGeneration.count({ where }),
     ]);
 
     // Product ask: the platform owner should see the customer photo and
@@ -438,34 +457,31 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     // worst offender for the "loading hangs" complaint.
     const resultKeys: string[] = [];
     const customerKeys: string[] = [];
-    for (const session of items) {
-      const latest = session.generations[0];
-      if (latest?.status === "COMPLETED" && latest.resultImageKey) resultKeys.push(latest.resultImageKey);
-      if (latest?.customerImageKey) customerKeys.push(latest.customerImageKey);
+    for (const gen of items) {
+      if (gen.status === "COMPLETED" && gen.resultImageKey) resultKeys.push(gen.resultImageKey);
+      if (gen.customerImageKey) customerKeys.push(gen.customerImageKey);
     }
     const [resultUrls, customerUrls] = await Promise.all([
       storage.getSignedUrls(BUCKETS.tryonResults, resultKeys, 3600).catch(() => ({}) as Record<string, string>),
       storage.getSignedUrls(BUCKETS.customerPhotos, customerKeys, 3600).catch(() => ({}) as Record<string, string>),
     ]);
 
-    const rows = items.map((session) => {
-      const latest = session.generations[0];
-      return {
-        id: session.id,
-        tenantId: session.tenantId,
-        tenantName: session.tenant.name,
-        storeName: session.store.name,
-        productTitle: session.productTitle,
-        productImageUrl: session.productImageUrl,
-        customerImageUrl: (latest?.customerImageKey && customerUrls[latest.customerImageKey]) ?? null,
-        resultUrl: (latest?.resultImageKey && resultUrls[latest.resultImageKey]) ?? null,
-        feedback: session.feedback,
-        status: latest?.status ?? session.status,
-        errorCode: latest?.errorCode ?? null,
-        errorMessage: latest?.errorMessage ?? null,
-        createdAt: session.createdAt,
-      };
-    });
+    const rows = items.map((gen) => ({
+      id: gen.id,
+      sessionId: gen.session.id,
+      tenantId: gen.tenantId,
+      tenantName: gen.session.tenant.name,
+      storeName: gen.session.store.name,
+      productTitle: gen.session.productTitle,
+      productImageUrl: gen.session.productImageUrl,
+      customerImageUrl: (gen.customerImageKey && customerUrls[gen.customerImageKey]) ?? null,
+      resultUrl: (gen.resultImageKey && resultUrls[gen.resultImageKey]) ?? null,
+      feedback: gen.session.feedback,
+      status: gen.status,
+      errorCode: gen.errorCode,
+      errorMessage: gen.errorMessage,
+      createdAt: gen.createdAt,
+    }));
 
     return reply.send({ items: rows, total, page, limit });
   });

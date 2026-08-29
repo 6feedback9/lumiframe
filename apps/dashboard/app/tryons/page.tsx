@@ -19,6 +19,7 @@ interface BillingSummary {
 
 interface TryOnRow {
   id: string;
+  sessionId: string;
   productTitle: string | null;
   productImageUrl: string;
   resultUrl: string | null;
@@ -179,7 +180,7 @@ function TryOnsContent() {
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.id}`)}>
+                <tr key={item.id} className="clickable" onClick={() => router.push(`/tryons/${item.sessionId}`)}>
                   <td>{item.productTitle ?? "—"}</td>
                   <td>
                     <img className="thumb" src={item.productImageUrl} alt="" style={{ cursor: "zoom-in" }} onClick={openLightbox(setZoomUrl, item.productImageUrl)} />
