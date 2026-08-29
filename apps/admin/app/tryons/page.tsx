@@ -159,6 +159,23 @@ function TryOnsContent() {
                   </td>
                   <td>
                     <span className={badgeClass(item.status)}>{item.status}</span>
+                    {item.status === "FAILED" && (item.errorMessage || item.errorCode) && (
+                      <div
+                        title={item.errorMessage ?? undefined}
+                        style={{
+                          fontSize: 11,
+                          color: "var(--danger, #ff6b6b)",
+                          marginTop: 4,
+                          maxWidth: 240,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.errorCode ? `${item.errorCode}: ` : ""}
+                        {item.errorMessage ?? ""}
+                      </div>
+                    )}
                   </td>
                   <td>{new Date(item.createdAt).toLocaleString()}</td>
                 </tr>
