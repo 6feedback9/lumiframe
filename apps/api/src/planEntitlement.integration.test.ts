@@ -147,4 +147,78 @@ describe("plan-limit enforcement", () => {
     const blockedAgain = await createTryOn("frame-over-limit-again");
     expect(blockedAgain.statusCode).toBe(402);
   });
+
+  // A separate, freshly-registered tenant — the shared one above already
+  // has a plan and various credits from earlier tests in this file. This
+  // is specifically the trial flow apps/admin's plan dropdown now offers
+  // directly (product ask): register with no plan, get exactly 5 trial
+  // credits, run every single one through the real pipeline, and confirm
+  // both that they all actually work and that the boundary holds — the
+  // 6th is blocked, and the tenant is never silently given a plan.
+  it("a trial tenant's 5 credits all generate successfully, the 6th is blocked, and it stays plan-less throughout", async () => {
+    const email = `trial-boundary-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+    const register = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/register",
+      payload: { email, password: "correct horse battery staple", storeName: "Trial Boundary Co", storeUrl: `http://${origin.replace("http://", "")}:9996` },
+    });
+    expect(register.statusCode).toBe(201);
+    const trialStoreId = register.json().store.id;
+    const trialStore = await prisma.store.findUniqueOrThrow({ where: { id: trialStoreId } });
+    const trialTenantId = trialStore.tenantId;
+
+    const freshTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
+    expect(freshTenant.planId).toBeNull();
+    expect(freshTenant.topUpCredits).toBe(5);
+
+    async function createAndCompleteForTrialTenant(externalProductId: string): Promise<number> {
+      const create = await app.inject({
+        method: "POST",
+        url: "/api/v1/tryons",
+        headers: { origin },
+        payload: {
+          storeId: trialStoreId,
+          product: { id: externalProductId, imageUrl: productImageUrl },
+          customerImage: `data:image/jpeg;base64,${TINY_JPEG.toString("base64")}`,
+        },
+      });
+      if (create.statusCode !== 202) return create.statusCode;
+
+      const tryOnId = create.json().tryOnId;
+      let status = "UPLOADING";
+      const deadline = Date.now() + 15_000;
+      while (status !== "COMPLETED" && status !== "FAILED" && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 150));
+        const poll = await app.inject({ method: "GET", url: `/api/v1/tryons/${tryOnId}?storeId=${trialStoreId}`, headers: { origin } });
+        status = poll.json().status;
+      }
+      expect(status).toBe("COMPLETED");
+      return create.statusCode;
+    }
+
+    for (let i = 0; i < 5; i++) {
+      const statusCode = await createAndCompleteForTrialTenant(`trial-boundary-frame-${i}`);
+      expect(statusCode).toBe(202);
+    }
+
+    const afterFive = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
+    expect(afterFive.topUpCredits).toBe(0);
+    expect(afterFive.planId).toBeNull(); // never silently assigned a plan
+
+    const sixth = await app.inject({
+      method: "POST",
+      url: "/api/v1/tryons",
+      headers: { origin },
+      payload: {
+        storeId: trialStoreId,
+        product: { id: "trial-boundary-frame-6", imageUrl: productImageUrl },
+        customerImage: `data:image/jpeg;base64,${TINY_JPEG.toString("base64")}`,
+      },
+    });
+    expect(sixth.statusCode).toBe(402);
+    expect(sixth.json().code).toBe("PLAN_LIMIT_REACHED");
+
+    const stillPlanless = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
+    expect(stillPlanless.planId).toBeNull();
+  }, 30_000);
 });

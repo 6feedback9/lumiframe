@@ -5,6 +5,10 @@ import { AuthGuard } from "../../AuthGuard";
 import { apiFetch } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
+// Sentinel <option value> for "Тестовий режим" in the plan select — never
+// a real Plan.id, so it can't collide with one.
+const TRIAL_OPTION_VALUE = "__trial__";
+
 interface Plan {
   id: string;
   key: string;
@@ -72,6 +76,14 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
   const [grantingTrial, setGrantingTrial] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
 
+  // Same condition the merchant-facing billing route uses for its own
+  // "trial active" badge (routes/billing.ts) plus the credits check —
+  // once the 5 trial credits run out, this goes false on its own
+  // (nothing left to consume, no plan assigned), and the select below
+  // falls back to showing "Без тарифу" — the trial "turns itself off"
+  // just by the entitlement math already in place, no separate flag.
+  const trialActive = !tenant.plan && !!tenant.trialGrantedAt && tenant.topUpCredits > 0;
+
   async function changePlan(planId: string) {
     setSavingPlan(true);
     try {
@@ -79,6 +91,19 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
       onUpdated();
     } finally {
       setSavingPlan(false);
+    }
+  }
+
+  // "Тестовий режим" in the plan dropdown below is the same grantTrial()
+  // action as before — just reachable from the one place the owner
+  // actually thinks to look for it now (product ask: it read as a
+  // separate, easy-to-miss button; a trial is a kind of plan choice, so
+  // it belongs in the same select as Starter/Growth/Pro/No plan).
+  async function handlePlanSelect(value: string) {
+    if (value === TRIAL_OPTION_VALUE) {
+      await grantTrial();
+    } else {
+      await changePlan(value);
     }
   }
 
@@ -138,9 +163,9 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
         <div className="field">
           <label>{t("tenantDetail.assignPlan")}</label>
           <select
-            value={tenant.plan?.id ?? ""}
-            disabled={savingPlan}
-            onChange={(e) => changePlan(e.target.value)}
+            value={trialActive ? TRIAL_OPTION_VALUE : (tenant.plan?.id ?? "")}
+            disabled={savingPlan || grantingTrial}
+            onChange={(e) => handlePlanSelect(e.target.value)}
             style={{
               width: "100%",
               padding: "9px 12px",
@@ -152,12 +177,28 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
             }}
           >
             <option value="">{t("tenantDetail.noPlan")}</option>
+            {/* Always present (not just pre-grant) — trialActive above
+                needs a matching <option> to actually show as selected
+                while the trial is running. grantTrial() only fires when
+                this is picked from a state it isn't already the current
+                selection, so a tenant that's used up (or never had) a
+                trial re-selecting it just surfaces grantTrial()'s own
+                "already granted" error below, same as any other failed
+                save on this page. */}
+            <option value={TRIAL_OPTION_VALUE}>{t("tenantDetail.trialOption")}</option>
             {plans.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.monthlyLimit}/mo, ${p.priceUsd})
               </option>
             ))}
           </select>
+          {trialActive && (
+            <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 6 }}>
+              {t("tenantDetail.trialActive")}
+              {tenant.trialGrantedAt ? ` (${new Date(tenant.trialGrantedAt).toLocaleDateString()})` : ""}
+            </div>
+          )}
+          {trialError && <p style={{ fontSize: 12, color: "var(--danger, #ff6b6b)", marginTop: 6 }}>{trialError}</p>}
         </div>
 
         <div className="field">
@@ -181,40 +222,6 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
         {tenant.plan ? ` / ${tenant.plan.monthlyLimit}` : ""} · {t("tenantDetail.topUpCredits")}: {tenant.topUpCredits}
       </p>
 
-      {!tenant.plan && (
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
-          {tenant.trialGrantedAt ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "#3ddc84",
-                  animation: "lumiframe-admin-trial-pulse 1.8s ease-out infinite",
-                  flexShrink: 0,
-                }}
-              />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{t("tenantDetail.trialActive")}</span>
-              <span style={{ fontSize: 11, color: "var(--mist-dim)" }}>({new Date(tenant.trialGrantedAt).toLocaleDateString()})</span>
-              <style>{`
-                @keyframes lumiframe-admin-trial-pulse {
-                  0% { box-shadow: 0 0 0 0 rgba(61,220,132,0.6); }
-                  70% { box-shadow: 0 0 0 7px rgba(61,220,132,0); }
-                  100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); }
-                }
-              `}</style>
-            </div>
-          ) : (
-            <>
-              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={grantingTrial} onClick={grantTrial}>
-                {grantingTrial ? t("common.saving") : t("tenantDetail.grantTrial")}
-              </button>
-              {trialError && <p style={{ fontSize: 12, color: "var(--danger, #ff6b6b)", marginTop: 8 }}>{trialError}</p>}
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }
