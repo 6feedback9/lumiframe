@@ -101,6 +101,14 @@ enum AttributionModel {
 }
 
 enum PlanKey {
+  // A real Plan row, not a special "no plan + topUpCredits" state — see
+  // Tenant.planId below. $0/mo, monthlyLimit 5, admin-grant only (never
+  // shown in the merchant-facing billing route's own plan list — see
+  // routes/billing.ts — only in the admin's, routes/admin.ts). Lifetime,
+  // not a monthly quota that would otherwise reset forever free — see
+  // checkPlanEntitlement's isTrialPlan handling and the worker's
+  // auto-downgrade back to planId=null once it's used up.
+  TEST
   STARTER
   GROWTH
   PRO
@@ -130,13 +138,13 @@ model Tenant {
   // plan or adds credits.
   planRequestNote String?
   planRequestedAt DateTime?
-  // Self-serve trial (product ask: a brand-new tenant has no plan yet and
-  // is blocked from every try-on until the owner manually assigns one —
-  // let the merchant unblock themselves once, for a small taste of the
-  // product, instead of waiting). Granted at most once per tenant; the
-  // credits themselves just land in the existing topUpCredits balance —
-  // checkPlanEntitlement already treats a positive balance as usable even
-  // with no plan assigned, so no entitlement-logic changes were needed.
+  // Every new tenant is assigned the TEST plan (see PlanKey) at
+  // registration, so this used to be "was a trial ever granted" back
+  // when trial was a separate topUpCredits balance rather than a real
+  // plan — kept only as a "when did this tenant's trial start" record
+  // for the admin UI now (routes/admin.ts still updates it whenever the
+  // TEST plan is (re-)assigned). Not itself checked by any entitlement
+  // logic anymore — planId being the TEST plan's id is.
   trialGrantedAt DateTime?
 
   plan          Plan?          @relation(fields: [planId], references: [id])

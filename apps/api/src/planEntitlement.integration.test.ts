@@ -79,14 +79,14 @@ describe("plan-limit enforcement", () => {
     const store = await prisma.store.findUniqueOrThrow({ where: { id: storeId } });
     tenantId = store.tenantId;
 
-    // Registration only grants a trial now (see domain/trial.ts), not a
-    // paid plan — assign Starter (100/mo) directly, the same way the
-    // platform admin would once a merchant actually pays, and clear the
-    // trial credits registration granted alongside it (topUpCredits: 0)
-    // so this test exercises plan-limit enforcement specifically, not
-    // trial-credit enforcement (that's covered by trial.ts's own tests) —
-    // the first assertion below assumes blocking happens with zero
-    // top-up balance to fall back on.
+    // Registration only grants the TEST plan now (5/mo, $0 — see
+    // PlanKey's schema comment), not a paid one — assign Starter
+    // (100/mo) directly instead, the same way the platform admin would
+    // once a merchant actually pays, so this test exercises plan-limit
+    // enforcement specifically, not the TEST plan's own lifetime-cap
+    // logic (that's covered by this file's own trial-boundary test
+    // below). topUpCredits: 0 since the first assertion below assumes
+    // blocking happens with zero top-up balance to fall back on.
     const starterPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "STARTER" } });
     await prisma.tenant.update({ where: { id: tenantId }, data: { planId: starterPlan.id, topUpCredits: 0 } });
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId }, include: { plan: true } });
@@ -149,13 +149,15 @@ describe("plan-limit enforcement", () => {
   });
 
   // A separate, freshly-registered tenant — the shared one above already
-  // has a plan and various credits from earlier tests in this file. This
-  // is specifically the trial flow apps/admin's plan dropdown now offers
-  // directly (product ask): register with no plan, get exactly 5 trial
-  // credits, run every single one through the real pipeline, and confirm
-  // both that they all actually work and that the boundary holds — the
-  // 6th is blocked, and the tenant is never silently given a plan.
-  it("a trial tenant's 5 credits all generate successfully, the 6th is blocked, and it stays plan-less throughout", async () => {
+  // has a plan and various credits from earlier tests in this file. The
+  // TEST plan (see PlanKey's schema comment) is a real Plan row now, a
+  // one-time lifetime allowance rather than a monthly-resetting quota —
+  // run all 5 lifetime uses through the real pipeline and confirm both
+  // that they all actually work and that the boundary holds: the 6th is
+  // blocked, and the tenant gets auto-downgraded back to no plan the
+  // moment its 5th use completes (processTryOnJob.ts), not left sitting
+  // on a plan with zero capacity left.
+  it("a trial tenant's 5 lifetime uses all generate successfully, the 6th is blocked, and it's auto-downgraded off the plan", async () => {
     const email = `trial-boundary-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
     const register = await app.inject({
       method: "POST",
@@ -167,9 +169,9 @@ describe("plan-limit enforcement", () => {
     const trialStore = await prisma.store.findUniqueOrThrow({ where: { id: trialStoreId } });
     const trialTenantId = trialStore.tenantId;
 
-    const freshTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
-    expect(freshTenant.planId).toBeNull();
-    expect(freshTenant.topUpCredits).toBe(5);
+    const freshTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId }, include: { plan: true } });
+    expect(freshTenant.plan?.key).toBe("TEST");
+    expect(freshTenant.plan?.monthlyLimit).toBe(5);
 
     async function createAndCompleteForTrialTenant(externalProductId: string): Promise<number> {
       const create = await app.inject({
@@ -202,8 +204,9 @@ describe("plan-limit enforcement", () => {
     }
 
     const afterFive = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
-    expect(afterFive.topUpCredits).toBe(0);
-    expect(afterFive.planId).toBeNull(); // never silently assigned a plan
+    // Auto-downgraded back to no plan the moment the 5th use completed —
+    // not left sitting on the TEST plan with nothing left to give.
+    expect(afterFive.planId).toBeNull();
 
     const sixth = await app.inject({
       method: "POST",

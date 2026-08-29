@@ -111,129 +111,72 @@ describe("platform admin", () => {
     expect(body.stores.length).toBeGreaterThanOrEqual(1);
   });
 
-  // The admin's manual trial grant (apps/admin's tenant Billing panel) —
-  // registration itself grants every new tenant a trial automatically now
-  // (see apps/api/src/domain/trial.ts), so this route only matters for a
-  // tenant that somehow doesn't have one: simulate that by clearing both
-  // planId and the trial registration already granted.
-  it("lets the platform admin grant a trial to a plan-less tenant", async () => {
-    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: null, trialGrantedAt: null, topUpCredits: 0 } });
-
-    const before = await app.inject({
+  // Registration itself puts every new tenant on the TEST plan now (a
+  // real Plan row — see PlanKey's schema comment), not a special
+  // "no plan + topUpCredits" state. merchantTenantId (registered in
+  // beforeAll) should already be on it.
+  it("a freshly registered tenant starts on the TEST plan", async () => {
+    const res = await app.inject({
       method: "GET",
       url: `/api/v1/admin/tenants/${merchantTenantId}`,
       headers: { authorization: `Bearer ${adminToken}` },
-    });
-    expect(before.json().planId).toBeNull();
-    expect(before.json().trialGrantedAt).toBeNull();
-
-    const grant = await app.inject({
-      method: "POST",
-      url: `/api/v1/admin/tenants/${merchantTenantId}/trial`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    });
-    expect(grant.statusCode).toBe(200);
-    expect(grant.json().topUpCredits).toBe(5);
-    expect(grant.json().trialGrantedAt).not.toBeNull();
-
-    const after = await app.inject({
-      method: "GET",
-      url: `/api/v1/admin/tenants/${merchantTenantId}`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    });
-    expect(after.json().topUpCredits).toBe(5);
-    expect(after.json().trialGrantedAt).not.toBeNull();
-  });
-
-  it("refuses to grant the same tenant a second trial", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: `/api/v1/admin/tenants/${merchantTenantId}/trial`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    });
-    expect(res.statusCode).toBe(409);
-  });
-
-  it("rejects a merchant JWT on the trial-grant route", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: `/api/v1/admin/tenants/${merchantTenantId}/trial`,
-      headers: { authorization: `Bearer ${merchantToken}` },
-    });
-    expect(res.statusCode).toBe(403);
-  });
-
-  // Its own tenant, registered fresh (auto-grants a 5-credit trial, no
-  // plan — routes/auth.ts) rather than reusing merchantTenantId, whose
-  // trial the very next test consumes by converting it to a real plan.
-  // Product-reported bug: re-selecting "Без тарифу" in apps/admin's plan
-  // dropdown while a trial was still active visibly did nothing — planId
-  // was already null, so writing null again was a no-op, and the select
-  // just sprang back to showing "Тестовий режим" after the refetch.
-  it("re-selecting no plan while a trial is active ends it (clears the credits)", async () => {
-    const email = `trial-cancel-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
-    const register = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email, password: "correct horse battery staple", storeName: "Trial Cancel Co", storeUrl: "http://trial-cancel.example.com" },
-    });
-    expect(register.statusCode).toBe(201);
-    const me = await app.inject({ method: "GET", url: "/api/v1/auth/me", headers: { authorization: `Bearer ${register.json().token}` } });
-    const trialTenantId = me.json().tenant.id;
-
-    const before = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
-    expect(before.planId).toBeNull();
-    expect(before.topUpCredits).toBe(5);
-
-    // planId was already null — this re-selects "no plan" on a tenant
-    // that already has none, which is exactly what the admin UI sends
-    // when picking "Без тарифу" out of an active trial.
-    const res = await app.inject({
-      method: "PATCH",
-      url: `/api/v1/admin/tenants/${trialTenantId}/plan`,
-      headers: { authorization: `Bearer ${adminToken}` },
-      payload: { planId: null },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().topUpCredits).toBe(0);
-
-    const after = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
-    expect(after.planId).toBeNull();
-    expect(after.topUpCredits).toBe(0);
-    // trialGrantedAt stays set — it already happened, it's just spent.
-    expect(after.trialGrantedAt).not.toBeNull();
-
-    // And picking "Тестовий режим" again now works — grantTrial() guards
-    // against an *outstanding* balance, not against ever having had one
-    // before, so a cancelled-or-spent trial can be given another go.
-    const regrant = await app.inject({
-      method: "POST",
-      url: `/api/v1/admin/tenants/${trialTenantId}/trial`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    });
-    expect(regrant.statusCode).toBe(200);
-    expect(regrant.json().topUpCredits).toBe(5);
+    expect(res.json().plan?.key).toBe("TEST");
+    expect(res.json().plan?.monthlyLimit).toBe(5);
+    expect(res.json().trialGrantedAt).not.toBeNull();
   });
 
-  // merchantTenantId is still plan-less with its 5-credit trial balance
-  // from the grant test above — a plan-less tenant's only possible
-  // source of topUpCredits, so assigning its first real plan should
-  // clear it (see routes/admin.ts's isTrialConversion).
-  it("converting a trial tenant to its first real plan clears the trial's leftover credits", async () => {
-    const starterPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "STARTER" } });
+  // The TEST plan is just another entry in GET /api/v1/admin/plans now —
+  // no separate grant route needed. Assigning it works exactly like
+  // assigning Starter/Growth/Pro (product ask: it should read as one of
+  // the plan choices in the same dropdown, not a separate button).
+  it("lets the platform admin move a plan-less tenant onto the TEST plan directly", async () => {
+    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: null } });
+    const testPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "TEST" } });
 
     const res = await app.inject({
       method: "PATCH",
       url: `/api/v1/admin/tenants/${merchantTenantId}/plan`,
       headers: { authorization: `Bearer ${adminToken}` },
-      payload: { planId: starterPlan.id },
+      payload: { planId: testPlan.id },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().plan.key).toBe("STARTER");
-    expect(res.json().topUpCredits).toBe(0);
+    expect(res.json().plan.key).toBe("TEST");
+  });
 
-    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: merchantTenantId } });
-    expect(tenant.topUpCredits).toBe(0);
+  // Legacy-tenant handling only — a tenant that signed up before trial
+  // became a real plan and is still sitting in the old "no plan +
+  // topUpCredits" state. routes/admin.ts's isTrialConversion/
+  // isTrialCancellation exist specifically for this; never fires for a
+  // tenant created after that change (those start on the TEST plan, not
+  // planId=null).
+  it("legacy: assigning a real plan (or explicitly clearing to no plan) ends an old-style trial balance", async () => {
+    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: null, topUpCredits: 5, trialGrantedAt: new Date() } });
+    const starterPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "STARTER" } });
+
+    const toPlan = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/plan`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { planId: starterPlan.id },
+    });
+    expect(toPlan.statusCode).toBe(200);
+    expect(toPlan.json().plan.key).toBe("STARTER");
+    expect(toPlan.json().topUpCredits).toBe(0);
+
+    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: null, topUpCredits: 5, trialGrantedAt: new Date() } });
+    const toNoPlan = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${merchantTenantId}/plan`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { planId: null },
+    });
+    expect(toNoPlan.statusCode).toBe(200);
+    expect(toNoPlan.json().topUpCredits).toBe(0);
+
+    // Leave it on Starter for the next test, which expects a real plan.
+    await prisma.tenant.update({ where: { id: merchantTenantId }, data: { planId: starterPlan.id } });
   });
 
   it("does NOT touch topUpCredits when changing plan on an already-paying tenant", async () => {

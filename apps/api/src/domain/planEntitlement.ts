@@ -27,12 +27,21 @@ export async function checkPlanEntitlement(tenantId: string): Promise<Entitlemen
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, include: { plan: true } });
   const monthlyLimit = tenant?.plan?.monthlyLimit ?? 0;
   const topUpCredits = tenant?.topUpCredits ?? 0;
+  const isTestPlan = tenant?.plan?.key === "TEST";
 
   const usedThisMonth = await prisma.usageRecord.count({
     where: { tenantId, createdAt: { gte: startOfCurrentMonthUtc() } },
   });
+  // The TEST plan (packages/database's schema comment on PlanKey) is a
+  // one-time lifetime allowance — "5 examples, then done" — not a
+  // monthly quota that would otherwise reset free forever like every
+  // real paid plan's does. Gate it on all-time usage instead of this
+  // month's; usedThisMonth in the value returned below still means
+  // "this month" either way (that's what the dashboard displays), only
+  // the allow/deny decision differs.
+  const usedForLimit = isTestPlan ? await prisma.usageRecord.count({ where: { tenantId } }) : usedThisMonth;
 
-  const withinPlan = usedThisMonth < monthlyLimit;
+  const withinPlan = usedForLimit < monthlyLimit;
   const willConsumeTopUp = !withinPlan && topUpCredits > 0;
 
   return { allowed: withinPlan || willConsumeTopUp, usedThisMonth, monthlyLimit, topUpCredits, willConsumeTopUp };

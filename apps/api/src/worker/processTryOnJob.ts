@@ -217,6 +217,21 @@ export async function processTryOnJob({ tryOnGenerationId }: TryOnJobData): Prom
       },
     });
 
+    // The TEST plan is a one-time lifetime allowance (see PlanKey's
+    // schema comment), not a monthly quota that resets free forever like
+    // every real paid plan's does — once it's fully used, take the
+    // tenant off it automatically, back to "no plan", the same end state
+    // the owner cancelling it manually already produces (routes/admin.ts's
+    // isTrialCancellation). Otherwise the plan would just sit there with
+    // zero capacity left until an admin noticed and cleared it by hand.
+    const tenantWithPlan = await prisma.tenant.findUnique({ where: { id: session.tenantId }, include: { plan: true } });
+    if (tenantWithPlan?.plan?.key === "TEST") {
+      const lifetimeUsed = await prisma.usageRecord.count({ where: { tenantId: session.tenantId } });
+      if (lifetimeUsed >= tenantWithPlan.plan.monthlyLimit) {
+        await prisma.tenant.update({ where: { id: session.tenantId }, data: { planId: null } });
+      }
+    }
+
     await prisma.event.create({
       data: {
         tenantId: session.tenantId,

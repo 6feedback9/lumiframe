@@ -214,8 +214,11 @@ function BillingContent() {
 
   // The top-up button only makes sense once there's actually nothing left
   // to use — otherwise it's just clutter next to the trial button (product
-  // ask: it should "appear automatically once try-ons run out").
-  const showTopUp = !!data.plan && data.usedThisMonth >= data.plan.monthlyLimit && data.topUpCredits <= 0;
+  // ask: it should "appear automatically once try-ons run out"). Never on
+  // the TEST plan specifically — its own topUpPackSize/Price are 0 (you
+  // upgrade to a real plan once a free trial runs out, you don't buy more
+  // of it), which without this check would render as "buy +0 for $0".
+  const showTopUp = !!data.plan && data.plan.key !== "TEST" && data.usedThisMonth >= data.plan.monthlyLimit && data.topUpCredits <= 0;
 
   return (
     <>

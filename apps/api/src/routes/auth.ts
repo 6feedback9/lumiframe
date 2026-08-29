@@ -5,7 +5,6 @@ import { generateApiKey, hashApiKey } from "../auth/apiKey";
 import { signMerchantToken } from "../auth/jwt";
 import { authenticateMerchant } from "../plugins/auth";
 import { loginSchema, registerSchema } from "../schemas";
-import { TRIAL_CREDITS } from "../domain/trial";
 
 function hostnameOf(url: string): string | null {
   try {
@@ -30,20 +29,21 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const passwordHash = await hashPassword(password);
     const rawApiKey = generateApiKey();
 
-    // Every new tenant starts on a free trial — TRIAL_CREDITS try-ons,
-    // no plan assigned yet — not a paid plan. This used to auto-assign
-    // Starter ($29/mo, 100/mo) here instead, which silently gave every
-    // signup full paid-tier access with no payment ever collected, and
-    // made domain/trial.ts's grantTrial() (which requires planId to be
-    // null) permanently unreachable for any tenant created after that.
-    // The owner assigns a real plan herself once the merchant actually
-    // pays (DEPLOYMENT.md's manual-billing flow) — apps/admin's tenant
-    // panel, same as upgrading anyone else.
+    // Every new tenant starts on the TEST plan — a real Plan row ($0/mo,
+    // 5 try-ons, admin-grant only, never shown to a merchant choosing
+    // their own plan — see routes/billing.ts) rather than a special
+    // "no plan + topUpCredits" state. This used to auto-assign Starter
+    // ($29/mo, 100/mo) here instead, which silently gave every signup
+    // full paid-tier access with no payment ever collected. The owner
+    // assigns a real paid plan herself once the merchant actually pays
+    // (DEPLOYMENT.md's manual-billing flow) — apps/admin's tenant panel,
+    // same as upgrading anyone else.
+    const testPlan = await prisma.plan.findUniqueOrThrow({ where: { key: "TEST" } });
     const tenant = await prisma.tenant.create({
       data: {
         name: storeName,
         slug: `${hostname}-${Date.now().toString(36)}`,
-        topUpCredits: TRIAL_CREDITS,
+        planId: testPlan.id,
         trialGrantedAt: new Date(),
       },
     });

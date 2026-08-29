@@ -49,15 +49,15 @@ describe("GET /api/v1/billing — trialActive", () => {
     return { token, tenantId: me.json().tenant.id };
   }
 
-  it("is true right after registration (a fresh trial, credits intact)", async () => {
+  it("is true right after registration (the TEST plan, a fresh 5-use lifetime allowance)", async () => {
     const { token } = await registerTrialMerchant();
     const res = await app.inject({ method: "GET", url: "/api/v1/billing", headers: { authorization: `Bearer ${token}` } });
     expect(res.statusCode).toBe(200);
     expect(res.json().trialActive).toBe(true);
-    expect(res.json().topUpCredits).toBe(5);
+    expect(res.json().plan.key).toBe("TEST");
   });
 
-  it("goes false once the owner cancels the trial (credits zeroed, planId still null)", async () => {
+  it("goes false once the owner cancels the trial (back to no plan)", async () => {
     const { token, tenantId } = await registerTrialMerchant();
 
     const cancel = await app.inject({
@@ -70,9 +70,9 @@ describe("GET /api/v1/billing — trialActive", () => {
 
     const res = await app.inject({ method: "GET", url: "/api/v1/billing", headers: { authorization: `Bearer ${token}` } });
     expect(res.json().trialActive).toBe(false);
-    expect(res.json().topUpCredits).toBe(0);
+    expect(res.json().plan).toBeNull();
     // trialGrantedAt is still set (it happened) — trialActive being
-    // false must come from the credits check, not from that going null.
+    // false must come from plan.key, not from that going null.
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
     expect(tenant.trialGrantedAt).not.toBeNull();
   });

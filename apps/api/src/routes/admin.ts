@@ -7,7 +7,6 @@ import { signMerchantToken } from "../auth/jwt";
 import { authenticateAdmin } from "../plugins/auth";
 import { loginSchema } from "../schemas";
 import { startOfCurrentMonthUtc } from "../domain/planEntitlement";
-import { grantTrial, TrialGrantError } from "../domain/trial";
 import { buildTryOnDetailPayload } from "./tryons";
 
 const setPlanSchema = z.object({ planId: z.string().nullable() });
@@ -219,24 +218,21 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const before = await prisma.tenant.findUnique({ where: { id } });
     if (!before) return reply.code(404).send({ error: "Tenant not found" });
 
-    // A plan-less tenant's only possible source of topUpCredits is the
-    // free trial grant (a real top-up purchase requires an existing plan
-    // to price a pack against — see billing.ts) — so this is specifically
-    // "converting a trial tenant to its first real plan", not a plan
-    // change on an already-paying tenant. Zero the leftover trial balance
-    // in that one case; leave topUpCredits alone on every other plan
-    // change (upgrading/downgrading a paying tenant must never touch
-    // credits they've actually purchased).
+    // Legacy-tenant handling only — trial is a real Plan row now (see
+    // PlanKey's schema comment), assigned/cleared like any other plan
+    // with no special-casing needed. This still matters for a tenant
+    // that signed up before that change and is still sitting in the old
+    // "no plan + topUpCredits" trial state: a plan-less tenant's only
+    // possible source of topUpCredits was the old free-trial grant (a
+    // real top-up purchase needs an existing plan to price a pack
+    // against — see billing.ts), so moving one either onto its first
+    // real plan or explicitly back to "Без тарифу" ends that old-style
+    // trial and zeroes the leftover balance, the same outcome the TEST
+    // plan's own auto-downgrade (processTryOnJob.ts) produces once its
+    // 5 lifetime uses run out. Never fires for a tenant created after
+    // this change — those start on the TEST plan, not planId=null, so
+    // `!before.planId` is false for them from day one.
     const isTrialConversion = !before.planId && !!parsed.data.planId && !!before.trialGrantedAt;
-
-    // The mirror case — explicitly re-selecting "Без тарифу" while a
-    // trial is still active (has credits left). Without this, planId
-    // was already null, so writing null again is a no-op: the select in
-    // apps/admin would spring right back to showing "Тестовий режим"
-    // after the refetch, since nothing about trialGrantedAt/topUpCredits
-    // actually changed (product-reported: picking "no plan" just doesn't
-    // seem to do anything). Treated as ending the trial early, same as
-    // letting it run out on its own — same zero-the-balance outcome.
     const isTrialCancellation = !before.planId && !parsed.data.planId && !!before.trialGrantedAt && before.topUpCredits > 0;
 
     const tenant = await prisma.tenant.update({
@@ -262,20 +258,6 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       data: { topUpCredits: { increment: parsed.data.addCredits }, planRequestNote: null, planRequestedAt: null },
     });
     return reply.send({ id: tenant.id, topUpCredits: tenant.topUpCredits });
-  });
-
-  // ── Owner-granted trial (product decision: no longer self-serve —
-  // merchant dashboard has no button for this anymore, only the owner can
-  // activate it, from here) ────────────────────────────────────────────
-  app.post("/api/v1/admin/tenants/:id/trial", { preHandler: authenticateAdmin }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    try {
-      const result = await grantTrial(id);
-      return reply.send({ id, ...result });
-    } catch (error) {
-      if (error instanceof TrialGrantError) return reply.code(error.statusCode).send({ error: error.message });
-      throw error;
-    }
   });
 
   // ── Edit a tenant's store's button design directly (product ask: the
