@@ -55,8 +55,14 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
       // Whether the top-up balance the merchant sees is an owner-granted
       // trial rather than a paid plan's top-up — the dashboard shows this
       // as a status badge only, since activation is admin-only now (see
-      // POST /api/v1/admin/tenants/:id/trial).
-      trialActive: !tenant.planId && !!tenant.trialGrantedAt,
+      // POST /api/v1/admin/tenants/:id/trial). Also requires actual
+      // credits left: trialGrantedAt never gets cleared once a trial has
+      // been granted (grantTrial()'s own "already granted" guard needs
+      // it to stay set), so without the balance check this stayed true
+      // forever after a spent-out or admin-cancelled trial — the
+      // merchant's sidebar badge kept reading "Тестовий період" active
+      // even after the owner had already turned it off from her side.
+      trialActive: !tenant.planId && !!tenant.trialGrantedAt && tenant.topUpCredits > 0,
       allPlans: allPlans.map((p) => ({
         key: p.key,
         name: p.name,
