@@ -229,13 +229,23 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     // credits they've actually purchased).
     const isTrialConversion = !before.planId && !!parsed.data.planId && !!before.trialGrantedAt;
 
+    // The mirror case — explicitly re-selecting "Без тарифу" while a
+    // trial is still active (has credits left). Without this, planId
+    // was already null, so writing null again is a no-op: the select in
+    // apps/admin would spring right back to showing "Тестовий режим"
+    // after the refetch, since nothing about trialGrantedAt/topUpCredits
+    // actually changed (product-reported: picking "no plan" just doesn't
+    // seem to do anything). Treated as ending the trial early, same as
+    // letting it run out on its own — same zero-the-balance outcome.
+    const isTrialCancellation = !before.planId && !parsed.data.planId && !!before.trialGrantedAt && before.topUpCredits > 0;
+
     const tenant = await prisma.tenant.update({
       where: { id },
       data: {
         planId: parsed.data.planId,
         planRequestNote: null,
         planRequestedAt: null,
-        ...(isTrialConversion ? { topUpCredits: 0 } : {}),
+        ...(isTrialConversion || isTrialCancellation ? { topUpCredits: 0 } : {}),
       },
       include: { plan: true },
     });

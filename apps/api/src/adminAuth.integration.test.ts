@@ -163,6 +163,48 @@ describe("platform admin", () => {
     expect(res.statusCode).toBe(403);
   });
 
+  // Its own tenant, registered fresh (auto-grants a 5-credit trial, no
+  // plan — routes/auth.ts) rather than reusing merchantTenantId, whose
+  // trial the very next test consumes by converting it to a real plan.
+  // Product-reported bug: re-selecting "Без тарифу" in apps/admin's plan
+  // dropdown while a trial was still active visibly did nothing — planId
+  // was already null, so writing null again was a no-op, and the select
+  // just sprang back to showing "Тестовий режим" after the refetch.
+  it("re-selecting no plan while a trial is active ends it (clears the credits)", async () => {
+    const email = `trial-cancel-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+    const register = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/register",
+      payload: { email, password: "correct horse battery staple", storeName: "Trial Cancel Co", storeUrl: "http://trial-cancel.example.com" },
+    });
+    expect(register.statusCode).toBe(201);
+    const me = await app.inject({ method: "GET", url: "/api/v1/auth/me", headers: { authorization: `Bearer ${register.json().token}` } });
+    const trialTenantId = me.json().tenant.id;
+
+    const before = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
+    expect(before.planId).toBeNull();
+    expect(before.topUpCredits).toBe(5);
+
+    // planId was already null — this re-selects "no plan" on a tenant
+    // that already has none, which is exactly what the admin UI sends
+    // when picking "Без тарифу" out of an active trial.
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/admin/tenants/${trialTenantId}/plan`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { planId: null },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().topUpCredits).toBe(0);
+
+    const after = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
+    expect(after.planId).toBeNull();
+    expect(after.topUpCredits).toBe(0);
+    // trialGrantedAt stays set — it already happened, it's just spent —
+    // so grantTrial() still correctly refuses to grant a second one.
+    expect(after.trialGrantedAt).not.toBeNull();
+  });
+
   // merchantTenantId is still plan-less with its 5-credit trial balance
   // from the grant test above — a plan-less tenant's only possible
   // source of topUpCredits, so assigning its first real plan should
