@@ -200,9 +200,19 @@ describe("platform admin", () => {
     const after = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
     expect(after.planId).toBeNull();
     expect(after.topUpCredits).toBe(0);
-    // trialGrantedAt stays set — it already happened, it's just spent —
-    // so grantTrial() still correctly refuses to grant a second one.
+    // trialGrantedAt stays set — it already happened, it's just spent.
     expect(after.trialGrantedAt).not.toBeNull();
+
+    // And picking "Тестовий режим" again now works — grantTrial() guards
+    // against an *outstanding* balance, not against ever having had one
+    // before, so a cancelled-or-spent trial can be given another go.
+    const regrant = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/tenants/${trialTenantId}/trial`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(regrant.statusCode).toBe(200);
+    expect(regrant.json().topUpCredits).toBe(5);
   });
 
   // merchantTenantId is still plan-less with its 5-credit trial balance

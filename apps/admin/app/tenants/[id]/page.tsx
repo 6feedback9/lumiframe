@@ -130,7 +130,16 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
       // Was silently swallowed before (no catch here) — a failed request
       // (stale deploy, already granted, network blip) looked exactly like
       // the button "not working", with zero feedback either way.
-      setTrialError((err as Error).message);
+      // domain/trial.ts's two guard messages are plain English (an
+      // internal admin-only string, no i18n on the server) — translate
+      // the two known ones so they don't read as a raw, untranslated
+      // error in an otherwise Ukrainian screen; anything else (a real
+      // network/server failure) still shows through as-is, in English,
+      // rather than silently swallowed or misrepresented.
+      const message = (err as Error).message;
+      if (message.includes("already has an active trial balance")) setTrialError(t("tenantDetail.trialErrorActive"));
+      else if (message.includes("A plan is already assigned")) setTrialError(t("tenantDetail.trialErrorHasPlan"));
+      else setTrialError(message);
     } finally {
       setGrantingTrial(false);
     }
