@@ -38,20 +38,27 @@ import { GoogleGenAI, Modality, type Part } from "@google/genai";
 
 const DEFAULT_MODEL = "gemini-3.1-flash-image-preview";
 // Per-attempt timeout, not the whole budget — see MAX_ATTEMPTS below. Real
-// generations observed so far complete in ~14-20s, so 25s per attempt
-// leaves real headroom for a slow one while still affording a retry.
+// generations observed so far complete in ~11-20s, so 25s per attempt
+// leaves real headroom for a slow one while still affording retries.
 // packages/widget's own POLL_TIMEOUT_MS is the actual outer budget the
 // customer's browser will wait on — keep GENERATE_TIMEOUT_MS * MAX_ATTEMPTS
 // comfortably under it, not equal to it (that left zero room to retry).
 const GENERATE_TIMEOUT_MS = 25_000;
-// A timeout or a transient request failure gets one retry before giving
-// up — product feedback: an occasional slow/dropped Gemini call was
-// showing up as a hard failure in the merchant's try-on list even though
-// most requests complete in well under GENERATE_TIMEOUT_MS. Does NOT
-// retry a clean GEMINI_NO_IMAGE result (a real response Gemini returned,
-// just without an image, typically a safety/content decision) — only
-// actual exceptions (timeout, network) from runGeneration.
-const MAX_ATTEMPTS = 2;
+// A timeout or a transient request failure gets retried before giving up
+// — product feedback: an occasional slow/dropped Gemini call was showing
+// up as a hard failure in the merchant's try-on list even though most
+// requests complete in well under GENERATE_TIMEOUT_MS. 3, not 2: still
+// happening repeatedly with 2 (this is a "-preview" model — Google's
+// preview endpoints are commonly less consistent than GA ones, tighter
+// quotas, occasional slow responses under load — not something our own
+// code can fix, only absorb better). Does NOT retry a clean
+// GEMINI_NO_IMAGE result (a real response Gemini returned, just without
+// an image, typically a safety/content decision) — only actual
+// exceptions (timeout, network) from runGeneration. See also the
+// per-step timing log in runGeneration below, added specifically so a
+// future failure shows whether the time went to our own image fetch or
+// to Gemini's own call, instead of both looking identical from outside.
+const MAX_ATTEMPTS = 3;
 
 const PROMPT = `You are editing photo #1, a photo of a person, so they appear to be wearing the eyewear shown in photo #2.
 
@@ -171,8 +178,18 @@ export class GeminiTryOnProvider implements TryOnProvider {
   }
 
   private async runGeneration(input: TryOnGenerationInput, startedAt: number): Promise<Outcome> {
+    const fetchStartedAt = Date.now();
     const [face, eyewear] = await Promise.all([resolveImageBytes(input.faceImage), resolveImageBytes(input.eyewearImage)]);
+    const fetchMs = Date.now() - fetchStartedAt;
 
+    // Splits "how long did OUR OWN image fetch take" from "how long did
+    // Gemini's own call take" — a GEMINI_REQUEST_FAILED timeout used to
+    // look identical either way from the try-on list, with no way to
+    // tell whether the 25s went to our side or theirs. Only logged once
+    // either leg is slow enough to matter, so a normal ~15s generation
+    // (mostly Gemini, fetch near-instant since the product image is
+    // usually inline bytes now) doesn't spam the logs.
+    const generateStartedAt = Date.now();
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: [
@@ -189,6 +206,10 @@ export class GeminiTryOnProvider implements TryOnProvider {
         responseModalities: [Modality.TEXT, Modality.IMAGE],
       },
     });
+    const generateMs = Date.now() - generateStartedAt;
+    if (fetchMs > 3_000 || generateMs > 15_000) {
+      console.warn(`[gemini] generation ${input.tryOnGenerationId}: image fetch took ${fetchMs}ms, generateContent took ${generateMs}ms`);
+    }
 
     const image = firstImagePart(response.candidates?.[0]?.content?.parts);
     if (!image) {

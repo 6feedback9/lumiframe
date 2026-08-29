@@ -112,13 +112,14 @@ describe("GeminiTryOnProvider", () => {
     expect(status.state).toBe("failed");
     expect(status.errorCode).toBe("GEMINI_REQUEST_FAILED");
     expect(status.errorMessage).toBe("network blip");
-    // MAX_ATTEMPTS = 2 — a transient-looking failure gets one retry before
+    // MAX_ATTEMPTS = 3 — a transient-looking failure gets retried before
     // giving up, not just a single shot.
-    expect(generateContentMock).toHaveBeenCalledTimes(2);
+    expect(generateContentMock).toHaveBeenCalledTimes(3);
   });
 
-  it("retries once after a failed first attempt and succeeds on the second", async () => {
+  it("retries after failed attempts and succeeds on the last one", async () => {
     generateContentMock
+      .mockRejectedValueOnce(new Error("network blip"))
       .mockRejectedValueOnce(new Error("network blip"))
       .mockResolvedValueOnce({
         candidates: [{ content: { parts: [{ inlineData: { data: "ZmFrZQ==", mimeType: "image/png" } }] } }],
@@ -129,7 +130,7 @@ describe("GeminiTryOnProvider", () => {
     const status = await provider.getJobStatus(providerJobId);
 
     expect(status.state).toBe("completed");
-    expect(generateContentMock).toHaveBeenCalledTimes(2);
+    expect(generateContentMock).toHaveBeenCalledTimes(3);
   });
 
   it("does not retry a clean no-image result — that's a real response, not a transient failure", async () => {

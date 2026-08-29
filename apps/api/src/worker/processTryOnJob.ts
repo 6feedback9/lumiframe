@@ -12,7 +12,17 @@ import { checkPlanEntitlement } from "../domain/planEntitlement";
 
 const SIGNED_URL_TTL_SECONDS = 3600;
 const POLL_INTERVAL_MS = 1000;
-const POLL_TIMEOUT_MS = 60_000;
+// A real provider's own generateTryOn() call is fully synchronous (see
+// packages/providers/real's own comment) — it doesn't return until its
+// internal retry loop is done, up to GENERATE_TIMEOUT_MS * MAX_ATTEMPTS
+// there (75s as of this writing). This loop only ever actually waits on
+// a provider that returns a non-terminal status and keeps the worker
+// polling — for the real provider that's already resolved by the time
+// this loop starts, so in practice this is a safety net against a
+// provider hanging indefinitely, not the real bound on retry time. Keep
+// it comfortably above that 75s regardless, so it never fires first and
+// cuts a legitimate in-flight retry off from underneath the provider.
+const POLL_TIMEOUT_MS = 90_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -29,11 +29,13 @@ function ensureStyles(): void {
 }
 
 const POLL_INTERVAL_MS = 1200;
-// The provider's own worst case is GENERATE_TIMEOUT_MS * MAX_ATTEMPTS = 50s
-// (packages/providers/real/src/index.ts) — this needs real margin above
-// that, not to equal it, or the browser gives up and shows an error to the
-// shopper right as a retried generation was about to actually succeed.
-const POLL_TIMEOUT_MS = 65_000;
+// The provider's own worst case is GENERATE_TIMEOUT_MS * MAX_ATTEMPTS = 75s
+// (packages/providers/real/src/index.ts, bumped from 2 to 3 attempts —
+// occasional slow Gemini responses were still hitting a hard failure with
+// 2) — this needs real margin above that, not to equal it, or the
+// browser gives up and shows an error to the shopper right as a retried
+// generation was about to actually succeed.
+const POLL_TIMEOUT_MS = 95_000;
 
 type PhotoState = "empty" | "selected" | "processing" | "result";
 
