@@ -59,6 +59,12 @@ const setWidgetConfigSchema = z.object({
   modalAccentColorStart: z.string().max(20).optional(),
   modalAccentColorEnd: z.string().max(20).optional(),
   modalAccentTextColor: z.string().max(20).optional(),
+  // Mirrors routes/store.ts's own addition — a merchant report ("settings
+  // silently not saving") traced back to exactly this schema missing a
+  // field the frontend already sent, so this one gets the same two fields
+  // added at the same time rather than drifting again.
+  cardButtonEnabled: z.boolean().optional(),
+  cardButtonVariant: z.enum(["corner", "drawer", "scrim"]).optional(),
 });
 
 // The platform-owner's own view across every tenant (ARCHITECTURE.md §11

@@ -36,6 +36,10 @@ interface WidgetConfig {
   modalAccentColorStart?: string;
   modalAccentColorEnd?: string;
   modalAccentTextColor?: string;
+  /** Same "Try on" affordance on catalog mini-cards the merchant's own
+   * dashboard configures — see packages/sdk's TryOnInitOptions. */
+  cardButtonEnabled?: boolean;
+  cardButtonVariant?: "corner" | "drawer" | "scrim";
 }
 
 interface TenantUser {
@@ -198,10 +202,34 @@ const SHAPE_OPTIONS = [
   { value: "rectangular", label: "buttonDesign.shapeRectangular" },
 ] as const;
 
+const CARD_VARIANT_OPTIONS = [
+  { value: "corner", label: "buttonDesign.cardVariantCorner", desc: "buttonDesign.cardVariantCornerDesc" },
+  { value: "drawer", label: "buttonDesign.cardVariantDrawer", desc: "buttonDesign.cardVariantDrawerDesc" },
+  { value: "scrim", label: "buttonDesign.cardVariantScrim", desc: "buttonDesign.cardVariantScrimDesc" },
+] as const;
+
+const DESIGN_TABS = [
+  { id: "button", label: "buttonDesign.tabButton" },
+  { id: "modal", label: "buttonDesign.tabModal" },
+  { id: "card", label: "buttonDesign.tabCard" },
+] as const;
+type DesignTabId = (typeof DESIGN_TABS)[number]["id"];
+
 const WIDGET_CONFIG_DEFAULTS: Required<
   Pick<
     WidgetConfig,
-    "buttonText" | "buttonColorStart" | "buttonColorEnd" | "buttonTextColor" | "buttonPosition" | "buttonSize" | "buttonWidth" | "buttonShape" | "showTryAnotherButton" | "showBackButton"
+    | "buttonText"
+    | "buttonColorStart"
+    | "buttonColorEnd"
+    | "buttonTextColor"
+    | "buttonPosition"
+    | "buttonSize"
+    | "buttonWidth"
+    | "buttonShape"
+    | "showTryAnotherButton"
+    | "showBackButton"
+    | "cardButtonEnabled"
+    | "cardButtonVariant"
   >
 > = {
   buttonText: "Try on",
@@ -214,15 +242,29 @@ const WIDGET_CONFIG_DEFAULTS: Required<
   buttonShape: "rounded",
   showTryAnotherButton: true,
   showBackButton: true,
+  cardButtonEnabled: false,
+  cardButtonVariant: "corner",
 };
 
 /** Lets the platform owner edit a client's "Try on" button design directly, without needing the merchant's own dashboard (product ask: make changes to a client's store from my own console). */
+/**
+ * Same three sections the merchant configures herself
+ * (apps/dashboard/app/integration/page.tsx) — button / try-on window /
+ * mini-card button — with the same live previews, so the platform owner
+ * sees exactly what a client sees and can edit it from here directly
+ * (product ask: "визуально что должно выглядеть у меня так же как у
+ * клиента ... и я могу править в случае чего"). Deliberately does NOT
+ * duplicate the dashboard's embed-snippet/allowed-domains/visitor-limit
+ * sections — those are the merchant's own integration concerns, not part
+ * of "what does this look like right now".
+ */
 function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: TenantDetail; onUpdated: () => void }) {
   const { t } = useI18n();
   const store = tenant.stores[0];
   const [config, setConfig] = useState<WidgetConfig>({ ...WIDGET_CONFIG_DEFAULTS, ...store?.widgetConfig });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [designTab, setDesignTab] = useState<DesignTabId>("button");
 
   useEffect(() => {
     setConfig({ ...WIDGET_CONFIG_DEFAULTS, ...store?.widgetConfig });
@@ -271,8 +313,15 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
 
   const selectStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line-strong)", background: "rgba(173,201,255,0.05)", color: "var(--paper)", fontSize: 13 };
 
+  // Mirrors packages/widget's own fallback: modal-specific colors win when
+  // set, otherwise the button's own colors.
+  const modalAccentStart = config.modalAccentColorStart ?? config.buttonColorStart ?? "#73b7ff";
+  const modalAccentEnd = config.modalAccentColorEnd ?? config.buttonColorEnd ?? "#9f8cff";
+  const modalAccentText = config.modalAccentTextColor ?? config.buttonTextColor ?? "#ffffff";
+  const modalBtnBackground = config.buttonStyle === "solid" ? modalAccentStart : `linear-gradient(135deg, ${modalAccentStart}, ${modalAccentEnd})`;
+
   return (
-    <div className="panel" style={{ padding: 24, marginBottom: 20, maxWidth: 720 }}>
+    <div className="panel" style={{ padding: 24, marginBottom: 20 }}>
       <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("buttonDesign.title")}</h3>
       <style>{`
         @keyframes lumiframe-admin-preview-pulse {
@@ -288,9 +337,64 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
           background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
           animation: lumiframe-admin-preview-shimmer 2.4s ease-in-out infinite;
         }
+        .lumi-admin-card-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .lumi-admin-card-thumb { position: relative; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; background: #f2f1ee; }
+        .lumi-admin-card-name { font-size: 11px; font-weight: 600; margin-top: 8px; color: var(--paper); }
+        .lumi-admin-card-badge {
+          position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
+          background: #fff; box-shadow: 0 2px 8px rgba(20,20,30,.16);
+          display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
+          color: ${config.buttonColorStart}; transition: width .2s ease;
+        }
+        .lumi-admin-card-badge span { font-size: 10.5px; font-weight: 700; color: #171923; opacity: 0; max-width: 0; margin-left: 0; transition: opacity .15s ease, max-width .2s ease; }
+        .lumi-admin-card-thumb:hover .lumi-admin-card-badge { width: 118px; border-radius: 14px; }
+        .lumi-admin-card-thumb:hover .lumi-admin-card-badge span { opacity: 1; max-width: 84px; margin-left: 6px; }
+        .lumi-admin-card-drawer {
+          position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
+          background: ${previewBackground}; color: ${config.buttonTextColor};
+          display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 700;
+          transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1);
+        }
+        .lumi-admin-card-thumb:hover .lumi-admin-card-drawer { transform: translateY(0); }
+        .lumi-admin-card-scrim {
+          position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px;
+          background: transparent; transition: background .2s ease;
+        }
+        .lumi-admin-card-thumb:hover .lumi-admin-card-scrim { background: rgba(17,19,25,.22); }
+        .lumi-admin-card-scrim-pill {
+          display: flex; align-items: center; gap: 6px; background: #fff; color: #171923; font-size: 10.5px; font-weight: 700;
+          padding: 7px 12px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+          opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
+        }
+        .lumi-admin-card-thumb:hover .lumi-admin-card-scrim-pill { opacity: 1; transform: translateY(0); }
       `}</style>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)" }}>
+        {DESIGN_TABS.map((tb) => (
+          <button
+            key={tb.id}
+            type="button"
+            onClick={() => setDesignTab(tb.id)}
+            style={{
+              padding: "8px 14px",
+              background: "none",
+              border: "none",
+              borderBottom: designTab === tb.id ? "2px solid var(--sky)" : "2px solid transparent",
+              color: designTab === tb.id ? "var(--paper)" : "var(--mist)",
+              fontSize: 13,
+              fontWeight: designTab === tb.id ? 700 : 500,
+              cursor: "pointer",
+            }}
+          >
+            {t(tb.label)}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
         <div>
+          {designTab === "button" && (
+            <>
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("buttonDesign.label")}</label>
             <input value={config.buttonText ?? ""} onChange={(e) => setConfig({ ...config, buttonText: e.target.value })} maxLength={60} />
@@ -424,8 +528,11 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
               />
             </div>
           )}
+            </>
+          )}
 
-
+          {designTab === "modal" && (
+            <>
           <div className="field" style={{ marginBottom: 16 }}>
             <label>{t("buttonDesign.modalButtons")}</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
@@ -464,7 +571,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
               <label>{t("buttonDesign.color1")}</label>
               <input
                 type="color"
-                value={config.modalAccentColorStart ?? config.buttonColorStart ?? "#73b7ff"}
+                value={modalAccentStart}
                 onChange={(e) => setConfig({ ...config, modalAccentColorStart: e.target.value })}
                 style={{ height: 38, padding: 4 }}
               />
@@ -473,7 +580,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
               <label>{t("buttonDesign.color2")}</label>
               <input
                 type="color"
-                value={config.modalAccentColorEnd ?? config.buttonColorEnd ?? "#9f8cff"}
+                value={modalAccentEnd}
                 onChange={(e) => setConfig({ ...config, modalAccentColorEnd: e.target.value })}
                 style={{ height: 38, padding: 4 }}
               />
@@ -484,7 +591,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
             <label>{t("buttonDesign.textColor")}</label>
             <input
               type="color"
-              value={config.modalAccentTextColor ?? config.buttonTextColor ?? "#ffffff"}
+              value={modalAccentText}
               onChange={(e) => setConfig({ ...config, modalAccentTextColor: e.target.value })}
               style={{ height: 38, padding: 4 }}
             />
@@ -501,20 +608,223 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
             <label>{t("buttonDesign.modalSubheading")}</label>
             <input value={config.modalSubheading ?? ""} onChange={(e) => setConfig({ ...config, modalSubheading: e.target.value || undefined })} maxLength={200} />
           </div>
+            </>
+          )}
 
-          <button className="btn" style={{ width: "auto", padding: "9px 18px" }} disabled={saving} onClick={save}>
+          {designTab === "card" && (
+            <>
+          <p style={{ fontSize: 12.5, color: "var(--mist)", marginBottom: 16, lineHeight: 1.6 }}>{t("buttonDesign.cardDesc")}</p>
+
+          <div className="field" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
+            <input
+              type="checkbox"
+              id="admin-card-enable"
+              checked={!!config.cardButtonEnabled}
+              onChange={(e) => setConfig({ ...config, cardButtonEnabled: e.target.checked })}
+              style={{ width: "auto" }}
+            />
+            <label htmlFor="admin-card-enable" style={{ margin: 0 }}>
+              {t("buttonDesign.cardEnable")}
+            </label>
+          </div>
+
+          <div className="field" style={{ marginBottom: 4 }}>
+            <label>{t("buttonDesign.cardVariant")}</label>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+            {CARD_VARIANT_OPTIONS.map((v) => (
+              <button
+                key={v.value}
+                type="button"
+                onClick={() => setConfig({ ...config, cardButtonVariant: v.value })}
+                disabled={!config.cardButtonEnabled}
+                style={{
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: config.cardButtonVariant === v.value ? "1.5px solid var(--sky)" : "1px solid var(--line-strong)",
+                  background: config.cardButtonVariant === v.value ? "rgba(115,183,255,0.08)" : "rgba(173,201,255,0.03)",
+                  color: "var(--paper)",
+                  cursor: config.cardButtonEnabled ? "pointer" : "default",
+                  opacity: config.cardButtonEnabled ? 1 : 0.5,
+                  fontFamily: "inherit",
+                }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>{t(v.label)}</div>
+                <div style={{ fontSize: 11, color: "var(--mist)", lineHeight: 1.4 }}>{t(v.desc)}</div>
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: 11.5, color: "var(--mist-dim)", lineHeight: 1.6 }}>{t("buttonDesign.cardNote")}</p>
+            </>
+          )}
+
+          <button className="btn" style={{ width: "auto", padding: "9px 18px", marginTop: 4 }} disabled={saving} onClick={save}>
             {saving ? t("common.saving") : saved ? "✓" : t("common.save")}
           </button>
         </div>
+
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--mist-dim)", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".06em" }}>
             {t("buttonDesign.preview")}
           </div>
-          <div style={{ padding: 32, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center" }}>
-            <button type="button" style={previewStyle} disabled>
-              {config.buttonText || "Try on"}
-            </button>
-          </div>
+
+          {designTab === "button" && (
+            <div style={{ padding: 32, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center" }}>
+              <button type="button" style={previewStyle} className={config.buttonAnimation === "shimmer" ? "lumiframe-admin-preview-shimmer" : undefined} disabled>
+                {config.buttonText || "Try on"}
+              </button>
+            </div>
+          )}
+
+          {designTab === "modal" && (
+            <div style={{ padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)" }}>
+              <div style={{ display: "flex", minHeight: 340, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+                <div style={{ flex: 1, background: "#f6f6f5", color: "#111", padding: "22px 16px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#aaa", marginBottom: 8 }}>
+                    {t("buttonDesign.previewModalBrand")}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", marginBottom: 6 }}>
+                    {config.modalHeading || t("buttonDesign.modalHeadingPlaceholder")}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#8a8a8a", marginBottom: 12, lineHeight: 1.5 }}>
+                    {config.modalSubheading || t("buttonDesign.modalSubheadingPlaceholder")}
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      borderRadius: 10,
+                      background: "#e7e7e6",
+                      aspectRatio: "3 / 4",
+                      maxHeight: 130,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 10,
+                      fontSize: 18,
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        left: 6,
+                        background: "rgba(255,255,255,.94)",
+                        fontSize: 8,
+                        fontWeight: 700,
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
+                        padding: "3px 7px",
+                        borderRadius: 999,
+                        color: "#444",
+                      }}
+                    >
+                      {t("buttonDesign.previewModalBadge")}
+                    </span>
+                    🧍
+                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "none",
+                      borderRadius: config.buttonShape === "rectangular" ? 6 : 8,
+                      fontWeight: 700,
+                      fontSize: 9,
+                      letterSpacing: ".02em",
+                      textTransform: "uppercase",
+                      background: modalBtnBackground,
+                      color: modalAccentText,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {t("buttonDesign.previewModalCta")}
+                  </button>
+                </div>
+                <div style={{ flex: 1, background: "#fff", color: "#111", padding: "22px 16px", display: "flex", flexDirection: "column", justifyContent: "center", borderLeft: "1px solid #ececec" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
+                    <div style={{ width: 32, height: 40, borderRadius: 8, background: "#eee", flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700 }}>{t("buttonDesign.previewProductName")}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: "#111" }}>$49</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "none",
+                      borderRadius: config.buttonShape === "rectangular" ? 6 : 8,
+                      fontWeight: 700,
+                      fontSize: 9,
+                      letterSpacing: ".02em",
+                      textTransform: "uppercase",
+                      background: modalBtnBackground,
+                      color: modalAccentText,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {t("buttonDesign.previewModalAddToCart")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {designTab === "card" && (
+            <div style={{ padding: 20, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)" }}>
+              {!config.cardButtonEnabled && <p style={{ fontSize: 11.5, color: "var(--mist-dim)", marginBottom: 12 }}>{t("buttonDesign.cardPreviewOff")}</p>}
+              <div className="lumi-admin-card-preview" style={{ opacity: config.cardButtonEnabled ? 1 : 0.45 }}>
+                {[0, 1].map((i) => (
+                  <div key={i}>
+                    <div className="lumi-admin-card-thumb">
+                      <svg viewBox="0 0 64 32" fill="none" style={{ width: "60%", height: "60%", position: "absolute", inset: 0, margin: "auto" }}>
+                        <ellipse cx="16" cy="16" rx="13" ry="10" stroke="#c3b8a4" strokeWidth="2" />
+                        <ellipse cx="48" cy="16" rx="13" ry="10" stroke="#c3b8a4" strokeWidth="2" />
+                        <path d="M29 16h6M3 14l-3 4M61 14l3 4" stroke="#c3b8a4" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                      {(config.cardButtonVariant ?? "corner") === "corner" && (
+                        <div className="lumi-admin-card-badge">
+                          <svg viewBox="0 0 20 12" fill="none" width="13" height="13">
+                            <path d="M1 6C2.5 3 5 1 10 1s7.5 2 9 5c-1.5 3-4 5-9 5s-7.5-2-9-5z" stroke="currentColor" strokeWidth="1.4" />
+                            <circle cx="10" cy="6" r="2" fill="currentColor" />
+                          </svg>
+                          <span>{config.buttonText || "Try on"}</span>
+                        </div>
+                      )}
+                      {config.cardButtonVariant === "drawer" && (
+                        <div className="lumi-admin-card-drawer">
+                          <svg viewBox="0 0 20 12" fill="none" width="13" height="13">
+                            <path d="M1 6C2.5 3 5 1 10 1s7.5 2 9 5c-1.5 3-4 5-9 5s-7.5-2-9-5z" stroke="currentColor" strokeWidth="1.4" />
+                            <circle cx="10" cy="6" r="2" fill="currentColor" />
+                          </svg>
+                          {config.buttonText || "Try on"}
+                        </div>
+                      )}
+                      {config.cardButtonVariant === "scrim" && (
+                        <div className="lumi-admin-card-scrim">
+                          <div className="lumi-admin-card-scrim-pill">
+                            <svg viewBox="0 0 20 12" fill="none" width="13" height="13">
+                              <path d="M1 6C2.5 3 5 1 10 1s7.5 2 9 5c-1.5 3-4 5-9 5s-7.5-2-9-5z" stroke="currentColor" strokeWidth="1.4" />
+                              <circle cx="10" cy="6" r="2" fill="currentColor" />
+                            </svg>
+                            <span>{config.buttonText || "Try on"}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="lumi-admin-card-name">{t("buttonDesign.cardPreviewProduct")}</div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 14, lineHeight: 1.5 }}>{t("buttonDesign.cardPreviewHint")}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
