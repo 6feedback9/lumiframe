@@ -165,6 +165,7 @@ const DICT = {
     "detail.resultPhoto": "Результат",
     "detail.noPhoto": "Немає фото",
     "detail.notAvailable": "Недоступно",
+    "detail.allAttempts": "Усі спроби в цій примірці",
 
     "feedback.title": "Відгуки клієнтів — усі магазини",
     "feedback.desc": "Лайки та дизлайки, які покупці залишили на результатах примірки, по всій платформі.",
@@ -337,6 +338,7 @@ const DICT = {
     "detail.resultPhoto": "Result",
     "detail.noPhoto": "No photo",
     "detail.notAvailable": "Not available",
+    "detail.allAttempts": "All attempts on this try-on",
 
     "feedback.title": "Customer feedback — all stores",
     "feedback.desc": "Likes and dislikes shoppers left on their try-on results, across the whole platform.",

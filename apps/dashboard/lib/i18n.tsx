@@ -96,6 +96,7 @@ const DICT = {
     "detail.noPhoto": "Немає фото",
     "detail.notAvailable": "Недоступно (ще не завершено або сталася помилка)",
     "detail.back": "Назад до списку",
+    "detail.allAttempts": "Усі спроби в цій примірці",
 
     "integration.title": "Дизайн і інтеграція",
     "integration.tabButton": "Кнопка",
@@ -353,6 +354,7 @@ const DICT = {
     "detail.noPhoto": "No photo",
     "detail.notAvailable": "Not available (not completed yet, or it failed)",
     "detail.back": "Back to list",
+    "detail.allAttempts": "All attempts on this try-on",
 
     "integration.title": "Design & integration",
     "integration.tabButton": "Button",

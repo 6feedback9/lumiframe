@@ -394,14 +394,41 @@ export async function buildTryOnDetailPayload(
   const generations = [...session.generations].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const latest = generations[0];
 
-  const [resultUrl, customerImageUrl] = await Promise.all([
-    latest?.status === "COMPLETED" && latest.resultImageKey
-      ? storage.getSignedUrl(BUCKETS.tryonResults, latest.resultImageKey, 3600)
-      : Promise.resolve(null),
-    options.includeCustomerImage && latest?.customerImageKey
-      ? storage.getSignedUrl(BUCKETS.customerPhotos, latest.customerImageKey, 3600).catch(() => null)
-      : Promise.resolve(null),
+  // "Try another photo" (packages/widget's retry()) doesn't start a new
+  // session — it adds another TryOnGeneration to this same one (routes/
+  // tryons.ts's own /retry route comment: "new generation, same session").
+  // A session's top-level status/resultUrl below only ever reflected the
+  // *latest* generation, so a shopper whose first attempt actually
+  // completed and then retried with a different photo that failed would
+  // see this whole session as FAILED with no result — the successful
+  // photo was still sitting in the DB the whole time, just with no way to
+  // reach it from here (merchant report: "результат заменился", she was
+  // right). All generations are now signed and returned below so every
+  // attempt on this session — including an earlier successful one a later
+  // retry buried — stays visible.
+  const resultKeys = generations.filter((g) => g.status === "COMPLETED" && g.resultImageKey).map((g) => g.resultImageKey!);
+  const customerKeys = options.includeCustomerImage ? generations.filter((g) => g.customerImageKey).map((g) => g.customerImageKey!) : [];
+
+  const [resultUrls, customerUrls] = await Promise.all([
+    storage.getSignedUrls(BUCKETS.tryonResults, resultKeys, 3600).catch(() => ({}) as Record<string, string>),
+    options.includeCustomerImage
+      ? storage.getSignedUrls(BUCKETS.customerPhotos, customerKeys, 3600).catch(() => ({}) as Record<string, string>)
+      : Promise.resolve({} as Record<string, string>),
   ]);
+  const resultUrl = (latest?.resultImageKey && resultUrls[latest.resultImageKey]) ?? null;
+  const customerImageUrl = (latest?.customerImageKey && customerUrls[latest.customerImageKey]) ?? null;
+
+  const generationHistory = generations.map((g) => ({
+    id: g.id,
+    status: g.status,
+    errorCode: g.errorCode,
+    errorMessage: g.errorMessage,
+    resultUrl: (g.resultImageKey && resultUrls[g.resultImageKey]) ?? null,
+    customerImageUrl: (g.customerImageKey && customerUrls[g.customerImageKey]) ?? null,
+    generationDurationMs: g.generationDurationMs,
+    createdAt: g.createdAt,
+    completedAt: g.completedAt,
+  }));
 
   return {
       id: session.id,
@@ -426,6 +453,9 @@ export async function buildTryOnDetailPayload(
       feedback: session.feedback,
       generationDurationMs: latest?.generationDurationMs ?? null,
       generationsCount: session.generations.length,
+      // Newest first, same order as `generations` above — every attempt on
+      // this session, not just the latest one that the fields above reflect.
+      generations: generationHistory,
       utm: {
         source: session.utmSource,
         medium: session.utmMedium,
