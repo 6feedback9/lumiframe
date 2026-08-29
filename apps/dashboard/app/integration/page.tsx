@@ -42,6 +42,12 @@ const POSITION_OPTIONS = [
   { value: "floating", labelKey: "customize.positionFloating" },
 ] as const;
 
+const CARD_VARIANT_OPTIONS = [
+  { value: "corner", labelKey: "customize.cardVariantCorner", descKey: "customize.cardVariantCornerDesc" },
+  { value: "drawer", labelKey: "customize.cardVariantDrawer", descKey: "customize.cardVariantDrawerDesc" },
+  { value: "scrim", labelKey: "customize.cardVariantScrim", descKey: "customize.cardVariantScrimDesc" },
+] as const;
+
 const DEFAULTS: Required<
   Pick<
     WidgetConfig,
@@ -57,6 +63,8 @@ const DEFAULTS: Required<
     | "buttonPosition"
     | "showTryAnotherButton"
     | "showBackButton"
+    | "cardButtonEnabled"
+    | "cardButtonVariant"
   >
 > = {
   buttonText: "Try on",
@@ -71,6 +79,8 @@ const DEFAULTS: Required<
   buttonPosition: "after",
   showTryAnotherButton: true,
   showBackButton: true,
+  cardButtonEnabled: false,
+  cardButtonVariant: "corner",
 };
 
 const SELECT_STYLE: React.CSSProperties = {
@@ -86,6 +96,7 @@ const SELECT_STYLE: React.CSSProperties = {
 const TABS = [
   { id: "button", labelKey: "integration.tabButton" },
   { id: "modal", labelKey: "integration.tabModal" },
+  { id: "card", labelKey: "integration.tabCard" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -208,6 +219,44 @@ function IntegrationContent() {
           background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
           animation: lumiframe-preview-shimmer 2.4s ease-in-out infinite;
         }
+
+        /* Mini-card preview (tab === "card") — same three variants
+           packages/sdk/src/index.ts injects on a real storefront, scoped
+           under .lumi-card-preview so it can't leak into the rest of this
+           settings page. */
+        .lumi-card-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .lumi-card-thumb { position: relative; aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; background: #f2f1ee; }
+        .lumi-card-name { font-size: 11px; font-weight: 600; margin-top: 8px; color: var(--paper); }
+
+        .lumi-card-badge {
+          position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
+          background: #fff; box-shadow: 0 2px 8px rgba(20,20,30,.16);
+          display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
+          color: ${config.buttonColorStart}; transition: width .2s ease;
+        }
+        .lumi-card-badge span { font-size: 10.5px; font-weight: 700; color: #171923; opacity: 0; max-width: 0; margin-left: 0; transition: opacity .15s ease, max-width .2s ease; }
+        .lumi-card-thumb:hover .lumi-card-badge { width: 118px; border-radius: 14px; }
+        .lumi-card-thumb:hover .lumi-card-badge span { opacity: 1; max-width: 84px; margin-left: 6px; }
+
+        .lumi-card-drawer {
+          position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
+          background: ${previewBackground}; color: ${config.buttonTextColor};
+          display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 700;
+          transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1);
+        }
+        .lumi-card-thumb:hover .lumi-card-drawer { transform: translateY(0); }
+
+        .lumi-card-scrim {
+          position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px;
+          background: transparent; transition: background .2s ease;
+        }
+        .lumi-card-thumb:hover .lumi-card-scrim { background: rgba(17,19,25,.22); }
+        .lumi-card-scrim-pill {
+          display: flex; align-items: center; gap: 6px; background: #fff; color: #171923; font-size: 10.5px; font-weight: 700;
+          padding: 7px 12px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+          opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
+        }
+        .lumi-card-thumb:hover .lumi-card-scrim-pill { opacity: 1; transform: translateY(0); }
       `}</style>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
@@ -482,6 +531,55 @@ function IntegrationContent() {
             </>
           )}
 
+          {tab === "card" && (
+            <>
+          <p style={{ fontSize: 12.5, color: "var(--mist)", marginBottom: 18, lineHeight: 1.6 }}>{t("customize.cardDesc")}</p>
+
+          <div className="field" style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
+            <input
+              type="checkbox"
+              id="cardEnable"
+              checked={!!config.cardButtonEnabled}
+              onChange={(e) => setConfig({ ...config, cardButtonEnabled: e.target.checked })}
+              style={{ width: "auto" }}
+            />
+            <label htmlFor="cardEnable" style={{ margin: 0 }}>
+              {t("customize.cardEnable")}
+            </label>
+          </div>
+
+          <div className="field" style={{ marginBottom: 4 }}>
+            <label>{t("customize.cardVariant")}</label>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+            {CARD_VARIANT_OPTIONS.map((v) => (
+              <button
+                key={v.value}
+                type="button"
+                onClick={() => setConfig({ ...config, cardButtonVariant: v.value })}
+                disabled={!config.cardButtonEnabled}
+                style={{
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: config.cardButtonVariant === v.value ? "1.5px solid var(--sky)" : "1px solid var(--line-strong)",
+                  background: config.cardButtonVariant === v.value ? "rgba(115,183,255,0.08)" : "rgba(173,201,255,0.03)",
+                  color: "var(--paper)",
+                  cursor: config.cardButtonEnabled ? "pointer" : "default",
+                  opacity: config.cardButtonEnabled ? 1 : 0.5,
+                  fontFamily: "inherit",
+                }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>{t(v.labelKey)}</div>
+                <div style={{ fontSize: 11, color: "var(--mist)", lineHeight: 1.4 }}>{t(v.descKey)}</div>
+              </button>
+            ))}
+          </div>
+
+          <p style={{ fontSize: 11.5, color: "var(--mist-dim)", lineHeight: 1.6 }}>{t("customize.cardNote")}</p>
+            </>
+          )}
+
           <button className="btn" onClick={save} disabled={saving}>
             {saving ? t("common.saving") : saved ? t("common.saved") : t("common.save")}
           </button>
@@ -498,7 +596,7 @@ function IntegrationContent() {
                   {config.buttonText || "Try on"}
                 </button>
               </div>
-            ) : (
+            ) : tab === "modal" ? (
               <div style={{ padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)", marginBottom: 20 }}>
                 <div
                   style={{
@@ -605,6 +703,56 @@ function IntegrationContent() {
                     </button>
                   </div>
                 </div>
+              </div>
+            ) : (
+              <div style={{ padding: 20, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", marginBottom: 20 }}>
+                {!config.cardButtonEnabled && (
+                  <p style={{ fontSize: 11.5, color: "var(--mist-dim)", marginBottom: 12 }}>{t("customize.cardPreviewOff")}</p>
+                )}
+                <div className="lumi-card-preview" style={{ opacity: config.cardButtonEnabled ? 1 : 0.45 }}>
+                  {[0, 1].map((i) => (
+                    <div key={i}>
+                      <div className="lumi-card-thumb">
+                        <svg viewBox="0 0 64 32" fill="none" style={{ width: "60%", height: "60%", position: "absolute", inset: 0, margin: "auto" }}>
+                          <ellipse cx="16" cy="16" rx="13" ry="10" stroke="#c3b8a4" strokeWidth="2" />
+                          <ellipse cx="48" cy="16" rx="13" ry="10" stroke="#c3b8a4" strokeWidth="2" />
+                          <path d="M29 16h6M3 14l-3 4M61 14l3 4" stroke="#c3b8a4" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                        {(config.cardButtonVariant ?? "corner") === "corner" && (
+                          <div className="lumi-card-badge">
+                            <svg viewBox="0 0 20 12" fill="none" width="13" height="13">
+                              <path d="M1 6C2.5 3 5 1 10 1s7.5 2 9 5c-1.5 3-4 5-9 5s-7.5-2-9-5z" stroke="currentColor" strokeWidth="1.4" />
+                              <circle cx="10" cy="6" r="2" fill="currentColor" />
+                            </svg>
+                            <span>{config.buttonText || "Try on"}</span>
+                          </div>
+                        )}
+                        {config.cardButtonVariant === "drawer" && (
+                          <div className="lumi-card-drawer">
+                            <svg viewBox="0 0 20 12" fill="none" width="13" height="13">
+                              <path d="M1 6C2.5 3 5 1 10 1s7.5 2 9 5c-1.5 3-4 5-9 5s-7.5-2-9-5z" stroke="currentColor" strokeWidth="1.4" />
+                              <circle cx="10" cy="6" r="2" fill="currentColor" />
+                            </svg>
+                            {config.buttonText || "Try on"}
+                          </div>
+                        )}
+                        {config.cardButtonVariant === "scrim" && (
+                          <div className="lumi-card-scrim">
+                            <div className="lumi-card-scrim-pill">
+                              <svg viewBox="0 0 20 12" fill="none" width="13" height="13">
+                                <path d="M1 6C2.5 3 5 1 10 1s7.5 2 9 5c-1.5 3-4 5-9 5s-7.5-2-9-5z" stroke="currentColor" strokeWidth="1.4" />
+                                <circle cx="10" cy="6" r="2" fill="currentColor" />
+                              </svg>
+                              <span>{config.buttonText || "Try on"}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="lumi-card-name">{t("customize.cardPreviewProduct")}</div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 14, lineHeight: 1.5 }}>{t("customize.cardPreviewHint")}</p>
               </div>
             )}
             <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("integration.snippetTitle")}</h3>

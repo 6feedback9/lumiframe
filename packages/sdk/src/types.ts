@@ -70,6 +70,25 @@ export interface TryOnInitOptions {
   modalAccentColorStart?: string;
   modalAccentColorEnd?: string;
   modalAccentTextColor?: string;
+  /**
+   * Also add a smaller "Try on" affordance to every product card on a
+   * catalog/collection page (packages/sdk/src/detectCards.ts) — not just
+   * the single button on a product page. Default `false`: opt-in, since it
+   * touches every card the detector finds instead of one known button.
+   * Reuses buttonColorStart/End/TextColor/Style above — no separate color
+   * config for the card affordance.
+   */
+  cardButtonEnabled?: boolean;
+  /**
+   * Visual style of the per-card affordance. `"corner"` (default) — a
+   * small circular badge in the thumbnail's corner that expands into a
+   * label on hover (desktop); stays compact on touch, with a one-time
+   * pulse on the first card to teach what it does. `"drawer"` — a strip
+   * that slides up from the bottom of the thumbnail on hover, and sits
+   * permanently under it on touch. `"scrim"` — the whole thumbnail dims
+   * slightly with a centered pill on hover; a compact corner pill on touch.
+   */
+  cardButtonVariant?: "corner" | "drawer" | "scrim";
 }
 
 /**

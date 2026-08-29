@@ -59,6 +59,53 @@ click handler instead), override the label, or override where it's placed:
 </script>
 ```
 
+## "Try on" buttons on a catalog/collection page
+
+`autoInject` above only covers the single product page. Set
+`cardButtonEnabled: true` to also add a smaller affordance to every product
+card on a listing page — collection, search results, a category grid:
+
+```html
+<script>
+  TryOn.init({
+    storeId: "store_123",
+    cardButtonEnabled: true,
+    cardButtonVariant: "corner",   // "corner" (default) | "drawer" | "scrim"
+  });
+</script>
+```
+
+Reuses the same `buttonColorStart`/`buttonColorEnd`/`buttonTextColor`/
+`buttonStyle` as the page button above — no separate color config. Clicking
+a card's button opens the try-on window straight for *that* card's product,
+without navigating to its product page first.
+
+**Detection.** `detectCards()` (`src/detectCards.ts`) finds cards by
+looking for a thumbnail `<img>` inside a link to `/products/<handle>`
+(Shopify) or `/product/<slug>/` (WooCommerce) — the two platforms this was
+actually verified against. Anything else needs one attribute per card for
+guaranteed correctness:
+
+```html
+<div data-lumiframe-card data-lumiframe-title="Aviator" data-lumiframe-price="45.00">
+  <img src="..." alt="Aviator">
+</div>
+```
+
+`data-lumiframe-card` on any element containing an `<img>` (or on the
+`<img>` itself) wins outright and skips the link heuristic entirely —
+`data-lumiframe-image`/`-title`/`-price`/`-id`/`-url` override what would
+otherwise be read from the image/link/nearby text. Once any
+`data-lumiframe-card` markers exist on the page, only those are used (no
+mixing with the heuristic, so a hand-wired card never gets a duplicate
+button).
+
+**Known limits:** one-shot detection on page load — a grid that loads more
+cards later (infinite scroll, an AJAX filter) won't pick those up. No
+platform-specific enrichment yet (unlike the single product page's
+`enrichFromShopify`), so price shown before opening the widget is whatever
+the card's own markup says.
+
 ## API
 
 ```ts
@@ -69,6 +116,8 @@ TryOn.init(options: {
   autoInject?: boolean;             // default true — see "Auto-injected button" above
   buttonLabel?: string;
   buttonAnchorSelector?: string;
+  cardButtonEnabled?: boolean;      // default false — see "Try on buttons on a catalog page" above
+  cardButtonVariant?: "corner"|"drawer"|"scrim";
 }): TryOnSdk
 TryOn.attach(product: AttachProductInput): void
 TryOn.open(product?: AttachProductInput): void

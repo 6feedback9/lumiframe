@@ -33,7 +33,10 @@ function attrOf(doc: Document, selector: string | undefined, attr: string): stri
   return value || undefined;
 }
 
-function parsePrice(raw: string | undefined): number | undefined {
+/** Exported for detectCards.ts (packages/sdk/src/detectCards.ts) — a
+ * catalog card's price text needs the exact same "$49.00" / "1 240,00 ₴"
+ * parsing this module already does for a single product page. */
+export function parsePrice(raw: string | undefined): number | undefined {
   if (!raw) return undefined;
   const match = raw.replace(/\s/g, "").match(/[\d.,]+/);
   if (!match) return undefined;

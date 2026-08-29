@@ -10,6 +10,7 @@
 //     TryOn.attach({ productId: "RB-001", productImageUrl: "..." });
 //   </script>
 
+import { detectCards } from "./detectCards";
 import { detectProduct, enrichFromShopify, type DomSelectorConfig } from "./detectProduct";
 import type {
   AttachProductInput,
@@ -129,6 +130,100 @@ function ensureButtonStylesInjected(): void {
   document.head.appendChild(style);
 }
 
+// A minimal glasses glyph, reused across all three card-button variants —
+// same icon, just wrapped differently per variant's CSS below.
+const GLASSES_ICON_SVG =
+  '<svg viewBox="0 0 20 12" fill="none" width="14" height="14"><path d="M1 6C2.5 3 5 1 10 1s7.5 2 9 5c-1.5 3-4 5-9 5s-7.5-2-9-5z" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="6" r="2" fill="currentColor"/></svg>';
+
+const CARD_STYLE_ID = "lumiframe-tryon-card-styles";
+let cardStylesInjected = false;
+
+/**
+ * Injected once, only when `cardButtonEnabled` is actually used — the
+ * three variants from the mini-card prototype the merchant approved
+ * (corner badge / bottom drawer / full-image scrim). All three read the
+ * same --lumiframe-accent* custom properties createCardButton() sets, so
+ * a card button always matches whatever colors the merchant configured for
+ * the page button (no separate card-button color config).
+ */
+function ensureCardStylesInjected(): void {
+  if (cardStylesInjected || typeof document === "undefined") return;
+  if (document.getElementById(CARD_STYLE_ID)) {
+    cardStylesInjected = true;
+    return;
+  }
+  cardStylesInjected = true;
+  const style = document.createElement("style");
+  style.id = CARD_STYLE_ID;
+  style.textContent = `
+.lumiframe-card-wrap { position: relative; display: block; }
+.lumiframe-card-wrap img { display: block; width: 100%; height: 100%; }
+
+/* ── corner (default) ─────────────────────────────────────────────── */
+.lumiframe-card-badge {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  width: 30px; height: 30px; border: none; border-radius: 50%; padding: 0;
+  background: #fff; box-shadow: 0 2px 8px rgba(20,20,30,.16);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  color: var(--lumiframe-accent-1, #73b7ff); cursor: pointer; white-space: nowrap;
+}
+.lumiframe-card-badge span { display: none; font-size: 11px; font-weight: 700; color: #171923; margin-left: 6px; }
+@media (hover: hover) and (pointer: fine) {
+  .lumiframe-card-badge { transition: width .2s ease; }
+  .lumiframe-card-wrap:hover .lumiframe-card-badge { width: 130px; border-radius: 15px; }
+  .lumiframe-card-wrap:hover .lumiframe-card-badge span { display: inline; }
+}
+@keyframes lumiframe-card-ring {
+  0% { box-shadow: 0 2px 8px rgba(20,20,30,.16), 0 0 0 0 var(--lumiframe-pulse-color, rgba(115,183,255,.55)); }
+  70% { box-shadow: 0 2px 8px rgba(20,20,30,.16), 0 0 0 11px rgba(115,183,255,0); }
+  100% { box-shadow: 0 2px 8px rgba(20,20,30,.16), 0 0 0 0 rgba(115,183,255,0); }
+}
+@media (hover: none) {
+  .lumiframe-card-badge.lumiframe-card-first { animation: lumiframe-card-ring 1.8s ease-out .6s 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lumiframe-card-badge.lumiframe-card-first { animation: none; }
+}
+
+/* ── drawer ────────────────────────────────────────────────────────── */
+.lumiframe-card-drawer {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: 34px; width: 100%;
+  border: none; padding: 0; cursor: pointer;
+  background: var(--lumiframe-accent, linear-gradient(135deg,#73b7ff,#9f8cff));
+  color: var(--lumiframe-accent-contrast, #0c1220);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 11.5px; font-weight: 700; font-family: inherit;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lumiframe-card-drawer { transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1); }
+  .lumiframe-card-wrap:hover .lumiframe-card-drawer { transform: translateY(0); }
+}
+
+/* ── scrim ─────────────────────────────────────────────────────────── */
+.lumiframe-card-scrim {
+  position: absolute; inset: 0; z-index: 2; border: none; padding: 0; cursor: pointer; background: transparent;
+  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px;
+}
+.lumiframe-card-scrim-pill {
+  display: flex; align-items: center; gap: 6px; background: #fff; color: #171923;
+  font-size: 11px; font-weight: 700; padding: 8px 14px; border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lumiframe-card-scrim { transition: background .2s ease; }
+  .lumiframe-card-scrim-pill { opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease; }
+  .lumiframe-card-wrap:hover .lumiframe-card-scrim { background: rgba(17,19,25,.2); }
+  .lumiframe-card-wrap:hover .lumiframe-card-scrim-pill { opacity: 1; transform: translateY(0); }
+}
+@media (hover: none) {
+  .lumiframe-card-scrim { align-items: flex-start; justify-content: flex-end; padding: 8px; }
+  .lumiframe-card-scrim-pill { padding: 7px; }
+  .lumiframe-card-scrim-pill span { display: none; }
+}
+`.trim();
+  document.head.appendChild(style);
+}
+
 type Listener = (payload: unknown) => void;
 
 class EventBus {
@@ -158,6 +253,7 @@ class TryOnSdkImpl implements TryOnSdk {
   private bus = new EventBus();
   private isOpen = false;
   private buttonInjected = false;
+  private cardButtonsInjected = false;
 
   init(options: TryOnInitOptions): TryOnSdk {
     if (!options.storeId) {
@@ -165,6 +261,7 @@ class TryOnSdkImpl implements TryOnSdk {
     }
     this.options = { apiBaseUrl: DEFAULT_API_BASE_URL, ...options };
     this.scheduleAutoInject();
+    this.scheduleCardButtons();
     return this;
   }
 
@@ -271,6 +368,7 @@ class TryOnSdkImpl implements TryOnSdk {
     this.currentProduct = null;
     this.options = null;
     this.buttonInjected = false;
+    this.cardButtonsInjected = false;
   }
 
   /**
@@ -402,6 +500,104 @@ class TryOnSdkImpl implements TryOnSdk {
       this.open();
     });
     return button;
+  }
+
+  /**
+   * Same DOMContentLoaded-or-next-tick timing as scheduleAutoInject, kept
+   * separate rather than merged into it: a catalog/collection page — the
+   * whole point of card buttons — has no single "the product" for
+   * resolveProduct() to find, and tryAutoInject()'s own product-detection
+   * guard would otherwise mean cards never inject on the pages this
+   * feature actually targets.
+   */
+  private scheduleCardButtons(): void {
+    if (typeof document === "undefined") return;
+    if (!this.options?.cardButtonEnabled) return;
+    const run = () => this.injectCardButtons();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", run, { once: true });
+    } else {
+      setTimeout(run, 0);
+    }
+  }
+
+  /**
+   * Adds the configured per-card affordance to every product card
+   * detectCards() finds (packages/sdk/src/detectCards.ts) — a merchant
+   * report on a real store, with screenshots, asked specifically for a
+   * "Try on" trigger on a catalog grid's mini-cards, not just the single
+   * product page. One-shot on page load, same as tryAutoInject(): a grid
+   * that loads more cards later (infinite scroll, an AJAX filter) won't
+   * pick those up yet.
+   */
+  private injectCardButtons(): void {
+    if (this.cardButtonsInjected) return;
+    if (typeof document === "undefined") return;
+    if (!this.options?.cardButtonEnabled) return;
+    this.cardButtonsInjected = true;
+
+    const matches = detectCards(document);
+    matches.forEach((match, index) => {
+      const img = match.image;
+      if (img.closest(".lumiframe-card-wrap")) return; // already wrapped — e.g. detectCards ran twice
+      const wrap = document.createElement("span");
+      wrap.className = "lumiframe-card-wrap";
+      img.replaceWith(wrap);
+      wrap.appendChild(img);
+      wrap.appendChild(this.createCardButton(match.product, index === 0));
+    });
+  }
+
+  private createCardButton(product: AttachProductInput, isFirst: boolean): HTMLElement {
+    ensureCardStylesInjected();
+    const variant = this.options?.cardButtonVariant ?? "corner";
+    const { buttonColorStart, buttonColorEnd, buttonTextColor, buttonStyle } = this.options ?? {};
+    const label = this.options?.buttonLabel ?? "Try on";
+
+    const applyAccent = (el: HTMLElement) => {
+      if (!buttonColorStart && !buttonColorEnd) return;
+      const start = buttonColorStart ?? buttonColorEnd!;
+      el.style.setProperty("--lumiframe-accent-1", start);
+      const background = buttonStyle === "solid" ? start : `linear-gradient(135deg, ${start}, ${buttonColorEnd ?? buttonColorStart!})`;
+      el.style.setProperty("--lumiframe-accent", background);
+      el.style.setProperty("--lumiframe-pulse-color", `${start}99`);
+      if (buttonTextColor) el.style.setProperty("--lumiframe-accent-contrast", buttonTextColor);
+    };
+
+    const open = (event: Event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.open(product);
+    };
+
+    if (variant === "drawer") {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "lumiframe-card-drawer";
+      el.innerHTML = `${GLASSES_ICON_SVG}<span>${label}</span>`;
+      applyAccent(el);
+      el.addEventListener("click", open);
+      return el;
+    }
+
+    if (variant === "scrim") {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "lumiframe-card-scrim";
+      el.innerHTML = `<span class="lumiframe-card-scrim-pill">${GLASSES_ICON_SVG}<span>${label}</span></span>`;
+      applyAccent(el);
+      el.addEventListener("click", open);
+      return el;
+    }
+
+    // "corner" (default)
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = `lumiframe-card-badge${isFirst ? " lumiframe-card-first" : ""}`;
+    el.innerHTML = `${GLASSES_ICON_SVG}<span>${label}</span>`;
+    applyAccent(el);
+    el.addEventListener("click", open);
+    return el;
   }
 
   on<E extends SdkEventName>(event: E, listener: SdkEventListener<E>): () => void {

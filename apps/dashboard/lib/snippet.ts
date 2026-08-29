@@ -28,6 +28,11 @@ export interface WidgetConfig {
   modalAccentColorStart?: string;
   modalAccentColorEnd?: string;
   modalAccentTextColor?: string;
+  /** Adds a smaller "Try on" affordance to every product card on a
+   * catalog/collection page — see packages/sdk's TryOnInitOptions. Reuses
+   * buttonColorStart/End/TextColor/Style above, no separate color config. */
+  cardButtonEnabled?: boolean;
+  cardButtonVariant?: "corner" | "drawer" | "scrim";
 }
 
 export function buildInitOptions(storeId: string, apiBaseUrl: string, config: WidgetConfig = {}): Record<string, unknown> {
@@ -53,6 +58,8 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.modalAccentColorStart) options.modalAccentColorStart = config.modalAccentColorStart;
   if (config.modalAccentColorEnd) options.modalAccentColorEnd = config.modalAccentColorEnd;
   if (config.modalAccentTextColor) options.modalAccentTextColor = config.modalAccentTextColor;
+  if (config.cardButtonEnabled) options.cardButtonEnabled = true;
+  if (config.cardButtonVariant && config.cardButtonVariant !== "corner") options.cardButtonVariant = config.cardButtonVariant;
   return options;
 }
 
