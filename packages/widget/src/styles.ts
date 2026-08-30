@@ -138,39 +138,34 @@ export const WIDGET_CSS = `
 .lf-zone.has-result .lf-result-img { display: block; }
 .lf-zone.has-result .lf-preview { display: none; }
 
-/* Real example photo sitting behind the placeholder icon in the empty
-   state (product ask: "приклад фото", not an unrelated icon) — a static
-   asset served by apps/api, not anything merchant/customer-uploaded.
-   Dimmed already at the source (apps/api/src/assets/example-tryon.jpg),
-   so the badge and icon on top stay readable without extra CSS filters. */
-.lf-example-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-.lf-zone.has-photo .lf-example-img,
-.lf-zone.has-result .lf-example-img,
-.lf-zone.is-processing .lf-example-img { display: none; }
-
-.lf-photo-badge {
-  position: absolute; top: 12px; left: 12px; z-index: 1;
-  background: rgba(255,255,255,.94); color: #444; font-size: 10px; font-weight: 700;
-  letter-spacing: .05em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
-}
-.lf-zone.has-photo .lf-photo-badge, .lf-zone.has-result .lf-photo-badge { display: none; }
-
-/* position: relative + z-index: 1 — sits above .lf-example-img (z-index 0)
-   instead of being painted under it (a non-positioned box would be,
-   regardless of DOM order, once a positioned sibling exists). White by
-   default because the example photo is normally what's behind it; if that
-   image fails to load, index.ts adds .lf-no-example and removes both the
-   image and badge, so the fallback selector below switches this back to
-   the original grey-on-plain-background look instead of white-on-white. */
-.lf-placeholder {
-  position: relative; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center;
-  color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.35);
-}
+.lf-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #b0b0af; }
 .lf-zone.has-photo .lf-placeholder, .lf-zone.has-result .lf-placeholder { display: none; }
-.lf-placeholder-icon { width: 34px; height: 34px; margin-bottom: 10px; color: #fff; filter: drop-shadow(0 1px 3px rgba(0,0,0,.35)); }
-.lf-zone.lf-no-example .lf-placeholder { color: #b0b0af; text-shadow: none; }
-.lf-zone.lf-no-example .lf-placeholder-icon { color: #b0b0af; filter: none; }
+.lf-placeholder-icon { width: 34px; height: 34px; margin-bottom: 10px; color: #b0b0af; }
+
+/* Real example photo (product ask: "приклад фото", not an unrelated icon)
+   — a static asset served by apps/api, not anything merchant/customer-
+   uploaded. A first pass had this filling the whole zone behind the
+   upload icon; merchant feedback with a screenshot ("мне не нравится
+   это", pointing straight at the icon) was that an upload icon sitting on
+   top of someone's face just looks wrong, whatever the contrast — so this
+   is a small corner card instead, clearly a supporting "e.g." rather than
+   competing with the icon for the same space. */
+.lf-example-card {
+  position: absolute; top: 12px; right: 12px; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; width: 60px;
+}
+.lf-zone.has-photo .lf-example-card,
+.lf-zone.has-result .lf-example-card,
+.lf-zone.is-processing .lf-example-card { display: none; }
+.lf-example-img {
+  width: 60px; height: 80px; object-fit: cover; border-radius: 9px;
+  border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.18);
+}
+.lf-photo-badge {
+  background: rgba(255,255,255,.94); color: #666; font-size: 8.5px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px;
+  white-space: nowrap;
+}
 
 .lf-processing-overlay {
   position: absolute; inset: 0; z-index: 3;

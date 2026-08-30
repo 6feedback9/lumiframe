@@ -96,8 +96,10 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
 
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
-            <img class="lf-example-img" data-example-img src="${escapeHtml(exampleImageUrl)}" alt="" aria-hidden="true">
-            <div class="lf-photo-badge" data-photo-badge>${escapeHtml(T.examplePhoto)}</div>
+            <div class="lf-example-card" data-example-card>
+              <img class="lf-example-img" data-example-img src="${escapeHtml(exampleImageUrl)}" alt="" aria-hidden="true">
+              <div class="lf-photo-badge" data-photo-badge>${escapeHtml(T.examplePhoto)}</div>
+            </div>
             <div class="lf-placeholder" data-placeholder>
               <svg class="lf-placeholder-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 16V4M12 4L7 9M12 4l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -173,14 +175,10 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
 
   // The example photo is our own static asset (apps/api's /assets route),
   // so this should essentially never fire — but if it does (offline,
-  // blocked request, a bad deploy), drop both the image and its "example
-  // photo" label rather than leaving a floating badge over nothing, or a
-  // white icon unreadable against the zone's plain background (styles.ts
-  // brightens the placeholder specifically to read over the dimmed photo).
+  // blocked request, a bad deploy), drop the whole corner card rather than
+  // leaving its badge floating over nothing.
   q<HTMLImageElement>("[data-example-img]").addEventListener("error", () => {
-    q("[data-example-img]").remove();
-    q("[data-photo-badge]").remove();
-    q(".lf-zone").classList.add("lf-no-example");
+    q("[data-example-card]").remove();
   });
 
   // Belt-and-suspenders for styles.ts's `min-height: 100dvh` — a

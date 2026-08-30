@@ -14,9 +14,14 @@ export async function assetsRoutes(app: FastifyInstance): Promise<void> {
     try {
       const bytes = await readFile(path);
       reply.header("Content-Type", "image/jpeg");
-      // Long-lived — this is a static file shipped with the deploy, not
-      // something that changes without a new release.
-      reply.header("Cache-Control", "public, max-age=604800, immutable");
+      // Short-lived, same as sdk.js's own Cache-Control below — not
+      // "immutable" week-long caching. This file is still being iterated
+      // on (already replaced twice over one merchant's feedback), and it's
+      // referenced from a single fixed URL rather than a content-hashed
+      // one, so a long cache would mean an already-cached browser (or a
+      // CDN in front of this API) keeps serving the old version for days
+      // after a redeploy actually shipped the new one.
+      reply.header("Cache-Control", "public, max-age=300");
       return reply.send(bytes);
     } catch {
       return reply.code(404).send();
