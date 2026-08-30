@@ -42,8 +42,18 @@ import Fashn, { APIError } from "fashn";
 // than fully steering it the way Gemini's free-form multimodal prompt does
 // — kept short accordingly. Not a substitute for the prompt-engineering
 // work in provider-real; just the equivalent lever this vendor exposes.
+// Two asks folded in here: match the eyewear itself precisely (mirrors
+// provider-real's own rim/material/tint instruction), and touch nothing
+// else about the person's photo — Try-On Max's own field doc already
+// claims it "preserves the model's identity, pose, and styling" by
+// design, so this is reinforcing stated model behavior, not overriding
+// it; if a result still relights or subtly alters the face/background
+// despite this, that's the underlying model's own behavior, not
+// something a prompt string can fully constrain — flagging honestly
+// rather than promising the instruction guarantees a fix.
 const INSTRUCTIONS =
-  "Keep the eyewear's exact frame shape, rim style, material, color and lens tint as shown in the product photo — do not substitute a different style or color.";
+  "Keep the eyewear's exact frame shape, rim style, material, color and lens tint as shown in the product photo — do not substitute a different style or color. " +
+  "Do not change anything else about the person: keep their face, expression, skin tone, hair, pose, body, clothing, background and lighting exactly as in the original photo — only add the eyewear.";
 
 type PreflightFailure = {
   state: "failed";
