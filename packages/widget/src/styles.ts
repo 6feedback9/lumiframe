@@ -129,7 +129,7 @@ export const WIDGET_CSS = `
 
 .lf-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #b0b0af; }
 .lf-zone.has-photo .lf-placeholder, .lf-zone.has-result .lf-placeholder { display: none; }
-.lf-placeholder-icon { font-size: 40px; margin-bottom: 10px; opacity: .55; }
+.lf-placeholder-icon { width: 34px; height: 34px; margin-bottom: 10px; color: #b0b0af; }
 
 .lf-processing-overlay {
   position: absolute; inset: 0; z-index: 3;
@@ -226,6 +226,13 @@ export const WIDGET_CSS = `
 .lf-shell.lf-compact .lf-photo-panel {
   background: #fff; padding: 28px 26px 26px;
 }
+/* Centered regardless of viewport width — split mode only centers this
+   text below 760px (its own two-column desktop layout reads fine
+   left-aligned); a small standalone card has no second column to
+   balance against, so it reads better centered at any width. */
+.lf-shell.lf-compact .lf-eyebrow,
+.lf-shell.lf-compact .lf-head,
+.lf-shell.lf-compact .lf-privacy { text-align: center; }
 
 .lf-shell.lf-compact .lf-zone {
   background: #fafafa; border: 1.5px dashed #d6d6d4; border-radius: 14px;

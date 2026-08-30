@@ -96,7 +96,10 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
             <div class="lf-placeholder" data-placeholder>
-              <div class="lf-placeholder-icon">🧍</div>
+              <svg class="lf-placeholder-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 16V4M12 4L7 9M12 4l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
             </div>
             <img class="lf-preview" data-preview alt="">
             <img class="lf-result-img" data-result-img alt="Try-on result">
