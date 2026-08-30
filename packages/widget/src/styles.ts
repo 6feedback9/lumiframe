@@ -111,12 +111,23 @@ export const WIDGET_CSS = `
 .lf-zone {
   position: relative; border-radius: 18px; overflow: hidden;
   background: #e7e7e6; aspect-ratio: 3 / 4;
-  /* Caps how tall this gets on a short viewport. The image still crops to
+  /* width: 100% is load-bearing, not decorative. With no explicit width,
+     a block box that has both aspect-ratio and a *constraining* max-height
+     doesn't fill its container like a normal block box would — the browser
+     derives the width from the (capped) height via the ratio instead, so
+     the box comes out narrower than .lf-col and sits flush against its
+     left edge (no auto margins here to re-center it). That read as "the
+     upload box isn't centered under the heading" — it wasn't off-center so
+     much as literally the wrong width. Pinning width: 100% makes the ratio
+     derive height from that fixed width instead; max-height below still
+     clamps it on a short viewport, this time without the side effect.
+     Caps how tall this gets on a short viewport. The image still crops to
      fill via object-fit below; this just stops the placeholder box from
      dictating the whole panel's height. Sized generously — the description
      paragraph and tips checklist that used to sit around it are gone
      (product ask: cut the instructional text, give that room to the photo
      itself instead), so there's more height to spend on it than before. */
+  width: 100%;
   max-height: 56vh;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px;
@@ -212,6 +223,15 @@ export const WIDGET_CSS = `
 }
 
 .lf-shell.lf-compact {
+  /* flex-direction: column explicitly — .lf-shell's own desktop rule
+     (min-width: 760px) switches it to row for split mode's side-by-side
+     panels, and nothing here overrode that for compact. It didn't visibly
+     break anything today only because .lf-product-panel is hidden below,
+     leaving .lf-photo-panel as the sole flex item either way — but it's
+     the wrong axis for a single-panel card and would misbehave the moment
+     anything here relies on column flow (e.g. a visible height-driven
+     child), so pin it rather than lean on that coincidence. */
+  flex-direction: column;
   min-height: 0; width: 100%; max-width: 420px; max-height: 90vh;
   margin: 0; border-radius: 20px; overflow-y: auto;
   box-shadow: 0 24px 60px rgba(0,0,0,.35);
