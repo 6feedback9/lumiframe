@@ -62,8 +62,15 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   const showTryAnother = options.showTryAnotherButton ?? true;
   const showBack = options.showBackButton ?? true;
 
+  // "compact" — the small floating card over the (dimmed, still-visible)
+  // product page, back as an option per a later product ask, alongside
+  // "split" (default) — the full-page takeover this widget switched to
+  // earlier. Everything below reuses the exact same markup and JS flow
+  // either way; only styles.ts's .lf-compact rules differ.
+  const isCompact = options.modalLayout === "compact";
+
   const backdrop = document.createElement("div");
-  backdrop.className = "lf-backdrop";
+  backdrop.className = `lf-backdrop${isCompact ? " lf-compact" : ""}`;
   backdrop.setAttribute("data-lumiframe-widget", "");
   // Reuse the same accent the merchant configured for the auto-injected page
   // button (product ask: the try-on window's own design — colors included —
@@ -78,7 +85,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   if (options.accentTextColor) backdrop.style.setProperty("--lf-accent-contrast", options.accentTextColor);
 
   backdrop.innerHTML = `
-    <div class="lf-shell" role="dialog" aria-modal="true" aria-label="${escapeHtml(T.title)}">
+    <div class="lf-shell${isCompact ? " lf-compact" : ""}" role="dialog" aria-modal="true" aria-label="${escapeHtml(T.title)}">
       <button type="button" class="lf-close" data-close aria-label="${escapeHtml(T.close)}">✕</button>
 
       <div class="lf-photo-panel">
@@ -170,6 +177,10 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   // Re-synced on resize so it tracks an address bar or keyboard
   // showing/hiding after the initial mount, not just the state at open.
   function syncShellHeight(): void {
+    // Only the full-page "split" layout needs this — a "compact" card
+    // sizes to its own content (styles.ts's .lf-compact rules), forcing
+    // it to the viewport height would defeat the point of it being small.
+    if (isCompact) return;
     const h = window.visualViewport?.height ?? window.innerHeight;
     shell.style.minHeight = `${h}px`;
   }
@@ -446,9 +457,14 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (file) void onFileSelected(file);
   });
-  zone.addEventListener("dragover", (e) => e.preventDefault());
+  zone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    zone.classList.add("lf-dragging");
+  });
+  zone.addEventListener("dragleave", () => zone.classList.remove("lf-dragging"));
   zone.addEventListener("drop", (e) => {
     e.preventDefault();
+    zone.classList.remove("lf-dragging");
     const file = e.dataTransfer?.files?.[0];
     if (file) void onFileSelected(file);
   });

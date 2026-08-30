@@ -71,6 +71,12 @@ export interface TryOnInitOptions {
   modalAccentColorEnd?: string;
   modalAccentTextColor?: string;
   /**
+   * `"split"` (default) — the try-on window fills the whole page. `"compact"`
+   * — a small floating card instead, over the dimmed (still-visible)
+   * product page — see packages/widget's own MountWidgetOptions.
+   */
+  modalLayout?: "split" | "compact";
+  /**
    * Also add a smaller "Try on" affordance to every product card on a
    * catalog/collection page (packages/sdk/src/detectCards.ts) — not just
    * the single button on a product page. Default `false`: opt-in, since it

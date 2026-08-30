@@ -192,4 +192,48 @@ export const WIDGET_CSS = `
 .lf-cart-hint { font-size: 11px; color: #aaa; margin-top: 8px; text-align: center; line-height: 1.5; }
 
 .lf-brand-footer { text-align: center; font-size: 10px; color: #ccc; letter-spacing: .06em; text-transform: uppercase; margin-top: 22px; }
+
+/* ── "compact" layout — a small floating card over the dimmed product
+   page, instead of the full-page split view above. Reuses every element
+   and class already styled above; only the backdrop/shell/zone rules
+   below change for it. Reference: a card sitting toward the left of the
+   screen, product page visible (dimmed) around it — the original look
+   before the full-page takeover, brought back as a second option. */
+.lf-backdrop.lf-compact {
+  background: rgba(16,17,22,.6);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+@media (min-width: 900px) {
+  /* Only once there's real room beside it — on a narrower desktop window
+     a left-anchored card would crowd the page behind it for no benefit. */
+  .lf-backdrop.lf-compact { justify-content: flex-start; padding-left: 7vw; }
+}
+
+.lf-shell.lf-compact {
+  min-height: 0; width: 100%; max-width: 420px; max-height: 90vh;
+  margin: 0; border-radius: 20px; overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  animation: lfPopIn .22s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes lfPopIn { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: scale(1) } }
+
+/* The real product page is already visible (dimmed) around the card —
+   the card's own product/add-to-cart column would just repeat it. */
+.lf-shell.lf-compact .lf-product-panel { display: none; }
+
+.lf-shell.lf-compact .lf-photo-panel {
+  background: #fff; padding: 28px 26px 26px;
+}
+
+.lf-shell.lf-compact .lf-zone {
+  background: #fafafa; border: 1.5px dashed #d6d6d4; border-radius: 14px;
+  max-height: 46vh; transition: border-color .15s, background .15s;
+}
+.lf-shell.lf-compact .lf-zone.lf-dragging {
+  border-color: var(--lf-accent-1, #73b7ff); background: color-mix(in srgb, var(--lf-accent-1, #73b7ff) 6%, #fafafa);
+}
+.lf-shell.lf-compact .lf-zone.has-photo,
+.lf-shell.lf-compact .lf-zone.has-result { border-style: solid; border-color: #ececec; }
 `;

@@ -472,6 +472,37 @@ function IntegrationContent() {
 
           {tab === "modal" && (
             <>
+          <div className="field" style={{ marginBottom: 4 }}>
+            <label>{t("customize.modalLayout")}</label>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+            {(
+              [
+                { value: "split", label: "customize.modalLayoutSplit", desc: "customize.modalLayoutSplitDesc" },
+                { value: "compact", label: "customize.modalLayoutCompact", desc: "customize.modalLayoutCompactDesc" },
+              ] as const
+            ).map((v) => (
+              <button
+                key={v.value}
+                type="button"
+                onClick={() => setConfig({ ...config, modalLayout: v.value })}
+                style={{
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: (config.modalLayout ?? "split") === v.value ? "1.5px solid var(--sky)" : "1px solid var(--line-strong)",
+                  background: (config.modalLayout ?? "split") === v.value ? "rgba(115,183,255,0.08)" : "rgba(173,201,255,0.03)",
+                  color: "var(--paper)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>{t(v.label)}</div>
+                <div style={{ fontSize: 11, color: "var(--mist)", lineHeight: 1.4 }}>{t(v.desc)}</div>
+              </button>
+            ))}
+          </div>
+
           <div className="field" style={{ marginBottom: 20 }}>
             <label>{t("customize.modalButtons")}</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
@@ -626,6 +657,45 @@ function IntegrationContent() {
                 </button>
               </div>
             ) : tab === "modal" ? (
+              config.modalLayout === "compact" ? (
+              <div
+                style={{
+                  padding: 26, borderRadius: 12, background: "#2a2c33", marginBottom: 20,
+                  display: "flex", justifyContent: "flex-start",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}
+              >
+                {/* Small floating card over a dimmed page — same content
+                    as the split layout's photo panel, just the shell that
+                    changes. */}
+                <div style={{ width: 220, background: "#fff", borderRadius: 16, padding: "20px 16px 16px", boxShadow: "0 16px 40px rgba(0,0,0,.4)", position: "relative" }}>
+                  <div style={{ position: "absolute", top: 8, right: 8, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.06)", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "#444" }}>
+                    ✕
+                  </div>
+                  <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#aaa", marginBottom: 6 }}>
+                    {t("customize.previewModalBrand")}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", marginBottom: 10, color: "#111" }}>
+                    {config.modalHeading || t("customize.modalHeadingPlaceholder")}
+                  </div>
+                  <div style={{ borderRadius: 12, border: "1.5px dashed #d6d6d4", background: "#fafafa", aspectRatio: "3 / 4", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, fontSize: 18 }}>
+                    🧍
+                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    style={{
+                      width: "100%", padding: "8px", border: "none",
+                      borderRadius: config.buttonShape === "rectangular" ? 6 : 8,
+                      fontWeight: 700, fontSize: 9, letterSpacing: ".02em", textTransform: "uppercase",
+                      background: modalBtnBackground, color: modalAccentText, fontFamily: "inherit",
+                    }}
+                  >
+                    {t("customize.previewModalCta")}
+                  </button>
+                </div>
+              </div>
+              ) : (
               <div style={{ padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)", marginBottom: 20 }}>
                 <div
                   style={{
@@ -733,6 +803,7 @@ function IntegrationContent() {
                   </div>
                 </div>
               </div>
+              )
             ) : (
               <div style={{ padding: 20, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", marginBottom: 20 }}>
                 {!config.cardButtonEnabled && (

@@ -345,6 +345,7 @@ class TryOnSdkImpl implements TryOnSdk {
       showBackButton: this.options!.showBackButton,
       modalHeading: this.options!.modalHeading,
       modalSubheading: this.options!.modalSubheading,
+      modalLayout: this.options!.modalLayout,
       // Modal-specific colors win when set; otherwise falls back to the
       // auto-injected page button's colors, so the window still reads as
       // the same product by default without needing separate setup.

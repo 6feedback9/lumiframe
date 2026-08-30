@@ -36,6 +36,9 @@ interface WidgetConfig {
   modalAccentColorStart?: string;
   modalAccentColorEnd?: string;
   modalAccentTextColor?: string;
+  /** "split" (default) — full-page takeover. "compact" — a small floating
+   * card over the dimmed, still-visible product page instead. */
+  modalLayout?: "split" | "compact";
   /** Same "Try on" affordance on catalog mini-cards the merchant's own
    * dashboard configures — see packages/sdk's TryOnInitOptions. */
   cardButtonEnabled?: boolean;
@@ -555,6 +558,37 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
 
           {designTab === "modal" && (
             <>
+          <div className="field" style={{ marginBottom: 4 }}>
+            <label>{t("buttonDesign.modalLayout")}</label>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {(
+              [
+                { value: "split", label: "buttonDesign.modalLayoutSplit", desc: "buttonDesign.modalLayoutSplitDesc" },
+                { value: "compact", label: "buttonDesign.modalLayoutCompact", desc: "buttonDesign.modalLayoutCompactDesc" },
+              ] as const
+            ).map((v) => (
+              <button
+                key={v.value}
+                type="button"
+                onClick={() => setConfig({ ...config, modalLayout: v.value })}
+                style={{
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: (config.modalLayout ?? "split") === v.value ? "1.5px solid var(--sky)" : "1px solid var(--line-strong)",
+                  background: (config.modalLayout ?? "split") === v.value ? "rgba(115,183,255,0.08)" : "rgba(173,201,255,0.03)",
+                  color: "var(--paper)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>{t(v.label)}</div>
+                <div style={{ fontSize: 11, color: "var(--mist)", lineHeight: 1.4 }}>{t(v.desc)}</div>
+              </button>
+            ))}
+          </div>
+
           <div className="field" style={{ marginBottom: 16 }}>
             <label>{t("buttonDesign.modalButtons")}</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
@@ -701,6 +735,42 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
           )}
 
           {designTab === "modal" && (
+            config.modalLayout === "compact" ? (
+            <div
+              style={{
+                padding: 24, borderRadius: 12, background: "#2a2c33",
+                display: "flex", justifyContent: "flex-start",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              }}
+            >
+              <div style={{ width: 200, background: "#fff", borderRadius: 16, padding: "18px 14px 14px", boxShadow: "0 16px 40px rgba(0,0,0,.4)", position: "relative" }}>
+                <div style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: "50%", background: "rgba(0,0,0,.06)", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", color: "#444" }}>
+                  ✕
+                </div>
+                <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#aaa", marginBottom: 6 }}>
+                  {t("buttonDesign.previewModalBrand")}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", marginBottom: 9, color: "#111" }}>
+                  {config.modalHeading || t("buttonDesign.modalHeadingPlaceholder")}
+                </div>
+                <div style={{ borderRadius: 12, border: "1.5px dashed #d6d6d4", background: "#fafafa", aspectRatio: "3 / 4", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 9, fontSize: 16 }}>
+                  🧍
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  style={{
+                    width: "100%", padding: "7px", border: "none",
+                    borderRadius: config.buttonShape === "rectangular" ? 6 : 8,
+                    fontWeight: 700, fontSize: 8, letterSpacing: ".02em", textTransform: "uppercase",
+                    background: modalBtnBackground, color: modalAccentText, fontFamily: "inherit",
+                  }}
+                >
+                  {t("buttonDesign.previewModalCta")}
+                </button>
+              </div>
+            </div>
+            ) : (
             <div style={{ padding: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)" }}>
               <div style={{ display: "flex", minHeight: 340, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
                 <div style={{ flex: 1, background: "#f6f6f5", color: "#111", padding: "22px 16px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -796,6 +866,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
                 </div>
               </div>
             </div>
+            )
           )}
 
           {designTab === "card" && (

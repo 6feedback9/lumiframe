@@ -44,6 +44,16 @@ export interface MountWidgetOptions {
   /** Overrides the default upload-step heading/subheading text. */
   modalHeading?: string;
   modalSubheading?: string;
+  /**
+   * `"split"` (default) — the current full-page takeover: photo on one
+   * side, product + cart on the other. `"compact"` — a small floating
+   * card over the (dimmed, still-visible) product page instead, closer
+   * to the original design before the full-page split view (product ask:
+   * bring the small popup back as a *second* option, not a replacement).
+   * Same upload/generate/result flow either way — only the shell's size,
+   * position and backdrop differ.
+   */
+  modalLayout?: "split" | "compact";
 }
 
 export interface WidgetHandle {

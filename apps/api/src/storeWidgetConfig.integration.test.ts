@@ -43,6 +43,7 @@ describe("PATCH /api/v1/store — widgetConfig persistence", () => {
       buttonTextColor: "#ffffff",
       buttonStyle: "solid" as const,
       buttonSize: 120,
+      modalLayout: "compact" as const,
       cardButtonEnabled: true,
       cardButtonVariant: "drawer" as const,
     };
@@ -129,13 +130,13 @@ describe("PATCH /api/v1/admin/tenants/:id/widget-config — persistence", () => 
       method: "PATCH",
       url: `/api/v1/admin/tenants/${tenantId}/widget-config`,
       headers: { authorization: `Bearer ${adminToken}` },
-      payload: { cardButtonEnabled: true, cardButtonVariant: "scrim" },
+      payload: { modalLayout: "compact", cardButtonEnabled: true, cardButtonVariant: "scrim" },
     });
     expect(save.statusCode).toBe(200);
-    expect(save.json().widgetConfig).toMatchObject({ cardButtonEnabled: true, cardButtonVariant: "scrim" });
+    expect(save.json().widgetConfig).toMatchObject({ modalLayout: "compact", cardButtonEnabled: true, cardButtonVariant: "scrim" });
 
     const reload = await app.inject({ method: "GET", url: `/api/v1/admin/tenants/${tenantId}`, headers: { authorization: `Bearer ${adminToken}` } });
     expect(reload.statusCode).toBe(200);
-    expect(reload.json().stores[0].widgetConfig).toMatchObject({ cardButtonEnabled: true, cardButtonVariant: "scrim" });
+    expect(reload.json().stores[0].widgetConfig).toMatchObject({ modalLayout: "compact", cardButtonEnabled: true, cardButtonVariant: "scrim" });
   });
 });
