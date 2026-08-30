@@ -142,14 +142,17 @@ export const WIDGET_CSS = `
 .lf-zone.has-photo .lf-placeholder, .lf-zone.has-result .lf-placeholder { display: none; }
 .lf-placeholder-icon { width: 34px; height: 34px; margin-bottom: 10px; color: #b0b0af; }
 
-/* Real example photo (product ask: "приклад фото", not an unrelated icon)
-   — a static asset served by apps/api, not anything merchant/customer-
-   uploaded. A first pass had this filling the whole zone behind the
-   upload icon; merchant feedback with a screenshot ("мне не нравится
-   это", pointing straight at the icon) was that an upload icon sitting on
-   top of someone's face just looks wrong, whatever the contrast — so this
-   is a small corner card instead, clearly a supporting "e.g." rather than
-   competing with the icon for the same space. */
+/* Small "example" corner card (product ask: label the zone with what a
+   good photo looks like). Two earlier passes here used a real uploaded
+   photo — first full-bleed behind the icon (merchant feedback: an upload
+   icon sitting on someone's face looks wrong regardless of contrast), then
+   as a small thumbnail — but baking a real person's photo/likeness into
+   the widget's shipped asset was never quite right for a generic "here's
+   the kind of shot to take" hint, and there's no image-generation tool
+   available in this environment to produce a synthetic one instead. A
+   plain inline SVG silhouette (drawn right in index.ts — no external
+   asset or network request at all) reads as "face + shoulders, selfie
+   framing" without depicting anyone real. */
 .lf-example-card {
   position: absolute; top: 12px; right: 12px; z-index: 1;
   display: flex; flex-direction: column; align-items: center; gap: 6px; width: 60px;
@@ -157,9 +160,9 @@ export const WIDGET_CSS = `
 .lf-zone.has-photo .lf-example-card,
 .lf-zone.has-result .lf-example-card,
 .lf-zone.is-processing .lf-example-card { display: none; }
-.lf-example-img {
-  width: 60px; height: 80px; object-fit: cover; border-radius: 9px;
-  border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.18);
+.lf-example-icon {
+  width: 60px; height: 80px; border-radius: 9px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.12);
 }
 .lf-photo-badge {
   background: rgba(255,255,255,.94); color: #666; font-size: 8.5px; font-weight: 700;

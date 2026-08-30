@@ -52,7 +52,6 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   ensureStyles();
   const T = getCopy(options.locale);
   const api = new ApiClient(options.apiBaseUrl, options.storeId);
-  const exampleImageUrl = `${options.apiBaseUrl.replace(/\/$/, "")}/assets/example-tryon.jpg`;
   const visitorId = getVisitorId();
   const browserSessionId = getBrowserSessionId();
 
@@ -97,7 +96,11 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
             <div class="lf-example-card" data-example-card>
-              <img class="lf-example-img" data-example-img src="${escapeHtml(exampleImageUrl)}" alt="" aria-hidden="true">
+              <svg class="lf-example-icon" viewBox="0 0 60 80" fill="none" aria-hidden="true">
+                <rect x="1" y="1" width="58" height="78" rx="10" fill="#f3f3f2" stroke="#dcdcda" stroke-width="1.5"/>
+                <circle cx="30" cy="29" r="11" fill="#c7c7c4"/>
+                <path d="M12 68c0-11.5 8-19 18-19s18 7.5 18 19" fill="#c7c7c4"/>
+              </svg>
               <div class="lf-photo-badge" data-photo-badge>${escapeHtml(T.examplePhoto)}</div>
             </div>
             <div class="lf-placeholder" data-placeholder>
@@ -172,14 +175,6 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   const q = <E extends Element = Element>(sel: string) => backdrop.querySelector<E>(sel)!;
 
   const shell = q<HTMLElement>(".lf-shell");
-
-  // The example photo is our own static asset (apps/api's /assets route),
-  // so this should essentially never fire — but if it does (offline,
-  // blocked request, a bad deploy), drop the whole corner card rather than
-  // leaving its badge floating over nothing.
-  q<HTMLImageElement>("[data-example-img]").addEventListener("error", () => {
-    q("[data-example-card]").remove();
-  });
 
   // Belt-and-suspenders for styles.ts's `min-height: 100dvh` — a
   // JS-measured height that doesn't depend on dvh support or behavior at
