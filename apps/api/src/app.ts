@@ -12,6 +12,7 @@ import { adminRoutes } from "./routes/admin";
 import { sdkRoutes } from "./routes/sdk";
 import { healthRoutes } from "./routes/health";
 import { storageServeRoutes } from "./routes/storageServe";
+import { assetsRoutes } from "./routes/assets";
 
 // Fastify's default bodyLimit (1 MiB) is well under a single base64-encoded
 // customer photo (packages/widget resizes to ~1600px/JPEG q0.85 before
@@ -54,6 +55,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(adminRoutes);
   await app.register(sdkRoutes);
   await app.register(storageServeRoutes);
+  await app.register(assetsRoutes);
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error(error);

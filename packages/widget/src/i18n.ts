@@ -26,6 +26,7 @@ export interface Copy {
   likeAria: string;
   dislikeAria: string;
   feedbackThanks: string;
+  examplePhoto: string;
   tip1: string;
   tip2: string;
   tip3: string;
@@ -59,6 +60,7 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     likeAria: "Like this result",
     dislikeAria: "Dislike this result",
     feedbackThanks: "Thanks for the feedback!",
+    examplePhoto: "Example photo",
     tip1: "Only you in the photo",
     tip2: "No glasses in the photo",
     tip3: "Good lighting",
@@ -90,6 +92,7 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     likeAria: "Подобається",
     dislikeAria: "Не подобається",
     feedbackThanks: "Дякуємо за відгук!",
+    examplePhoto: "Приклад фото",
     tip1: "Лише ти на фото",
     tip2: "Без окулярів на фото",
     tip3: "Гарне освітлення",
@@ -121,6 +124,7 @@ const COPY: Record<MountWidgetOptions["locale"], Copy> = {
     likeAria: "Нравится",
     dislikeAria: "Не нравится",
     feedbackThanks: "Спасибо за отзыв!",
+    examplePhoto: "Пример фото",
     tip1: "Только ты на фото",
     tip2: "Без очков на фото",
     tip3: "Хорошее освещение",
