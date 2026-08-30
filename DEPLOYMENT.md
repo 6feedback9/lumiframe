@@ -154,6 +154,29 @@ code (`GEMINI_NO_IMAGE`, `GEMINI_REQUEST_FAILED`, etc.) and Gemini's own
 message, which is usually specific enough to act on (a safety-filter
 refusal on a particular photo, an invalid/unbilled API key, etc.).
 
+### Using FASHN instead of Gemini
+
+`packages/providers/fashn` is a second, alternative real AI vendor —
+same setup, a different `AI_PROVIDER` value:
+
+1. Go to **[app.fashn.ai](https://app.fashn.ai)**, sign in, and create a
+   Developer API key under the API/API Keys section.
+2. Render → your `apps/api` service → **Environment**:
+   - Change `AI_PROVIDER` to `fashn`
+   - Add `FASHN_API_KEY` = the key you just copied
+   - Remove/leave `GEMINI_API_KEY` as-is — it's simply unused while
+     `AI_PROVIDER` isn't `gemini`, no need to delete it to switch back later
+3. **Manual Deploy** → **Deploy latest commit**.
+4. Test a try-on again — errors surface the same way as Gemini's do (the
+   Logs tab and the widget/admin's error message), with FASHN's own error
+   codes instead (`FASHN_AUTHENTICATION_ERROR`, a `ContentModerationError`/
+   `PoseError`/etc. straight from their API, `FASHN_REQUEST_FAILED` for a
+   network-level failure).
+
+Switching `AI_PROVIDER` back and forth between `gemini` and `fashn` at any
+time only needs the env var change + a redeploy — nothing else in the app
+(widget, dashboard, admin, database) depends on which one is active.
+
 ## 8. Plans/billing, button design, cross-store visibility
 
 This update adds pricing plans + usage limits, a merchant-facing button

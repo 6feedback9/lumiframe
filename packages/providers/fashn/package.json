@@ -1,0 +1,23 @@
+{
+  "name": "@lumiframe/provider-fashn",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Real AI vendor adapter for TryOnProvider — FASHN's Try-On Max API. See ARCHITECTURE.md §6/§13.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lumiframe/storage": "workspace:*",
+    "@lumiframe/tryon": "workspace:*",
+    "fashn": "^0.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

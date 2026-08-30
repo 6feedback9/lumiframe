@@ -17,6 +17,9 @@ const schema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_IMAGE_MODEL: z.string().optional(),
 
+  // Only required when AI_PROVIDER=fashn (packages/providers/fashn).
+  FASHN_API_KEY: z.string().optional(),
+
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   STORAGE_SIGNING_SECRET: z.string().optional(),
@@ -29,6 +32,9 @@ const schema = z.object({
 }).refine((data) => data.AI_PROVIDER !== "gemini" || !!data.GEMINI_API_KEY, {
   message: "GEMINI_API_KEY is required when AI_PROVIDER=gemini",
   path: ["GEMINI_API_KEY"],
+}).refine((data) => data.AI_PROVIDER !== "fashn" || !!data.FASHN_API_KEY, {
+  message: "FASHN_API_KEY is required when AI_PROVIDER=fashn",
+  path: ["FASHN_API_KEY"],
 });
 
 function loadEnv() {

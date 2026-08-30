@@ -364,14 +364,25 @@ filename for a different image).
 
 These are flagged rather than guessed at, per the phased plan:
 
-- ~~**Real AI provider.**~~ Resolved in Phase 2: `packages/providers/real`
-  (`GeminiTryOnProvider`) calls Google Gemini's image-editing model
-  (`gemini-3.1-flash-image-preview` by default, overridable via
-  `GEMINI_IMAGE_MODEL`) directly with the customer's photo and the
-  merchant's product photo, prompted to composite the eyewear onto the
-  face. Set `AI_PROVIDER=gemini` + `GEMINI_API_KEY` to use it — see
-  DEPLOYMENT.md. `ProductImageProcessor` (glasses detection/isolation
-  from an arbitrary product photo) is still deferred — see below.
+- ~~**Real AI provider.**~~ Resolved in Phase 2, two vendors available —
+  same `TryOnProvider` contract, swap via `AI_PROVIDER`, nothing else in
+  the app changes either way:
+  - `packages/providers/real` (`GeminiTryOnProvider`) calls Google
+    Gemini's image-editing model (`gemini-3.1-flash-image-preview` by
+    default, overridable via `GEMINI_IMAGE_MODEL`) directly with the
+    customer's photo and the merchant's product photo, prompted to
+    composite the eyewear onto the face. Set `AI_PROVIDER=gemini` +
+    `GEMINI_API_KEY` — see DEPLOYMENT.md.
+  - `packages/providers/fashn` (`FashnTryOnProvider`) calls FASHN's
+    Try-On Max model via their official `fashn` SDK — a genuinely async
+    vendor job (submit → poll), unlike Gemini's synchronous call, so it
+    maps directly onto the interface's queued/processing/completed
+    states rather than needing to fake them. Chosen as an alternative
+    after a merchant compared both on real glasses photos and preferred
+    FASHN's results. Set `AI_PROVIDER=fashn` + `FASHN_API_KEY`.
+
+  `ProductImageProcessor` (glasses detection/isolation from an arbitrary
+  product photo) is still deferred — see below.
 - **Attribution model beyond last-touch.** Default is last-touch/product,
   configurable window. First-touch/linear models are a Phase 4 nice-to-have.
 - **Shopify app review requirements** (OAuth scopes, embedded app vs. theme

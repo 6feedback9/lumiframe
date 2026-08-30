@@ -51,6 +51,9 @@ importers:
       '@lumiframe/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@lumiframe/provider-fashn':
+        specifier: workspace:*
+        version: link:../../packages/providers/fashn
       '@lumiframe/provider-mock':
         specifier: workspace:*
         version: link:../../packages/providers/mock
@@ -160,6 +163,28 @@ importers:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
+
+  packages/providers/fashn:
+    dependencies:
+      '@lumiframe/storage':
+        specifier: workspace:*
+        version: link:../../storage
+      '@lumiframe/tryon':
+        specifier: workspace:*
+        version: link:../../tryon
+      fashn:
+        specifier: ^0.15.0
+        version: 0.15.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.5
+        version: 2.1.9(@types/node@20.19.43)
 
   packages/providers/mock:
     dependencies:
@@ -2028,6 +2053,10 @@ packages:
 
   /extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
+    dev: false
+
+  /fashn@0.15.0:
+    resolution: {integrity: sha512-erYeoL42k9/41aod1DI6KxrCRo3RVh6XgTJ3zzr9IVCb3A3bQtQyR2Zn50QCL1Y9aBGltihSxWcj/5tq0jhxEw==}
     dev: false
 
   /fast-content-type-parse@1.1.0:
