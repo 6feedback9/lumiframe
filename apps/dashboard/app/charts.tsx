@@ -14,8 +14,8 @@ export interface TrendPoint {
 }
 
 const ACCENT = "#73b7ff"; // var(--sky) — same brand hue used for the progress bar / buttons elsewhere
-const GRID = "rgba(173,201,255,0.12)";
-const AXIS_TEXT = "#7686a3"; // var(--mist-dim)
+const GRID = "rgba(255,255,255,0.12)";
+const AXIS_TEXT = "#6b7078"; // var(--mist-dim)
 
 const WIDTH = 600;
 const HEIGHT = 200;

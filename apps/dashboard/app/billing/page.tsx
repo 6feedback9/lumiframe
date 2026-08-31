@@ -62,7 +62,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
           style={{
             flexShrink: 0,
             border: "1px solid var(--line-strong)",
-            background: "rgba(173,201,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             color: copied ? "var(--sky)" : "var(--mist)",
             borderRadius: 8,
             padding: "3px 8px",
@@ -81,7 +81,7 @@ function ProgressBar({ used, limit }: { used: number; limit: number }) {
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const danger = limit > 0 && used >= limit;
   return (
-    <div style={{ height: 8, borderRadius: 999, background: "rgba(173,201,255,0.08)", overflow: "hidden" }}>
+    <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
       <div
         style={{
           height: "100%",
@@ -160,7 +160,7 @@ function PaymentPopup({ target, onClose, onPaid }: { target: PayTarget; onClose:
             height: 28,
             borderRadius: "50%",
             border: "1px solid var(--line-strong)",
-            background: "rgba(173,201,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             color: "var(--mist)",
             cursor: "pointer",
             fontSize: 14,

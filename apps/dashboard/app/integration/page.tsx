@@ -88,7 +88,7 @@ const SELECT_STYLE: React.CSSProperties = {
   padding: "9px 12px",
   borderRadius: 10,
   border: "1px solid var(--line-strong)",
-  background: "rgba(173,201,255,0.05)",
+  background: "rgba(255,255,255,0.05)",
   color: "var(--paper)",
   fontSize: 13,
 };
@@ -568,7 +568,7 @@ function IntegrationContent() {
                   padding: "10px 12px",
                   borderRadius: 10,
                   border: (config.modalLayout ?? "split") === v.value ? "1.5px solid var(--sky)" : "1px solid var(--line-strong)",
-                  background: (config.modalLayout ?? "split") === v.value ? "rgba(115,183,255,0.08)" : "rgba(173,201,255,0.03)",
+                  background: (config.modalLayout ?? "split") === v.value ? "rgba(115,183,255,0.08)" : "rgba(255,255,255,0.03)",
                   color: "var(--paper)",
                   cursor: "pointer",
                   fontFamily: "inherit",
@@ -700,7 +700,7 @@ function IntegrationContent() {
                   padding: "10px 12px",
                   borderRadius: 10,
                   border: config.cardButtonVariant === v.value ? "1.5px solid var(--sky)" : "1px solid var(--line-strong)",
-                  background: config.cardButtonVariant === v.value ? "rgba(115,183,255,0.08)" : "rgba(173,201,255,0.03)",
+                  background: config.cardButtonVariant === v.value ? "rgba(115,183,255,0.08)" : "rgba(255,255,255,0.03)",
                   color: "var(--paper)",
                   cursor: config.cardButtonEnabled ? "pointer" : "default",
                   opacity: config.cardButtonEnabled ? 1 : 0.5,
@@ -728,7 +728,7 @@ function IntegrationContent() {
               {t("customize.preview")}
             </div>
             {tab === "button" ? (
-              <div style={{ padding: 40, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center", marginBottom: 20 }}>
+              <div style={{ padding: 40, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid var(--line)", display: "flex", justifyContent: "center", marginBottom: 20 }}>
                 <button type="button" style={previewStyle} className={config.buttonAnimation === "shimmer" ? "lumiframe-preview-shimmer" : undefined} disabled>
                   {config.buttonText || "Try on"}
                 </button>
@@ -882,7 +882,7 @@ function IntegrationContent() {
               </div>
               )
             ) : (
-              <div style={{ padding: 20, borderRadius: 12, background: "rgba(173,201,255,0.03)", border: "1px solid var(--line)", marginBottom: 20 }}>
+              <div style={{ padding: 20, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid var(--line)", marginBottom: 20 }}>
                 {!config.cardButtonEnabled && (
                   <p style={{ fontSize: 11.5, color: "var(--mist-dim)", marginBottom: 12 }}>{t("customize.cardPreviewOff")}</p>
                 )}

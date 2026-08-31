@@ -110,7 +110,7 @@ function TryOnsContent() {
             padding: "9px 12px",
             borderRadius: 10,
             border: "1px solid var(--line-strong)",
-            background: "rgba(173,201,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             color: "var(--paper)",
             fontSize: 13,
             fontFamily: "inherit",
@@ -132,7 +132,7 @@ function TryOnsContent() {
               padding: "9px 14px",
               borderRadius: 10,
               border: "1px solid var(--line-strong)",
-              background: "rgba(173,201,255,0.05)",
+              background: "rgba(255,255,255,0.05)",
             }}
           >
             {billing.plan ? (

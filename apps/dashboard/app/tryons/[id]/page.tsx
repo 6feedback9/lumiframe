@@ -54,7 +54,7 @@ function PhotoCard({ title, url, placeholder }: { title: string; url: string | n
           aspectRatio: "3 / 4",
           borderRadius: 12,
           overflow: "hidden",
-          background: "rgba(173,201,255,0.05)",
+          background: "rgba(255,255,255,0.05)",
           border: "1px solid var(--line)",
           display: "flex",
           alignItems: "center",
@@ -148,11 +148,11 @@ function TryOnDetailContent() {
                   gap: 12,
                   padding: "10px 12px",
                   borderRadius: 10,
-                  background: i === 0 ? "rgba(173,201,255,0.05)" : "transparent",
+                  background: i === 0 ? "rgba(255,255,255,0.05)" : "transparent",
                   border: "1px solid var(--line)",
                 }}
               >
-                <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "rgba(173,201,255,0.05)" }}>
+                <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "rgba(255,255,255,0.05)" }}>
                   {g.resultUrl ? (
                     <img src={g.resultUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (

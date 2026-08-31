@@ -1,23 +1,33 @@
-/* Lumi Web Agency brand palette (from your "Lúmi Brand Guidelines" —
-   Ink/Surface/Sky/Violet/Amber/Paper), applied to the admin shell. */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+/* Palette + type matched exactly to the reference artifact ("Card
+   Try-On Concepts" — https://claude.ai/code/artifact/35999460-3d24-405b-
+   9f66-b4629369fd9c): dark neutral ink/panels, Bricolage Grotesque
+   headings, Inter body, IBM Plex Mono labels, sky->violet as the only
+   accent. --line/--line-strong are white-based, not blue-tinted — every
+   border and divider in the app draws from these two, so that one change
+   is most of what removes the pervasive "blue" cast the old palette had
+   (rgba(173,201,255,x) used for borders/hovers/input backgrounds
+   throughout, not just accents). Shared 1:1 with apps/dashboard/app/globals.css. */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  --ink: #070b16;
-  --ink-deep: #05070f;
-  --surface: #121b31;
-  --surface-2: #16203a;
-  --line: rgba(173, 201, 255, 0.14);
-  --line-strong: rgba(173, 201, 255, 0.28);
-  --paper: #f3f7ff;
-  --mist: #a7b6d2;
-  --mist-dim: #7686a3;
+  --ink: #111319;
+  --ink-deep: #0c0e13;
+  --surface: #191c24;
+  --surface-2: #1f232c;
+  --line: rgba(255,255,255,.09);
+  --line-strong: rgba(255,255,255,.16);
+  --paper: #eef0f4;
+  --mist: #9aa0ac;
+  --mist-dim: #6b7078;
   --sky: #73b7ff;
   --violet: #9f8cff;
   --amber: #efc48e;
-  --good: #4cd964;
+  --good: #7fd9a8;
   --danger: #ff6b6b;
+  --accent-ink: #0c1220;
   --gradient: linear-gradient(135deg, var(--sky), var(--violet));
+  --font-head: 'Bricolage Grotesque', 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 }
 
 * { box-sizing: border-box; }
@@ -26,7 +36,7 @@ body {
   margin: 0;
   background: var(--ink);
   color: var(--paper);
-  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
@@ -44,34 +54,34 @@ a { color: inherit; text-decoration: none; }
 .sidebar .logo .mark {
   width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
   display: grid; place-items: center; background: var(--gradient);
-  font-weight: 800; font-size: 14px; color: #071224;
+  font-weight: 800; font-size: 14px; color: var(--accent-ink);
 }
-.sidebar .logo .word { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
-.sidebar .logo .tag { display: block; font-size: 10px; font-weight: 600; color: var(--mist-dim); margin-top: 1px; text-transform: uppercase; letter-spacing: .1em; }
+.sidebar .logo .word { font-family: var(--font-head); font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+.sidebar .logo .tag { display: block; font-family: var(--font-mono); font-size: 9px; font-weight: 500; color: var(--mist-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: .1em; }
 .sidebar nav a {
   display: block; padding: 10px 20px; font-size: 13px; color: var(--mist);
   border-left: 2px solid transparent;
 }
-.sidebar nav a.active { color: var(--paper); background: rgba(173,201,255,0.05); border-left-color: var(--sky); }
+.sidebar nav a.active { color: var(--paper); background: rgba(255,255,255,0.05); border-left-color: var(--sky); }
 .sidebar nav a:hover { color: var(--paper); }
 
 .main { flex: 1; padding: 28px 32px; min-width: 0; }
-.page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 20px; }
+.page-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 20px; }
 
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
 .stat-card {
   padding: 20px 20px;
   border-radius: 22px;
-  background: linear-gradient(180deg, rgba(180, 212, 255, 0.10), rgba(132, 156, 255, 0.05));
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
   border: 1px solid var(--line);
 }
-.stat-card .label { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
-.stat-card .value { font-size: 26px; font-weight: 800; color: var(--sky); }
+.stat-card .label { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--mist); margin-bottom: 8px; }
+.stat-card .value { font-family: var(--font-head); font-size: 26px; font-weight: 800; color: var(--paper); }
 
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: left; color: var(--mist-dim); font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { text-align: left; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mist-dim); font-weight: 500; padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--paper); }
 tr:last-child td { border-bottom: none; }
 /* Sized to actually show what's in the photo (product ask: photos need to
@@ -79,28 +89,28 @@ tr:last-child td { border-bottom: none; }
    customer's real uploaded photo here, so a 40px speck isn't enough. */
 .thumb { width: 84px; height: 84px; border-radius: 12px; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); }
 tr.clickable { cursor: pointer; }
-tr.clickable:hover { background: rgba(173,201,255,.04); }
+tr.clickable:hover { background: rgba(255,255,255,.04); }
 
-.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.badge-active { background: rgba(76,217,100,.14); color: var(--good); }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-family: var(--font-mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.badge-active { background: rgba(127,217,168,.14); color: var(--good); }
 .badge-pending { background: rgba(255,255,255,.06); color: var(--mist); }
 .badge-suspended { background: rgba(255,107,107,.14); color: var(--danger); }
-.badge-completed { background: rgba(76,217,100,.14); color: var(--good); }
+.badge-completed { background: rgba(127,217,168,.14); color: var(--good); }
 .badge-failed { background: rgba(255,107,107,.14); color: var(--danger); }
 
 .login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 .login-card { width: 340px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 28px; }
-.login-card h1 { font-size: 18px; font-weight: 800; margin: 0 0 20px; }
+.login-card h1 { font-family: var(--font-head); font-size: 18px; font-weight: 800; margin: 0 0 20px; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 12px; color: var(--mist); margin-bottom: 6px; }
 .field input {
   width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
-  background: rgba(173,201,255,0.05); color: var(--paper); font-size: 14px; font-family: inherit;
+  background: rgba(255,255,255,0.05); color: var(--paper); font-size: 14px; font-family: inherit;
 }
 .field input:focus { outline: none; border-color: var(--sky); }
 .btn {
   width: 100%; padding: 13px; border-radius: 14px; border: none;
-  background: var(--gradient); color: #071224; font-weight: 700; font-size: 13px; cursor: pointer;
+  background: var(--gradient); color: var(--accent-ink); font-weight: 700; font-size: 13px; cursor: pointer;
   font-family: inherit;
 }
 .btn:disabled { opacity: .5; cursor: default; }

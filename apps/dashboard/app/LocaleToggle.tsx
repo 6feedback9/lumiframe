@@ -17,7 +17,7 @@ export function LocaleToggle() {
             padding: "6px 12px",
             borderRadius: 8,
             border: "1px solid var(--line-strong)",
-            background: locale === l ? "var(--sky)" : "rgba(173,201,255,0.05)",
+            background: locale === l ? "var(--sky)" : "rgba(255,255,255,0.05)",
             color: locale === l ? "#0d1426" : "var(--mist)",
             fontSize: 12,
             fontWeight: 600,

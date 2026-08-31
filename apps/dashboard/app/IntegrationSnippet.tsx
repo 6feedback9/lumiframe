@@ -26,7 +26,7 @@ export function IntegrationSnippet({ storeId, widgetConfig }: { storeId: string;
     <div>
       <pre
         style={{
-          background: "rgba(173,201,255,0.05)",
+          background: "rgba(255,255,255,0.05)",
           border: "1px solid var(--line)",
           borderRadius: 10,
           padding: 14,
