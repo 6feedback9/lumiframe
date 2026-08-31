@@ -56,6 +56,12 @@ export function Sidebar() {
   const { t, locale, setLocale } = useI18n();
   const [storeName, setStoreName] = useState<string | null>(null);
   const [billing, setBilling] = useState<BillingSummary | null>(null);
+  // Mobile only (<760px, see globals.css) — the sidebar becomes an
+  // off-canvas drawer instead of an always-visible column, toggled from
+  // the fixed top bar's hamburger button. Desktop ignores this entirely
+  // (the CSS that positions/hides the drawer is itself inside the mobile
+  // media query), so it's harmless dead state above that width.
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const hidden = pathname === "/login" || pathname === "/register";
 
@@ -86,6 +92,22 @@ export function Sidebar() {
       });
   }, [hidden]);
 
+  // Nav links are plain <a href> (full page loads, not next/link — see
+  // below), which already tears the drawer state down on every
+  // navigation. This just covers the same-page case (e.g. back/forward
+  // cache) so a stale-open drawer never survives a route change.
+  useEffect(() => setMobileOpen(false), [pathname]);
+
+  // Same lock the widget's own backdrop uses (packages/widget/src/index.ts)
+  // — without it, a swipe on the dimmed page behind the open drawer still
+  // scrolls the real content underneath.
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
   if (hidden) return null;
 
   const links = [
@@ -98,7 +120,23 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="sidebar">
+    <>
+      <header className="mobile-topbar">
+        <button type="button" className="mobile-burger" aria-label={t("nav.openMenu")} onClick={() => setMobileOpen(true)}>
+          <span className="bars" />
+        </button>
+        <a href="/" className="logo">
+          <span className="mark">
+            <img src="/logo-mark.png" alt="" width={16} height={16} />
+          </span>
+          <span className="word">{storeName ?? "Lumi Frame"}</span>
+        </a>
+        <span style={{ width: 36 }} aria-hidden="true" />
+      </header>
+
+      <div className={`sidebar-backdrop${mobileOpen ? " open" : ""}`} onClick={() => setMobileOpen(false)} />
+
+      <aside className={`sidebar${mobileOpen ? " open" : ""}`}>
       <a href="/" className="logo">
         <span className="mark">
           <img src="/logo-mark.png" alt="" width={18} height={18} />
@@ -181,6 +219,7 @@ export function Sidebar() {
           100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); }
         }
       `}</style>
-    </aside>
+      </aside>
+    </>
   );
 }

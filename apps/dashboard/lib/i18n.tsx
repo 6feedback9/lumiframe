@@ -23,6 +23,7 @@ const DICT = {
     "nav.help": "Довідка",
     "nav.poweredBy": "на базі Lumi Frame",
     "nav.logout": "Вийти",
+    "nav.openMenu": "Відкрити меню",
 
     "common.loading": "Завантаження…",
     "common.save": "Зберегти",
@@ -319,6 +320,7 @@ const DICT = {
     "nav.help": "Help",
     "nav.poweredBy": "powered by Lumi Frame",
     "nav.logout": "Log out",
+    "nav.openMenu": "Open menu",
 
     "common.loading": "Loading…",
     "common.save": "Save",

@@ -353,7 +353,12 @@ function IntegrationContent() {
         style={
           {
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            // auto-fit/minmax(320px), not a flat "1fr 1fr" — the settings
+            // form and the preview panel both need real width to be
+            // usable, so on a phone (< ~660px available) this drops to a
+            // single stacked column (settings above, preview below)
+            // instead of squeezing both into half a narrow screen.
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
             gap: 20,
             alignItems: "start",
             // Feeds PREVIEW_CSS above — only these three custom properties
@@ -552,7 +557,7 @@ function IntegrationContent() {
           <div className="field" style={{ marginBottom: 4 }}>
             <label>{t("customize.modalLayout")}</label>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 20 }}>
             {(
               [
                 { value: "split", label: "customize.modalLayoutSplit", desc: "customize.modalLayoutSplitDesc" },
@@ -688,7 +693,7 @@ function IntegrationContent() {
           <div className="field" style={{ marginBottom: 4 }}>
             <label>{t("customize.cardVariant")}</label>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 20 }}>
             {CARD_VARIANT_OPTIONS.map((v) => (
               <button
                 key={v.value}

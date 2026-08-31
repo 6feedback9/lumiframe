@@ -281,7 +281,12 @@ function BillingContent() {
       </div>
 
       <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("billing.plans")}</h3>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.allPlans.length}, 1fr)`, gap: 16, maxWidth: 900, marginBottom: 24 }}>
+      {/* auto-fit/minmax, not a fixed repeat(N, 1fr) — N equal columns
+          never had a breakpoint, so on a phone each of e.g. 4 plan cards
+          got squeezed into ~1/4 of the screen instead of stacking. This
+          fits as many 220px-min cards per row as actually fit, same
+          pattern as .stat-grid above. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, maxWidth: 900, marginBottom: 24 }}>
         {data.allPlans.map((p) => {
           const isCurrent = data.plan?.key === p.key;
           return (
