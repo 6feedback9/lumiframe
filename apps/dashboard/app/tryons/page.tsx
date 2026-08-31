@@ -26,9 +26,7 @@ interface TryOnRow {
   status: string;
   errorCode: string | null;
   errorMessage: string | null;
-  generationDurationMs: number | null;
-  utmSource: string | null;
-  utmCampaign: string | null;
+  addedToCart: boolean;
   createdAt: string;
 }
 
@@ -166,15 +164,14 @@ function TryOnsContent() {
               <th>{t("tryons.image")}</th>
               <th>{t("tryons.result")}</th>
               <th>{t("tryons.status")}</th>
-              <th>{t("tryons.duration")}</th>
-              <th>{t("tryons.utm")}</th>
+              <th>{t("tryons.addedToCart")}</th>
               <th>{t("tryons.createdAt")}</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && !error ? (
               <tr>
-                <td colSpan={7} className="empty-state">
+                <td colSpan={6} className="empty-state">
                   {month ? t("tryons.emptyMonth") : t("tryons.empty")}
                 </td>
               </tr>
@@ -212,8 +209,13 @@ function TryOnsContent() {
                       </div>
                     )}
                   </td>
-                  <td>{item.generationDurationMs ? `${(item.generationDurationMs / 1000).toFixed(1)}s` : "—"}</td>
-                  <td>{item.utmSource ? `${item.utmSource}${item.utmCampaign ? ` / ${item.utmCampaign}` : ""}` : "—"}</td>
+                  <td>
+                    {item.addedToCart ? (
+                      <span style={{ color: "var(--good)", fontSize: 16, fontWeight: 700 }} title={t("tryons.addedToCart")}>✓</span>
+                    ) : (
+                      <span style={{ color: "var(--mist-dim)" }}>—</span>
+                    )}
+                  </td>
                   <td>{new Date(item.createdAt).toLocaleString()}</td>
                 </tr>
               ))

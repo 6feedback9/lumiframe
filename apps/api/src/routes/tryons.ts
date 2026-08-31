@@ -324,7 +324,22 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          session: { select: { id: true, productTitle: true, productImageUrl: true, feedback: true, utmSource: true, utmCampaign: true } },
+          session: {
+            select: {
+              id: true,
+              productTitle: true,
+              productImageUrl: true,
+              feedback: true,
+              // Product ask: the list should show whether a try-on led to
+              // an add-to-cart, not duration/UTM — those weren't useful
+              // here (duration barely varies, and a lone UTM tag on a
+              // browse event says nothing on its own; it matters once
+              // there's a real order to tie it to, which is what the
+              // detail route's `attribution` below is for). One row is
+              // enough to know "yes" without fetching every event.
+              events: { where: { type: "ADD_TO_CART" }, select: { id: true }, take: 1 },
+            },
+          },
         },
       }),
       prisma.tryOnGeneration.count({ where }),
@@ -350,10 +365,8 @@ export async function tryOnRoutes(app: FastifyInstance): Promise<void> {
       status: gen.status,
       errorCode: gen.errorCode,
       errorMessage: gen.errorMessage,
-      generationDurationMs: gen.generationDurationMs,
       feedback: gen.session.feedback,
-      utmSource: gen.session.utmSource,
-      utmCampaign: gen.session.utmCampaign,
+      addedToCart: gen.session.events.length > 0,
       createdAt: gen.createdAt,
     }));
 

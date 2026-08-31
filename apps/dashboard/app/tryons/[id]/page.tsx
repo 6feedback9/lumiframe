@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AuthGuard } from "../../AuthGuard";
 import { apiFetch } from "@/lib/api";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 interface GenerationAttempt {
   id: string;
@@ -37,6 +37,26 @@ interface TryOnDetail {
   // fields above) show FAILED — this is where that earlier result stays
   // reachable instead of getting buried by the retry.
   generations: GenerationAttempt[];
+  // Captured once when this try-on's widget opened (ARCHITECTURE.md §10)
+  // — the API always sends this object, individual fields are null when
+  // absent, never the whole object.
+  utm: { source: string | null; medium: string | null; campaign: string | null; term: string | null; content: string | null };
+  // Set only if an Order matched this session within the attribution
+  // window — product ask: UTM on its own (a browse event) says little;
+  // it matters once there's a real order to tie it to, so both live in
+  // one panel together rather than UTM floating alone in the list.
+  attribution: { orderId: string; revenue: number; currency: string; minutesBetween: number } | null;
+}
+
+/** minutesBetween -> "45 хв" / "3 год" / "2 дн" — a plain elapsed-time
+ * duration (try-on to order), not a relative-to-now time, so this builds
+ * its own string from the three unit-label keys rather than reaching for
+ * Intl.RelativeTimeFormat (that API's "in X"/"X ago" framing doesn't fit
+ * a duration between two past events). */
+function formatTimeToOrder(minutes: number, t: (key: TranslationKey) => string): string {
+  if (minutes < 60) return `${minutes} ${t("detail.minutesUnit")}`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)} ${t("detail.hoursUnit")}`;
+  return `${Math.round(minutes / 1440)} ${t("detail.daysUnit")}`;
 }
 
 function badgeClass(status: string): string {
@@ -122,13 +142,60 @@ function TryOnDetailContent() {
         <div>
           {t("tryons.createdAt")}: {new Date(data.createdAt).toLocaleString()}
         </div>
-        {data.generationDurationMs != null && <div>{t("tryons.duration")}: {(data.generationDurationMs / 1000).toFixed(1)}s</div>}
+        {data.generationDurationMs != null && <div>{t("detail.duration")}: {(data.generationDurationMs / 1000).toFixed(1)}s</div>}
         {data.product.price != null && (
           <div>
             {data.product.title}: {data.product.price} {data.product.currency}
           </div>
         )}
       </div>
+
+      {/* UTM together with the order it converted to (product ask) —
+          a UTM tag on its own, on a session that never bought anything,
+          isn't worth a panel; this only renders once there's something
+          to say, either the tags themselves or a confirmed sale. */}
+      {(data.utm.source || data.utm.medium || data.utm.campaign || data.attribution) && (
+        <div className="panel" style={{ padding: 20, marginTop: 16, maxWidth: 640, fontSize: 13 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--mist-dim)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            {t("detail.attributionTitle")}
+          </div>
+
+          {data.attribution ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+              <div style={{ color: "var(--good)", fontWeight: 600 }}>✓ {t("detail.convertedToOrder")}</div>
+              <div style={{ color: "var(--mist)" }}>
+                {t("detail.orderId")}: <span style={{ color: "var(--paper)" }}>{data.attribution.orderId}</span>
+              </div>
+              <div style={{ color: "var(--mist)" }}>
+                {t("detail.revenue")}: <span style={{ color: "var(--paper)" }}>{data.attribution.revenue} {data.attribution.currency}</span>
+              </div>
+              <div style={{ color: "var(--mist)" }}>
+                {t("detail.timeToOrder")}: <span style={{ color: "var(--paper)" }}>{formatTimeToOrder(data.attribution.minutesBetween, t)}</span>
+              </div>
+            </div>
+          ) : null}
+
+          {data.utm.source || data.utm.medium || data.utm.campaign ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, color: "var(--mist)" }}>
+              {data.utm.source && (
+                <div>
+                  {t("detail.utmSource")}: <span style={{ color: "var(--paper)" }}>{data.utm.source}</span>
+                </div>
+              )}
+              {data.utm.medium && (
+                <div>
+                  {t("detail.utmMedium")}: <span style={{ color: "var(--paper)" }}>{data.utm.medium}</span>
+                </div>
+              )}
+              {data.utm.campaign && (
+                <div>
+                  {t("detail.utmCampaign")}: <span style={{ color: "var(--paper)" }}>{data.utm.campaign}</span>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Only when "Спробувати інше фото" was actually used on this
           try-on (more than one attempt) — otherwise this would just
