@@ -103,6 +103,14 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         include: {
           plan: true,
           stores: { select: { id: true, name: true, storeUrl: true, status: true, platformType: true } },
+          // Earliest-created user, not role: "OWNER" — the OWNER role can
+          // be reassigned or that user removed by another team member
+          // (routes/team.ts has no special protection for it), so it's
+          // not guaranteed to still exist. The account's original
+          // registrant is always there and always the right contact
+          // email to show next to a client in this list (product ask:
+          // "надо добавить к каждому клиенту еще электронную почту").
+          users: { orderBy: { createdAt: "asc" }, select: { email: true }, take: 1 },
         },
       }),
       prisma.tryOnSession.groupBy({ by: ["tenantId"], _count: { _all: true } }),
@@ -144,6 +152,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         slug: t.slug,
         createdAt: t.createdAt,
         stores: t.stores,
+        ownerEmail: t.users[0]?.email ?? null,
         totalTryOns: tryOnCountByTenant.get(t.id) ?? 0,
         totalUsageUnits: usageByTenant.get(t.id) ?? 0,
         plan: t.plan ? { key: t.plan.key, name: t.plan.name, monthlyLimit: t.plan.monthlyLimit } : null,
@@ -162,7 +171,10 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       include: {
         plan: true,
         stores: true,
-        users: { select: { id: true, email: true, role: true, lastLoginAt: true, createdAt: true } },
+        // Earliest first — the Team panel lists them in this order, and
+        // it's what the tenants-list endpoint above uses to pick the
+        // "primary" email shown next to each client (users[0]).
+        users: { orderBy: { createdAt: "asc" }, select: { id: true, email: true, role: true, lastLoginAt: true, createdAt: true } },
       },
     });
     if (!tenant) return reply.code(404).send({ error: "Tenant not found" });

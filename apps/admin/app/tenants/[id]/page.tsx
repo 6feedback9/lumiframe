@@ -1109,6 +1109,15 @@ function AccountPanel({ id, tenant, onUpdated }: { id: string; tenant: TenantDet
 
       <div className="panel" style={{ padding: 24 }}>
         <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("account.profileTitle")}</h3>
+        {/* Read-only, not folded into the form below — this is the login
+            email for the account's original registrant (Team panel below
+            shows every user; changing a login email is a separate,
+            more sensitive operation than the tenant/store fields this
+            form actually saves, so it's not one of them). */}
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label>{t("account.email")}</label>
+          <input value={tenant.users[0]?.email ?? "—"} disabled />
+        </div>
         <form onSubmit={saveProfile}>
           <div className="field" style={{ marginBottom: 12 }}>
             <label>{t("account.tenantName")}</label>

@@ -25,6 +25,7 @@ interface Tenant {
   name: string;
   slug: string;
   createdAt: string;
+  ownerEmail: string | null;
   stores: Store[];
   totalTryOns: number;
   totalUsageUnits: number;
@@ -101,6 +102,7 @@ function TenantsContent() {
           <thead>
             <tr>
               <th>{t("tenants.tenant")}</th>
+              <th>{t("tenants.email")}</th>
               <th>{t("tenants.store")}</th>
               <th>{t("tenants.status")}</th>
               <th>{t("tenants.plan")}</th>
@@ -112,7 +114,7 @@ function TenantsContent() {
           <tbody>
             {tenants?.length === 0 && !error ? (
               <tr>
-                <td colSpan={7} className="empty-state">
+                <td colSpan={8} className="empty-state">
                   {t("tenants.empty")}
                 </td>
               </tr>
@@ -127,6 +129,7 @@ function TenantsContent() {
                       </div>
                     )}
                   </td>
+                  <td>{tn.ownerEmail ?? "—"}</td>
                   <td>{tn.stores[0]?.storeUrl ?? "—"}</td>
                   <td>
                     <span className={`badge badge-${(tn.stores[0]?.status ?? "pending").toLowerCase()}`}>

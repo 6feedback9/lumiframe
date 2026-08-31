@@ -40,6 +40,7 @@ const DICT = {
     "tenants.pendingRequests": "Запити, що очікують",
     "tenants.mrr": "Оцінка MRR (за призначеними тарифами)",
     "tenants.tenant": "Клієнт",
+    "tenants.email": "Пошта",
     "tenants.store": "Магазин",
     "tenants.status": "Статус",
     "tenants.plan": "Тариф",
@@ -81,6 +82,7 @@ const DICT = {
     "tenantDetail.tabAccount": "Обліковий запис",
 
     "account.profileTitle": "Профіль",
+    "account.email": "Пошта (логін)",
     "account.tenantName": "Назва компанії",
     "account.storeName": "Назва магазину",
     "account.storeUrl": "URL магазину",
@@ -243,6 +245,7 @@ const DICT = {
     "tenants.pendingRequests": "Pending requests",
     "tenants.mrr": "Estimated MRR (assigned plans)",
     "tenants.tenant": "Tenant",
+    "tenants.email": "Email",
     "tenants.store": "Store",
     "tenants.status": "Status",
     "tenants.plan": "Plan",
@@ -284,6 +287,7 @@ const DICT = {
     "tenantDetail.tabAccount": "Account",
 
     "account.profileTitle": "Profile",
+    "account.email": "Email (login)",
     "account.tenantName": "Company name",
     "account.storeName": "Store name",
     "account.storeUrl": "Store URL",
