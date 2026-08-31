@@ -138,41 +138,33 @@ export const WIDGET_CSS = `
 .lf-zone.has-result .lf-result-img { display: block; }
 .lf-zone.has-result .lf-preview { display: none; }
 
-.lf-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #b0b0af; }
+/* position: relative + z-index: 1 — sits above .lf-example-card (z-index
+   0) instead of being painted under it, which a non-positioned box would
+   be regardless of z-index once a positioned sibling exists. */
+.lf-placeholder { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #b0b0af; }
 .lf-zone.has-photo .lf-placeholder, .lf-zone.has-result .lf-placeholder { display: none; }
 .lf-placeholder-icon { width: 34px; height: 34px; margin-bottom: 10px; color: #b0b0af; }
 
-/* "Example" banner across the top of the zone (product ask: label the
-   zone with what a good photo looks like). Earlier passes here used a
-   real uploaded photo — first full-bleed behind the icon (merchant
-   feedback: an upload icon sitting on someone's face looks wrong
-   regardless of contrast), then a small corner card — but baking a real
-   person's photo/likeness into the widget's shipped asset was never quite
-   right for a generic "here's the kind of shot to take" hint, and there's
-   no image-generation tool available in this environment to produce a
-   synthetic one instead. A plain inline SVG silhouette (drawn right in
-   index.ts — no external asset or network request at all) reads as
-   "face + shoulders, selfie framing" without depicting anyone real.
-   Full-width strip, not a small corner square (product ask, second pass)
-   — spans the zone's own width via inset-x:0 rather than being sized in
-   its own right, so it reads as a labeled header for the drop area
-   instead of a competing visual element off to one side. */
+/* Full-bleed "example" illustration filling the whole zone (product ask,
+   third pass, from a sketch marking the entire box — not just a top
+   banner). Earlier passes here used a real uploaded photo full-bleed
+   behind the icon; that got walked back on merchant feedback ("an upload
+   icon sitting on someone's face looks wrong regardless of contrast").
+   This isn't that — it's a generic inline SVG silhouette (drawn right in
+   index.ts, no external asset/network request, no one's actual likeness),
+   so the upload icon sitting on top of it doesn't have the same problem;
+   it reads as an icon over an illustration, not over a real face. */
 .lf-example-card {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 1;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 12px 16px;
-  background: rgba(255,255,255,.92);
-  border-bottom: 1px solid rgba(0,0,0,.06);
+  position: absolute; inset: 0; z-index: 0;
 }
 .lf-zone.has-photo .lf-example-card,
 .lf-zone.has-result .lf-example-card,
 .lf-zone.is-processing .lf-example-card { display: none; }
-.lf-example-icon {
-  width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0;
-}
+.lf-example-icon { position: absolute; inset: 0; width: 100%; height: 100%; }
 .lf-photo-badge {
-  background: transparent; color: #666; font-size: 10px; font-weight: 700;
-  letter-spacing: .04em; text-transform: uppercase; padding: 0;
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(255,255,255,.94); color: #666; font-size: 10px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
   white-space: nowrap;
 }
 
