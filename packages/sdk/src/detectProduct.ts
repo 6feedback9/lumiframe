@@ -29,8 +29,47 @@ function textOf(doc: Document, selector?: string): string | undefined {
 function attrOf(doc: Document, selector: string | undefined, attr: string): string | undefined {
   if (!selector) return undefined;
   const el = doc.querySelector(selector);
-  const value = el?.getAttribute(attr)?.trim();
+  if (!el) return undefined;
+  // "src" specifically: prefer the resolved DOM property over the raw
+  // attribute. getAttribute("src") returns exactly what's written in the
+  // HTML — a protocol-relative ("//cdn.example.com/x.jpg") or relative
+  // path renders fine in the browser but fails `new URL()` with no base
+  // (thrown, caught, silently treated as "not on an allowed domain" once
+  // it reaches the backend's isAllowedProductUrl check). `.src` is the one
+  // DOM API guaranteed to return a fully resolved absolute URL — exactly
+  // what the browser itself fetches. Confirmed needed on a real store this
+  // session: a Shopify theme's own live gallery image used a
+  // protocol-relative `src` attribute.
+  if (attr === "src" && "src" in el) {
+    const resolved = (el as HTMLImageElement).src?.trim();
+    if (resolved) return upsizeShopifyCdnImage(resolved);
+  }
+  const value = el.getAttribute(attr)?.trim();
   return value || undefined;
+}
+
+/**
+ * Shopify's CDN serves any size of an uploaded image off the same URL via
+ * a `width`/`height` query param — the exact mechanism a theme uses to
+ * request a small thumbnail for, say, a sticky add-to-cart bar (seen on a
+ * real store this session at `width=120`). A merchant-configured
+ * productImageSelector has no way to know it landed on a thumbnail
+ * instance of an image rather than the full one, and a 120px-wide photo
+ * makes for a poor AI try-on generation. Widening the width param back
+ * out is safe even if it exceeds what was actually uploaded — Shopify's
+ * resizer caps to the source file's own resolution rather than upscaling.
+ */
+function upsizeShopifyCdnImage(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const isShopifyCdn = parsed.hostname === "cdn.shopify.com" || parsed.pathname.includes("/cdn/shop/");
+    if (!isShopifyCdn) return url;
+    if (parsed.searchParams.has("width")) parsed.searchParams.set("width", "2048");
+    if (parsed.searchParams.has("height")) parsed.searchParams.delete("height"); // let width alone drive the resize, preserving aspect ratio
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
 /** Exported for detectCards.ts (packages/sdk/src/detectCards.ts) — a

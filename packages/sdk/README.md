@@ -57,6 +57,15 @@ theme instead swaps in a wholly different `<img>` element per color, point
 the selector at whichever one is actually visible, or call `attach()`
 yourself from the theme's own variant-change handler with the new image URL.
 
+Two Shopify-specific quirks this handles automatically, so you don't need
+to hunt for a "clean" element: a protocol-relative `src`
+(`//cdn.shopify.com/...`, common in Shopify themes) resolves to a full
+`https://` URL rather than failing the backend's domain check outright;
+and a small explicit `width` in the URL (real example: a theme's sticky
+add-to-cart bar reusing the same image at `width=120` for its own
+thumbnail) gets widened back out, since a 120px photo makes for a poor
+try-on generation regardless of which domain it's on.
+
 ## Auto-injected "Try on" button
 
 By default (`autoInject: true`), the SDK inserts a "Try on" button itself
