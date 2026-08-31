@@ -140,6 +140,21 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
               <button type="button" class="lf-fb-btn" data-fb-dislike aria-label="${escapeHtml(T.dislikeAria)}">👎</button>
             </div>
             <div class="lf-feedback-thanks" data-fb-thanks style="display:none">${escapeHtml(T.feedbackThanks)}</div>
+            ${
+              // Compact mode hides the whole .lf-product-panel (see
+              // styles.ts), which is where "Add to cart" normally lives —
+              // by design, since the real product page sits dimmed right
+              // behind the card. In practice shoppers didn't make that
+              // connection ("а где кнопка добавить в корзину?" against a
+              // screenshot of exactly this screen) and expected a button
+              // on the result itself, so compact mode gets its own,
+              // sharing the same data-add-to-cart hook (and therefore the
+              // same addToCart() wiring/state below) as the split-view
+              // panel button.
+              isCompact
+                ? `<button type="button" class="lf-btn lf-btn-primary" data-add-to-cart>${escapeHtml(T.addToCart)}</button>`
+                : ""
+            }
             <div class="lf-actions">
               ${showTryAnother ? `<button type="button" class="lf-btn lf-btn-secondary" data-retry>${escapeHtml(T.tryAnother)}</button>` : ""}
               ${showBack ? `<button type="button" class="lf-btn lf-btn-secondary" data-back>${escapeHtml(T.backToProduct)}</button>` : ""}
@@ -406,6 +421,15 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
     return field?.value || null;
   }
 
+  // Split view has exactly one; compact mode has two once a result exists
+  // (the split-view/product-panel button, kept in the DOM but hidden by
+  // CSS, plus the result-block button added for compact mode above) —
+  // both share this attribute so one click handler and one state update
+  // below drive whichever are actually present/visible.
+  function addToCartButtons(): HTMLButtonElement[] {
+    return Array.from(backdrop.querySelectorAll<HTMLButtonElement>("[data-add-to-cart]"));
+  }
+
   async function addToCart(): Promise<void> {
     options.onEvent("tryon:add-to-cart", { product: options.product, tryOnId: tryOnId ?? undefined });
     void api.postEvent({
@@ -416,8 +440,8 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
       browserSessionId,
     });
 
-    const btn = q<HTMLButtonElement>("[data-add-to-cart]");
-    const originalLabel = btn.textContent;
+    const btns = addToCartButtons();
+    const originalLabels = btns.map((btn) => btn.textContent);
     const variantId = detectShopifyVariantId();
 
     if (!variantId) {
@@ -428,8 +452,10 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
       return;
     }
 
-    btn.disabled = true;
-    btn.textContent = T.addingToCart;
+    btns.forEach((btn) => {
+      btn.disabled = true;
+      btn.textContent = T.addingToCart;
+    });
     clearError();
     try {
       const res = await fetch("/cart/add.js", {
@@ -438,15 +464,17 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
         body: JSON.stringify({ items: [{ id: variantId, quantity: 1 }] }),
       });
       if (!res.ok) throw new Error(`cart add failed: ${res.status}`);
-      btn.textContent = T.addedToCart;
+      btns.forEach((btn) => (btn.textContent = T.addedToCart));
       // Most Shopify themes listen for one of these to refresh a cart
       // drawer/count bubble — harmless no-op on themes that don't.
       document.dispatchEvent(new CustomEvent("cart:refresh"));
       document.dispatchEvent(new CustomEvent("cart:updated"));
       setTimeout(close, 1100);
     } catch {
-      btn.disabled = false;
-      btn.textContent = originalLabel;
+      btns.forEach((btn, i) => {
+        btn.disabled = false;
+        btn.textContent = originalLabels[i] ?? null;
+      });
       showError(T.errGen);
     }
   }
@@ -485,7 +513,7 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
   q<HTMLInputElement>("[data-consent]").addEventListener("change", updateGenerateEnabled);
   backdrop.querySelector("[data-retry]")?.addEventListener("click", () => void retry());
   backdrop.querySelector("[data-back]")?.addEventListener("click", close);
-  q("[data-add-to-cart]").addEventListener("click", () => void addToCart());
+  addToCartButtons().forEach((btn) => btn.addEventListener("click", () => void addToCart()));
   q("[data-fb-like]").addEventListener("click", () => submitFeedback("LIKE"));
   q("[data-fb-dislike]").addEventListener("click", () => submitFeedback("DISLIKE"));
 
