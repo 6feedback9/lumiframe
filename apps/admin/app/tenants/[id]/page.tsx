@@ -134,7 +134,7 @@ function BillingPanel({ id, tenant, plans, onUpdated }: { id: string; tenant: Te
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         <div className="field">
           <label>{t("tenantDetail.assignPlan")}</label>
           <select
@@ -394,7 +394,11 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
       <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("buttonDesign.title")}</h3>
       <style>{ADMIN_PREVIEW_CSS}</style>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)" }}>
+      {/* overflow-x: auto, not a plain flex row — on a narrow phone the
+          three labels together don't fit, and a flex row with no wrap
+          and no scroll of its own pushes the whole page wider than the
+          viewport instead (same fix as the 6-tab bar further below). */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
         {DESIGN_TABS.map((tb) => (
           <button
             key={tb.id}
@@ -409,6 +413,8 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
               fontSize: 13,
               fontWeight: designTab === tb.id ? 700 : 500,
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             {t(tb.label)}
@@ -416,7 +422,11 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+      {/* auto-fit/minmax(320px), not a flat "1fr 1fr" — mirrors the same
+          fix in apps/dashboard/app/integration/page.tsx: settings and
+          preview both need real width, so this stacks on a phone instead
+          of squeezing both into half a narrow screen. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, alignItems: "start" }}>
         <div>
           {designTab === "button" && (
             <>
@@ -561,7 +571,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
           <div className="field" style={{ marginBottom: 4 }}>
             <label>{t("buttonDesign.modalLayout")}</label>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 16 }}>
             {(
               [
                 { value: "split", label: "buttonDesign.modalLayoutSplit", desc: "buttonDesign.modalLayoutSplitDesc" },
@@ -687,7 +697,7 @@ function ButtonDesignPanel({ id, tenant, onUpdated }: { id: string; tenant: Tena
           <div className="field" style={{ marginBottom: 4 }}>
             <label>{t("buttonDesign.cardVariant")}</label>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 16 }}>
             {CARD_VARIANT_OPTIONS.map((v) => (
               <button
                 key={v.value}
@@ -985,7 +995,7 @@ function TeamPanel({ id, users, onUpdated }: { id: string; users: TenantUser[]; 
           ))}
         </tbody>
       </table>
-      <form onSubmit={addUser} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+      <form onSubmit={addUser} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, alignItems: "end" }}>
         <div className="field" style={{ margin: 0 }}>
           <label>{t("team.email")}</label>
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -1229,7 +1239,12 @@ function TenantDetailContent({ id }: { id: string }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 20, borderBottom: "1px solid var(--line)" }}>
+      {/* overflow-x: auto — six tab labels don't fit a phone's width, and
+          a plain flex row with no wrap/scroll of its own pushed the whole
+          page wider than the viewport instead of just this row (found via
+          a mobile screenshot: body rendered 517px wide against a 375px
+          viewport). Scrolls within itself instead. */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 20, borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
         {TABS.map((tb) => (
           <button
             key={tb.id}
@@ -1244,6 +1259,8 @@ function TenantDetailContent({ id }: { id: string }) {
               fontSize: 13,
               fontWeight: tab === tb.id ? 700 : 500,
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             {t(tb.labelKey)}

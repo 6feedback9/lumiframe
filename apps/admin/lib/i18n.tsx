@@ -17,6 +17,7 @@ const DICT = {
     "nav.team": "Команда",
     "nav.tag": "Платформний адмін",
     "nav.logout": "Вийти",
+    "nav.openMenu": "Відкрити меню",
 
     "common.loading": "Завантаження…",
     "common.previous": "Назад",
@@ -219,6 +220,7 @@ const DICT = {
     "nav.team": "Team",
     "nav.tag": "Platform Admin",
     "nav.logout": "Log out",
+    "nav.openMenu": "Open menu",
 
     "common.loading": "Loading…",
     "common.previous": "Previous",

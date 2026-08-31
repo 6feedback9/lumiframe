@@ -68,6 +68,70 @@ a { color: inherit; text-decoration: none; }
 .main { flex: 1; padding: 28px 32px; min-width: 0; }
 .page-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 20px; }
 
+/* ── Mobile (<760px) — the desktop shell above never had a breakpoint at
+   all: a fixed 220px sidebar plus content just squeezed a phone screen
+   into whatever was left. Below this width the sidebar becomes an
+   off-canvas drawer (Sidebar.tsx toggles `.open`), opened from a fixed
+   top bar that replaces the always-visible desktop column. Ported 1:1
+   from apps/dashboard/app/globals.css. */
+.mobile-topbar { display: none; }
+
+@media (max-width: 759px) {
+  .shell { display: block; }
+
+  .mobile-topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    height: 56px; padding: 0 14px;
+    position: sticky; top: 0; z-index: 20;
+    background: var(--ink-deep); border-bottom: 1px solid var(--line);
+  }
+  .mobile-topbar .logo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .mobile-topbar .mark {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+    display: grid; place-items: center; background: var(--gradient);
+  }
+  .mobile-topbar .word {
+    font-family: var(--font-head); font-size: 14px; font-weight: 800;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mobile-burger {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    border: 1px solid var(--line-strong); background: transparent; cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .mobile-burger .bars, .mobile-burger .bars::before, .mobile-burger .bars::after {
+    content: ""; display: block; width: 16px; height: 1.5px; background: var(--paper);
+  }
+  .mobile-burger .bars { position: relative; }
+  .mobile-burger .bars::before { content: ""; position: absolute; top: -5px; left: 0; width: 16px; height: 1.5px; background: var(--paper); }
+  .mobile-burger .bars::after { content: ""; position: absolute; top: 5px; left: 0; width: 16px; height: 1.5px; background: var(--paper); }
+
+  .sidebar {
+    position: fixed; inset: 0 auto 0 0; z-index: 30;
+    width: min(84vw, 300px); height: 100vh; overflow-y: auto;
+    transform: translateX(-100%); transition: transform .22s ease;
+    box-shadow: 12px 0 40px rgba(0,0,0,.45);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar-backdrop {
+    position: fixed; inset: 0; z-index: 25; background: rgba(0,0,0,.5);
+    opacity: 0; pointer-events: none; transition: opacity .22s ease;
+  }
+  .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  .main { padding: 18px 16px 28px; }
+  .page-title { font-size: 19px; }
+}
+
+/* Any panel whose only content is a wide table scrolls horizontally
+   inside itself instead of clipping (the plain `overflow: hidden` above
+   would just cut columns off) or forcing the whole page to scroll
+   sideways. overflow-y stays hidden so the rounded corners above still
+   clip normally — the table's own rows aren't meant to scroll vertically
+   inside the panel, the page around it does that. */
+.panel:has(table) { overflow-x: auto; overflow-y: hidden; }
+
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
 .stat-card {
   padding: 20px 20px;
@@ -98,8 +162,8 @@ tr.clickable:hover { background: rgba(255,255,255,.04); }
 .badge-completed { background: rgba(127,217,168,.14); color: var(--good); }
 .badge-failed { background: rgba(255,107,107,.14); color: var(--danger); }
 
-.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-.login-card { width: 340px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 28px; }
+.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+.login-card { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 28px; }
 .login-card h1 { font-family: var(--font-head); font-size: 18px; font-weight: 800; margin: 0 0 20px; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 12px; color: var(--mist); margin-bottom: 6px; }

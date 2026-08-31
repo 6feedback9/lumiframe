@@ -107,7 +107,11 @@ function TryOnDetailContent() {
           — the platform admin is the one place all three are shown
           (apps/dashboard's own detail view deliberately omits the raw
           customer photo — see apps/api/src/routes/tryons.ts). */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginBottom: 20 }}>
+      {/* auto-fit/minmax(180px), not a flat 3-column split — these are
+          comparison photos the admin actually needs to see clearly (see
+          the comment above), so on a phone they stack to one per row
+          instead of shrinking to ~1/3 of the screen each. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 20 }}>
         <PhotoCard title={t("detail.customerPhoto")} url={data.customerImageUrl} placeholder={t("detail.noPhoto")} />
         <PhotoCard title={t("detail.productPhoto")} url={data.product.imageUrl} placeholder={t("detail.noPhoto")} />
         <PhotoCard

@@ -372,7 +372,11 @@ function IntegrationContent() {
         }
       >
         <div className="panel" style={{ padding: 24 }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)" }}>
+          {/* overflow-x: auto — a flex row with no wrap/scroll of its own
+              can push the whole page wider than a narrow phone's viewport
+              instead of just this row (found on apps/admin's 6-tab
+              version of this same bar). Scrolls within itself instead. */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
             {TABS.map((tb) => (
               <button
                 key={tb.id}
@@ -387,6 +391,8 @@ function IntegrationContent() {
                   fontSize: 13,
                   fontWeight: tab === tb.id ? 700 : 500,
                   cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
                 {t(tb.labelKey)}
