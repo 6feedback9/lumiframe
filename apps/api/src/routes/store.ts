@@ -37,6 +37,13 @@ const updateStoreSchema = z.object({
       // laid out — packages/sdk + packages/widget apply all of these).
       buttonPosition: z.enum(["before", "after", "floating"]).optional(),
       buttonAnchorSelector: z.string().max(300).optional(),
+      // CSS selector for the page's live product image, for stores with
+      // color/style swatches (product ask, from a real Shopify store this
+      // session: JSON-LD/OpenGraph alone only reflect whichever variant
+      // was default on page load, not a swatch click) — folded into
+      // TryOn.init() by packages/sdk/src/index.ts, same as
+      // buttonAnchorSelector above.
+      productImageSelector: z.string().max(300).optional(),
       // The try-on window always fills the screen and adapts to the
       // viewport on its own (packages/widget's own responsive CSS) — no
       // merchant-configurable width, deliberately (product ask: it should

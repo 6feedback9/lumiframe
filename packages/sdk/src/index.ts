@@ -268,6 +268,13 @@ class TryOnSdkImpl implements TryOnSdk {
       throw new Error("TryOn.init requires { storeId }");
     }
     this.options = { apiBaseUrl: DEFAULT_API_BASE_URL, ...options };
+    // Equivalent to a separate configureSelectors() call — folded into
+    // init() so the dashboard's generated snippet (apps/dashboard/lib/
+    // snippet.ts) stays a single script block instead of two, for the one
+    // selector field the Integration page's UI actually exposes.
+    if (options.productImageSelector) {
+      this.configureSelectors({ productImageSelector: options.productImageSelector });
+    }
     this.scheduleAutoInject();
     this.scheduleCardButtons();
     return this;

@@ -23,6 +23,17 @@ export interface TryOnInitOptions {
    */
   buttonAnchorSelector?: string;
   /**
+   * CSS selector for the page's live/current product image — the element
+   * the theme actually updates when a shopper picks a different
+   * color/style swatch. Needed on any product page with multiple variant
+   * photos: JSON-LD/OpenGraph/microdata alone reflect only whichever
+   * variant was default when the page first loaded, not a swatch click
+   * (packages/sdk/README.md's "Products with multiple colors/styles" has
+   * the full explanation + how to find the right selector). Equivalent to
+   * calling `TryOn.configureSelectors({ productImageSelector })` yourself.
+   */
+  productImageSelector?: string;
+  /**
    * Where the auto-injected button lands relative to its anchor (the
    * add-to-cart button, `buttonAnchorSelector`, or the page heading
    * fallback). `"after"` (default) matches the original behavior — right

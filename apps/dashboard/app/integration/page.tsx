@@ -196,6 +196,15 @@ function IntegrationContent() {
   const [savingDomains, setSavingDomains] = useState(false);
   const [domainsError, setDomainsError] = useState<string | null>(null);
 
+  // CSS selector for the page's live product image — folded into the
+  // generated snippet's TryOn.init() call (packages/sdk's own
+  // productImageSelector option) rather than something a merchant edits
+  // by hand each time. Only needed for a product with color/style
+  // swatches — see integration.imageSelectorDesc below.
+  const [imageSelector, setImageSelector] = useState("");
+  const [savingImageSelector, setSavingImageSelector] = useState(false);
+  const [savedImageSelector, setSavedImageSelector] = useState(false);
+
   useEffect(() => {
     apiFetch<StoreInfo>("/api/v1/store")
       .then((s) => {
@@ -203,6 +212,7 @@ function IntegrationContent() {
         setConfig({ ...DEFAULTS, ...s.widgetConfig });
         setVisitorLimit(s.maxTryOnsPerVisitor ? String(s.maxTryOnsPerVisitor) : "");
         setDomains(s.allowedDomains);
+        setImageSelector(s.widgetConfig?.productImageSelector ?? "");
       })
       .catch((err) => setError(err.message));
   }, []);
@@ -270,6 +280,27 @@ function IntegrationContent() {
       return;
     }
     void persistDomains(domains.filter((d) => d !== domain));
+  }
+
+  async function saveImageSelector() {
+    setSavingImageSelector(true);
+    setSavedImageSelector(false);
+    const trimmed = imageSelector.trim();
+    try {
+      await apiFetch("/api/v1/store", { method: "PATCH", body: JSON.stringify({ widgetConfig: { productImageSelector: trimmed } }) });
+      // Also update the live-preview `config` state — that's what
+      // IntegrationSnippet actually renders, and it's a separate slice
+      // from this panel's own imageSelector state (same split as
+      // domains/visitorLimit above), so the generated snippet box
+      // wouldn't otherwise reflect this save until a page reload.
+      setConfig((prev) => ({ ...prev, productImageSelector: trimmed || undefined }));
+      setSavedImageSelector(true);
+      setTimeout(() => setSavedImageSelector(false), 2500);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingImageSelector(false);
+    }
   }
 
   if (error) return <div className="empty-state">{error}</div>;
@@ -945,6 +976,25 @@ function IntegrationContent() {
               </button>
             </div>
             {domainsError && <p className="error-text">{domainsError}</p>}
+          </div>
+
+          <div className="panel" style={{ padding: 24 }}>
+            <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("integration.imageSelectorTitle")}</h3>
+            <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 14 }}>{t("integration.imageSelectorDesc")}</p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div className="field" style={{ flex: 1 }}>
+                <input
+                  type="text"
+                  value={imageSelector}
+                  onChange={(e) => setImageSelector(e.target.value)}
+                  placeholder={t("integration.imageSelectorPlaceholder")}
+                  maxLength={300}
+                />
+              </div>
+              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={savingImageSelector} onClick={saveImageSelector}>
+                {savingImageSelector ? t("common.saving") : savedImageSelector ? "✓" : t("common.save")}
+              </button>
+            </div>
           </div>
 
           <div className="panel" style={{ padding: 24 }}>
