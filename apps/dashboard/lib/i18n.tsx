@@ -292,6 +292,7 @@ const DICT = {
     "team.you": "(ви)",
     "team.lastLogin": "Останній вхід",
     "team.never": "ще не заходив(-ла)",
+    "team.online": "Онлайн",
     "team.createdAt": "Додано",
 
     "feedback.title": "Відгуки клієнтів",
@@ -587,6 +588,7 @@ const DICT = {
     "team.you": "(you)",
     "team.lastLogin": "Last login",
     "team.never": "never signed in",
+    "team.online": "Online",
     "team.createdAt": "Added",
 
     "feedback.title": "Customer feedback",

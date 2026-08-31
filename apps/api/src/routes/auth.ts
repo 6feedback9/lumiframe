@@ -47,8 +47,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         trialGrantedAt: new Date(),
       },
     });
+    // Registration immediately hands back a token (below) — the owner is
+    // logged in from this moment on, even though she never separately
+    // hit /auth/login. lastLoginAt used to stay null until she did,
+    // which showed as "never logged in" on her own Team row (merchant
+    // report: "how have I not logged in if I'm sitting on this account
+    // right now") — set it here too, for the same reason /auth/login
+    // sets it on a normal login.
     const user = await prisma.user.create({
-      data: { tenantId: tenant.id, email: email.toLowerCase(), passwordHash, role: "OWNER" },
+      data: { tenantId: tenant.id, email: email.toLowerCase(), passwordHash, role: "OWNER", lastLoginAt: new Date() },
     });
     const store = await prisma.store.create({
       data: {

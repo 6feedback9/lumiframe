@@ -15,6 +15,17 @@ interface TeamUser {
 
 const ROLE_KEYS = { OWNER: "team.roleOwner", ADMIN: "team.roleAdmin", MEMBER: "team.roleMember" } as const;
 
+// GET /api/v1/team bumps the viewer's own lastLoginAt to "now" on every
+// load (apps/api/src/routes/team.ts) — this is what turns that into a
+// lightweight "online" signal: anyone whose row is this fresh is either
+// looking at this exact page right now, or was within the last few
+// minutes. Older than that just falls back to the plain last-login time.
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+function isOnline(lastLoginAt: string | null): boolean {
+  if (!lastLoginAt) return false;
+  return Date.now() - new Date(lastLoginAt).getTime() < ONLINE_THRESHOLD_MS;
+}
+
 function TeamContent() {
   const { t } = useI18n();
   const [users, setUsers] = useState<TeamUser[]>([]);
@@ -87,7 +98,18 @@ function TeamContent() {
                   {u.email} {u.id === meId && <span style={{ color: "var(--mist-dim)" }}>{t("team.you")}</span>}
                 </td>
                 <td>{t(ROLE_KEYS[u.role])}</td>
-                <td>{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : t("team.never")}</td>
+                <td>
+                  {isOnline(u.lastLoginAt) ? (
+                    <span style={{ color: "var(--good)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--good)", flexShrink: 0 }} />
+                      {t("team.online")}
+                    </span>
+                  ) : u.lastLoginAt ? (
+                    new Date(u.lastLoginAt).toLocaleString()
+                  ) : (
+                    t("team.never")
+                  )}
+                </td>
                 <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                 <td>
                   {u.id !== meId && (

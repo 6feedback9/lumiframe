@@ -18,12 +18,28 @@ const addUserSchema = z.object({
 
 export async function teamRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/v1/team", { preHandler: authenticateMerchant }, async (request, reply) => {
-    const { tenantId } = request.merchant!;
+    const { tenantId, userId } = request.merchant!;
     const users = await prisma.user.findMany({
       where: { tenantId },
       orderBy: { createdAt: "asc" },
       select: { id: true, email: true, role: true, lastLoginAt: true, createdAt: true },
     });
+
+    // Loading this page at all means the viewer is, right now, using
+    // this account — bump their own row so it reads as recent/"online"
+    // (apps/dashboard's Team page treats a lastLoginAt within the last
+    // few minutes as "Online") instead of possibly-stale login-time
+    // data. Patched into the array already fetched above rather than
+    // re-querying — cheaper, and avoids a race with the write below.
+    const now = new Date();
+    const self = users.find((u) => u.id === userId);
+    if (self) self.lastLoginAt = now;
+    await prisma.user.update({ where: { id: userId }, data: { lastLoginAt: now } }).catch(() => {
+      // Non-critical — the response above already reflects "now" for
+      // this viewer regardless; a failed write here just means the
+      // next team-page load (by anyone) sees the previous value.
+    });
+
     return reply.send({ users });
   });
 
