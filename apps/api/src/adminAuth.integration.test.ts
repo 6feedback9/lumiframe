@@ -123,7 +123,7 @@ describe("platform admin", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().plan?.key).toBe("TEST");
-    expect(res.json().plan?.monthlyLimit).toBe(5);
+    expect(res.json().plan?.monthlyLimit).toBe(10);
     expect(res.json().trialGrantedAt).not.toBeNull();
   });
 

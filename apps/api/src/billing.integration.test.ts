@@ -49,7 +49,7 @@ describe("GET /api/v1/billing — trialActive", () => {
     return { token, tenantId: me.json().tenant.id };
   }
 
-  it("is true right after registration (the TEST plan, a fresh 5-use lifetime allowance)", async () => {
+  it("is true right after registration (the TEST plan, a fresh 10-use lifetime allowance)", async () => {
     const { token } = await registerTrialMerchant();
     const res = await app.inject({ method: "GET", url: "/api/v1/billing", headers: { authorization: `Bearer ${token}` } });
     expect(res.statusCode).toBe(200);

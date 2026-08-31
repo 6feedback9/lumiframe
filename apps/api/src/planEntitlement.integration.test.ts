@@ -152,12 +152,12 @@ describe("plan-limit enforcement", () => {
   // has a plan and various credits from earlier tests in this file. The
   // TEST plan (see PlanKey's schema comment) is a real Plan row now, a
   // one-time lifetime allowance rather than a monthly-resetting quota —
-  // run all 5 lifetime uses through the real pipeline and confirm both
-  // that they all actually work and that the boundary holds: the 6th is
-  // blocked, and the tenant gets auto-downgraded back to no plan the
-  // moment its 5th use completes (processTryOnJob.ts), not left sitting
+  // run all 10 lifetime uses through the real pipeline and confirm both
+  // that they all actually work and that the boundary holds: the 11th
+  // is blocked, and the tenant gets auto-downgraded back to no plan the
+  // moment its 10th use completes (processTryOnJob.ts), not left sitting
   // on a plan with zero capacity left.
-  it("a trial tenant's 5 lifetime uses all generate successfully, the 6th is blocked, and it's auto-downgraded off the plan", async () => {
+  it("a trial tenant's 10 lifetime uses all generate successfully, the 11th is blocked, and it's auto-downgraded off the plan", async () => {
     const email = `trial-boundary-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
     const register = await app.inject({
       method: "POST",
@@ -171,7 +171,7 @@ describe("plan-limit enforcement", () => {
 
     const freshTenant = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId }, include: { plan: true } });
     expect(freshTenant.plan?.key).toBe("TEST");
-    expect(freshTenant.plan?.monthlyLimit).toBe(5);
+    expect(freshTenant.plan?.monthlyLimit).toBe(10);
 
     async function createAndCompleteForTrialTenant(externalProductId: string): Promise<number> {
       const create = await app.inject({
@@ -198,30 +198,30 @@ describe("plan-limit enforcement", () => {
       return create.statusCode;
     }
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       const statusCode = await createAndCompleteForTrialTenant(`trial-boundary-frame-${i}`);
       expect(statusCode).toBe(202);
     }
 
-    const afterFive = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
-    // Auto-downgraded back to no plan the moment the 5th use completed —
+    const afterTen = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
+    // Auto-downgraded back to no plan the moment the 10th use completed —
     // not left sitting on the TEST plan with nothing left to give.
-    expect(afterFive.planId).toBeNull();
+    expect(afterTen.planId).toBeNull();
 
-    const sixth = await app.inject({
+    const eleventh = await app.inject({
       method: "POST",
       url: "/api/v1/tryons",
       headers: { origin },
       payload: {
         storeId: trialStoreId,
-        product: { id: "trial-boundary-frame-6", imageUrl: productImageUrl },
+        product: { id: "trial-boundary-frame-11", imageUrl: productImageUrl },
         customerImage: `data:image/jpeg;base64,${TINY_JPEG.toString("base64")}`,
       },
     });
-    expect(sixth.statusCode).toBe(402);
-    expect(sixth.json().code).toBe("PLAN_LIMIT_REACHED");
+    expect(eleventh.statusCode).toBe(402);
+    expect(eleventh.json().code).toBe("PLAN_LIMIT_REACHED");
 
     const stillPlanless = await prisma.tenant.findUniqueOrThrow({ where: { id: trialTenantId } });
     expect(stillPlanless.planId).toBeNull();
-  }, 30_000);
+  }, 45_000);
 });

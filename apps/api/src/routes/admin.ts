@@ -236,7 +236,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     // real plan or explicitly back to "Без тарифу" ends that old-style
     // trial and zeroes the leftover balance, the same outcome the TEST
     // plan's own auto-downgrade (processTryOnJob.ts) produces once its
-    // 5 lifetime uses run out. Never fires for a tenant created after
+    // 10 lifetime uses run out. Never fires for a tenant created after
     // this change — those start on the TEST plan, not planId=null, so
     // `!before.planId` is false for them from day one.
     const isTrialConversion = !before.planId && !!parsed.data.planId && !!before.trialGrantedAt;

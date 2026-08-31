@@ -30,7 +30,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const rawApiKey = generateApiKey();
 
     // Every new tenant starts on the TEST plan — a real Plan row ($0/mo,
-    // 5 try-ons, admin-grant only, never shown to a merchant choosing
+    // 10 try-ons, admin-grant only, never shown to a merchant choosing
     // their own plan — see routes/billing.ts) rather than a special
     // "no plan + topUpCredits" state. This used to auto-assign Starter
     // ($29/mo, 100/mo) here instead, which silently gave every signup
