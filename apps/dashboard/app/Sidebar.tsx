@@ -63,7 +63,7 @@ export function Sidebar() {
   // media query), so it's harmless dead state above that width.
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const hidden = pathname === "/login" || pathname === "/register";
+  const hidden = pathname === "/login" || pathname === "/register" || pathname === "/forgot-password";
 
   // Before paint, not just "early": this runs synchronously right after
   // the DOM is updated but before the browser shows anything, so a

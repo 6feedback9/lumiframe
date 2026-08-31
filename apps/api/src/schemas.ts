@@ -12,6 +12,22 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Manual/relayed password reset — see the schema comment on
+// PasswordResetCode and routes/auth.ts.
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const verifyResetCodeSchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(1).max(20),
+});
+
+export const resetPasswordSchema = z.object({
+  resetToken: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
 // Product spec §34. `customerImage` is a data: URI (base64) — see
 // ARCHITECTURE.md's note in packages/sdk README on why uploads are inlined
 // for Phase 1 instead of a separate /api/v1/uploads call.

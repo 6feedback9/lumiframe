@@ -20,6 +20,8 @@ const DICT = {
     "nav.openMenu": "Відкрити меню",
 
     "common.loading": "Завантаження…",
+    "common.showPassword": "Показати пароль",
+    "common.hidePassword": "Приховати пароль",
     "common.previous": "Назад",
     "common.next": "Далі",
     "common.save": "Зберегти",
@@ -52,6 +54,7 @@ const DICT = {
     "tenants.empty": "Ще немає клієнтів.",
     "tenants.noPlan": "Без тарифу",
     "tenants.pendingRequest": "Є запит від клієнта",
+    "tenants.pendingReset": "Очікує код скидання пароля",
     "tenants.back": "← Усі клієнти",
 
     "tenantDetail.tryOnsAllTime": "Примірки (весь час)",
@@ -171,6 +174,8 @@ const DICT = {
     "team.email": "Email",
     "team.password": "Пароль",
     "team.role": "Роль",
+    "team.resetCode": "Код скидання пароля",
+    "team.resetCodeExpires": "діє до",
     "team.addUser": "Додати користувача",
     "team.remove": "Видалити",
     "team.adminTitle": "Команда платформи",
@@ -225,6 +230,8 @@ const DICT = {
     "nav.openMenu": "Open menu",
 
     "common.loading": "Loading…",
+    "common.showPassword": "Show password",
+    "common.hidePassword": "Hide password",
     "common.previous": "Previous",
     "common.next": "Next",
     "common.save": "Save",
@@ -257,6 +264,7 @@ const DICT = {
     "tenants.empty": "No tenants yet.",
     "tenants.noPlan": "No plan",
     "tenants.pendingRequest": "Has a pending request",
+    "tenants.pendingReset": "Awaiting a password reset code",
     "tenants.back": "← All tenants",
 
     "tenantDetail.tryOnsAllTime": "Try-ons (all time)",
@@ -376,6 +384,8 @@ const DICT = {
     "team.email": "Email",
     "team.password": "Password",
     "team.role": "Role",
+    "team.resetCode": "Password reset code",
+    "team.resetCodeExpires": "valid until",
     "team.addUser": "Add user",
     "team.remove": "Remove",
     "team.adminTitle": "Platform team",

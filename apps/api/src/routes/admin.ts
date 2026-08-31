@@ -93,7 +93,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/api/v1/admin/tenants", { preHandler: authenticateAdmin }, async (_request, reply) => {
     const startOfMonth = startOfCurrentMonthUtc();
-    const [tenants, tryOnCounts, usageSums, usedThisMonthByTenant, tryOnsThisMonthPlatformWide] = await Promise.all([
+    const [tenants, tryOnCounts, usageSums, usedThisMonthByTenant, pendingResetCodes, tryOnsThisMonthPlatformWide] = await Promise.all([
       // Never list the reserved platform-admin tenant here — it's not a
       // client (see the schema comment on User.isPlatformAdmin) and was
       // only ever showing up because nothing filtered it.
@@ -120,11 +120,20 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         _count: { _all: true },
         where: { createdAt: { gte: startOfMonth } },
       }),
+      // Powers the "pending reset" badge below, same shape as the
+      // existing pending-plan-request one — a code from ANY of a
+      // tenant's users counts, not just the earliest one the `users`
+      // include above picked for its email column.
+      prisma.passwordResetCode.findMany({
+        where: { usedAt: null, expiresAt: { gt: new Date() } },
+        select: { user: { select: { tenantId: true } } },
+      }),
       prisma.tryOnSession.count({
         where: { createdAt: { gte: startOfMonth }, tenant: { slug: { not: PLATFORM_TENANT_SLUG } } },
       }),
     ]);
 
+    const tenantIdsWithPendingReset = new Set(pendingResetCodes.map((c) => c.user.tenantId));
     const tryOnCountByTenant = new Map(tryOnCounts.map((c) => [c.tenantId, c._count._all]));
     const usageByTenant = new Map(usageSums.map((u) => [u.tenantId, u._sum.units ?? 0]));
     const usedThisMonthMap = new Map(usedThisMonthByTenant.map((u) => [u.tenantId, u._count._all]));
@@ -160,6 +169,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         topUpCredits: t.topUpCredits,
         planRequestNote: t.planRequestNote,
         planRequestedAt: t.planRequestedAt,
+        hasPendingReset: tenantIdsWithPendingReset.has(t.id),
       })),
     });
   });
@@ -174,7 +184,27 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         // Earliest first — the Team panel lists them in this order, and
         // it's what the tenants-list endpoint above uses to pick the
         // "primary" email shown next to each client (users[0]).
-        users: { orderBy: { createdAt: "asc" }, select: { id: true, email: true, role: true, lastLoginAt: true, createdAt: true } },
+        users: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            lastLoginAt: true,
+            createdAt: true,
+            // The code the Team panel shows so the platform owner can
+            // read it off and relay it (see the schema comment on
+            // PasswordResetCode). At most one live row per user by
+            // construction (routes/auth.ts's forgot-password superseded
+            // any prior one), but `take: 1` is the real guarantee here.
+            passwordResetCodes: {
+              where: { usedAt: null, expiresAt: { gt: new Date() } },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { code: true, expiresAt: true },
+            },
+          },
+        },
       },
     });
     if (!tenant) return reply.code(404).send({ error: "Tenant not found" });
@@ -193,6 +223,10 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
     return reply.send({
       ...tenant,
+      // Reshape the array `take: 1` produced into the single value (or
+      // null) the Team panel actually wants — the array was only ever a
+      // Prisma include mechanic, not a real "could be several" case.
+      users: tenant.users.map((u) => ({ ...u, activeResetCode: u.passwordResetCodes[0] ?? null, passwordResetCodes: undefined })),
       totalTryOns,
       totalUsageUnits: totalUsageUnits._sum.units ?? 0,
       usedThisMonth,

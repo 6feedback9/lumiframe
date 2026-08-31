@@ -1,10 +1,17 @@
 import type { FastifyInstance } from "fastify";
+import { randomInt } from "node:crypto";
 import { prisma } from "../context";
 import { hashPassword, verifyPassword } from "../auth/password";
 import { generateApiKey, hashApiKey } from "../auth/apiKey";
-import { signMerchantToken } from "../auth/jwt";
+import { signMerchantToken, signPasswordResetToken, verifyPasswordResetToken } from "../auth/jwt";
 import { authenticateMerchant } from "../plugins/auth";
-import { loginSchema, registerSchema } from "../schemas";
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, verifyResetCodeSchema } from "../schemas";
+
+// 30 minutes is enough time for the real, manual relay this is built for
+// (merchant asks the platform owner for the code, owner reads it off
+// apps/admin and tells them — see the schema comment on
+// PasswordResetCode) without leaving a long-lived code sitting around.
+const RESET_CODE_TTL_MS = 30 * 60 * 1000;
 
 function hostnameOf(url: string): string | null {
   try {
@@ -93,6 +100,81 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
 
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    const token = signMerchantToken({ userId: user.id, tenantId: user.tenantId });
+    return reply.send({ token });
+  });
+
+  // ── Manual, relayed password reset — see the schema comment on
+  // PasswordResetCode for why there's no email step here. ───────────────
+  app.post("/api/v1/auth/forgot-password", async (request, reply) => {
+    const parsed = forgotPasswordSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body" });
+
+    const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
+    // Always the same response whether or not the email exists — this
+    // endpoint is public and unauthenticated, so confirming an account's
+    // existence here would be a real (if minor) leak. The dashboard's
+    // "enter the code" screen is what actually tells the shopper anything
+    // useful, and only once she's relayed a real code to them.
+    if (user) {
+      // One live code per user — a second request supersedes the first
+      // rather than leaving both valid, so the code the owner reads off
+      // apps/admin is always the current one.
+      await prisma.passwordResetCode.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+      await prisma.passwordResetCode.create({
+        data: {
+          userId: user.id,
+          code: String(randomInt(100000, 1000000)), // 6 digits, zero-padded by range not string-padding
+          expiresAt: new Date(Date.now() + RESET_CODE_TTL_MS),
+        },
+      });
+    }
+    return reply.send({ ok: true });
+  });
+
+  app.post("/api/v1/auth/verify-reset-code", async (request, reply) => {
+    const parsed = verifyResetCodeSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body" });
+    const { email, code } = parsed.data;
+
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const genericError = { error: "Invalid or expired code" };
+    if (!user) return reply.code(400).send(genericError);
+
+    const resetCode = await prisma.passwordResetCode.findFirst({
+      where: { userId: user.id, code, usedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!resetCode) return reply.code(400).send(genericError);
+
+    // Single-use: consumed the moment it's verified, not when the new
+    // password is actually set. The short-lived resetToken below is what
+    // authorizes that next step instead, so this code can never be
+    // replayed even if the "enter new password" screen is abandoned.
+    await prisma.passwordResetCode.update({ where: { id: resetCode.id }, data: { usedAt: new Date() } });
+    return reply.send({ resetToken: signPasswordResetToken(user.id) });
+  });
+
+  app.post("/api/v1/auth/reset-password", async (request, reply) => {
+    const parsed = resetPasswordSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid request body", details: parsed.error.flatten() });
+
+    const payload = verifyPasswordResetToken(parsed.data.resetToken);
+    if (!payload) return reply.code(401).send({ error: "This reset link has expired — request a new code" });
+
+    const passwordHash = await hashPassword(parsed.data.newPassword);
+    const user = await prisma.user
+      .update({ where: { id: payload.userId }, data: { passwordHash } })
+      .catch(() => null); // the account could have been removed between the code step and here
+    if (!user) return reply.code(404).send({ error: "Account not found" });
+
+    await prisma.auditLog.create({
+      data: { tenantId: user.tenantId, actorUserId: user.id, action: "user.password_reset", targetType: "User", targetId: user.id },
+    });
+
+    // Log the merchant straight in, same as register does — they just
+    // proved ownership of the account via the code, no reason to make
+    // them log in again with the password they just set.
     const token = signMerchantToken({ userId: user.id, tenantId: user.tenantId });
     return reply.send({ token });
   });

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { LocaleToggle } from "../LocaleToggle";
+import { PasswordInput } from "../PasswordInput";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
@@ -48,7 +49,12 @@ export default function LoginPage() {
         </div>
         <div className="field">
           <label htmlFor="password">{t("login.password")}</label>
-          <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput id="password" required autoComplete="current-password" value={password} onChange={setPassword} />
+        </div>
+        <div style={{ textAlign: "right", marginBottom: 14, marginTop: -6 }}>
+          <a href="/forgot-password" style={{ fontSize: 12, color: "var(--mist)" }}>
+            {t("login.forgotPassword")}
+          </a>
         </div>
         <button className="btn" type="submit" disabled={loading}>
           {loading ? t("login.submitting") : t("login.submit")}

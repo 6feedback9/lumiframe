@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AuthGuard } from "../../AuthGuard";
 import { apiFetch } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { PasswordInput } from "../../PasswordInput";
 
 interface Plan {
   id: string;
@@ -51,6 +52,11 @@ interface TenantUser {
   role: string;
   lastLoginAt: string | null;
   createdAt: string;
+  // Set only while a code from /api/v1/auth/forgot-password is still live
+  // (unused, unexpired) — this is the "мне в кабинет приходит код" part
+  // of the manual reset flow (see the schema comment on
+  // PasswordResetCode): read it here and relay it to the client.
+  activeResetCode: { code: string; expiresAt: string } | null;
 }
 
 interface TenantDetail {
@@ -984,7 +990,16 @@ function TeamPanel({ id, users, onUpdated }: { id: string; users: TenantUser[]; 
         <tbody>
           {users.map((u) => (
             <tr key={u.id}>
-              <td>{u.email}</td>
+              <td>
+                {u.email}
+                {u.activeResetCode && (
+                  <div style={{ fontSize: 11, color: "var(--sky)", marginTop: 3 }}>
+                    🔑 {t("team.resetCode")}: <strong style={{ letterSpacing: "0.06em" }}>{u.activeResetCode.code}</strong>
+                    {" · "}
+                    {t("team.resetCodeExpires")} {new Date(u.activeResetCode.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
+              </td>
               <td>{u.role}</td>
               <td>
                 <button className="btn" style={{ width: "auto", padding: "5px 10px", fontSize: 12 }} onClick={() => removeUser(u.id)}>
@@ -1002,7 +1017,7 @@ function TeamPanel({ id, users, onUpdated }: { id: string; users: TenantUser[]; 
         </div>
         <div className="field" style={{ margin: 0 }}>
           <label>{t("team.password")}</label>
-          <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput required minLength={8} autoComplete="new-password" value={password} onChange={setPassword} />
         </div>
         <div className="field" style={{ margin: 0 }}>
           <label>{t("team.role")}</label>

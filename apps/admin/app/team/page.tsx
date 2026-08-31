@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AuthGuard } from "../AuthGuard";
 import { apiFetch } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { PasswordInput } from "../PasswordInput";
 
 interface AdminUser {
   id: string;
@@ -105,7 +106,7 @@ function TeamContent() {
           </div>
           <div className="field" style={{ marginBottom: 16 }}>
             <label>{t("team.password")}</label>
-            <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput required minLength={8} autoComplete="new-password" value={password} onChange={setPassword} />
           </div>
           <button className="btn" type="submit" disabled={saving}>
             {saving ? t("common.saving") : t("team.addUser")}

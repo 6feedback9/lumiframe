@@ -4,6 +4,7 @@ import { useState } from "react";
 import { setToken } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { LocaleToggle } from "../LocaleToggle";
+import { PasswordInput } from "../PasswordInput";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
@@ -85,14 +86,7 @@ export default function RegisterPage() {
         </div>
         <div className="field">
           <label htmlFor="password">{t("login.password")}</label>
-          <input
-            id="password"
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <PasswordInput id="password" required minLength={8} autoComplete="new-password" value={password} onChange={setPassword} />
         </div>
         <button className="btn" type="submit" disabled={loading}>
           {loading ? t("register.submitting") : t("register.submit")}

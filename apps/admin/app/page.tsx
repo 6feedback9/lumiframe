@@ -34,6 +34,7 @@ interface Tenant {
   topUpCredits: number;
   planRequestNote: string | null;
   planRequestedAt: string | null;
+  hasPendingReset: boolean;
 }
 
 interface Summary {
@@ -127,6 +128,9 @@ function TenantsContent() {
                       <div style={{ fontSize: 11, color: "var(--sky)", marginTop: 2 }} title={tn.planRequestNote}>
                         ● {t("tenants.pendingRequest")}
                       </div>
+                    )}
+                    {tn.hasPendingReset && (
+                      <div style={{ fontSize: 11, color: "var(--sky)", marginTop: 2 }}>🔑 {t("tenants.pendingReset")}</div>
                     )}
                   </td>
                   <td>{tn.ownerEmail ?? "—"}</td>

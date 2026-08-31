@@ -203,9 +203,35 @@ model User {
   updatedAt    DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  passwordResetCodes PasswordResetCode[]
 
   @@index([tenantId])
   @@map("users")
+}
+
+// Manual, relayed password reset — there's no email-sending infra in this
+// product yet (same reason routes/team.ts adds teammates by direct
+// password instead of an invite email), so the code isn't emailed to the
+// merchant automatically. Instead the platform owner reads it off
+// apps/admin (the tenant's Team panel) and tells the client herself
+// (chat/phone) — product ask: "человек нажимает [забыли пароль] мне в
+// кабинет приходит код я говорю им этот код". Stored in plain text
+// (not hashed) specifically so the admin panel can display it — it's
+// short-lived, single-use, and not a long-term credential like
+// User.passwordHash, so this is a deliberately different tradeoff, not
+// an oversight.
+model PasswordResetCode {
+  id        String    @id @default(cuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_codes")
 }
 
 // ────────────────────────────────────────────────────────────
