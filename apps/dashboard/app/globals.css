@@ -160,7 +160,15 @@ tr:last-child td { border-bottom: none; }
 .badge-processing, .badge-uploading, .badge-created { background: rgba(255,255,255,.06); color: var(--mist); }
 .badge-expired { background: rgba(255,255,255,.05); color: var(--mist-dim); }
 
-.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+/* min-height: 100dvh alongside 100vh — same fix as the widget's own
+   shell (packages/widget/src/styles.ts): mobile browsers size 100vh
+   against the viewport with the address bar hidden, not what's actually
+   on screen. On this centered card that meant it visibly re-centered
+   ("ездит туда-сюда") every time the address bar hid/showed — tapping a
+   field, a small scroll — since flex centering recalculates against
+   whatever height is current. 100dvh tracks the real, current viewport
+   instead; unsupported browsers just ignore this line and keep 100vh. */
+.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; min-height: 100dvh; padding: 20px; }
 .login-card { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 28px; }
 .login-card h1 { font-family: var(--font-head); font-size: 18px; font-weight: 800; margin: 0 0 20px; }
 .field { margin-bottom: 14px; }
