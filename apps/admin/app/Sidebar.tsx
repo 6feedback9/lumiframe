@@ -12,7 +12,9 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <a href="/" className="logo">
-        <span className="mark">Ú</span>
+        <span className="mark">
+          <img src="/logo-mark.png" alt="" width={18} height={18} />
+        </span>
         <span>
           <span className="word">Lumi Frame</span>
           <span className="tag">{t("nav.tag")}</span>
