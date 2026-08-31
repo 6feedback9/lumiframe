@@ -29,6 +29,16 @@ describe("isAllowedProductUrl", () => {
     expect(isAllowedProductUrl(["glasses.ua"], "http://glasses.ua/a.jpg")).toBe(true);
   });
 
+  it("matches regardless of the pattern's own protocol — a merchant-saved https:// pattern still allows a real http:// image on the same host", () => {
+    // Confirmed on a real Shopify store: the merchant saved
+    // "https://w7q0ap-zp.myshopify.com/" (copy-pasted from the address
+    // bar), but the theme's own product data emitted the image as a
+    // plain http:// URL on that same host — same domain, no actual
+    // ownership question, just a scheme the merchant never chose.
+    expect(isAllowedProductUrl(["https://glasses.ua/*"], "http://glasses.ua/a.jpg")).toBe(true);
+    expect(isAllowedProductUrl(["http://glasses.ua"], "https://glasses.ua/a.jpg")).toBe(true);
+  });
+
   it("is case-insensitive on hostname", () => {
     expect(isAllowedProductUrl(["https://Glasses.UA/*"], "https://glasses.ua/a.jpg")).toBe(true);
   });
