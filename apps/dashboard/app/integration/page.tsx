@@ -185,12 +185,24 @@ function IntegrationContent() {
   const [savingLimit, setSavingLimit] = useState(false);
   const [savedLimit, setSavedLimit] = useState(false);
 
+  // Allowed domains — the actual security allowlist (apps/api's
+  // isAllowedProductUrl), separate from the informational "store URL" the
+  // platform admin can edit elsewhere. Nothing kept them in sync, and
+  // until now this list was read-only everywhere — a merchant re-pointing
+  // storeUrl (e.g. a fresh Shopify preview link, which changes every
+  // session) had no way to actually update what the widget accepts.
+  const [domains, setDomains] = useState<string[]>([]);
+  const [newDomain, setNewDomain] = useState("");
+  const [savingDomains, setSavingDomains] = useState(false);
+  const [domainsError, setDomainsError] = useState<string | null>(null);
+
   useEffect(() => {
     apiFetch<StoreInfo>("/api/v1/store")
       .then((s) => {
         setStore(s);
         setConfig({ ...DEFAULTS, ...s.widgetConfig });
         setVisitorLimit(s.maxTryOnsPerVisitor ? String(s.maxTryOnsPerVisitor) : "");
+        setDomains(s.allowedDomains);
       })
       .catch((err) => setError(err.message));
   }, []);
@@ -224,6 +236,40 @@ function IntegrationContent() {
     } finally {
       setSavingLimit(false);
     }
+  }
+
+  async function persistDomains(next: string[]) {
+    setSavingDomains(true);
+    setDomainsError(null);
+    try {
+      const updated = await apiFetch<StoreInfo>("/api/v1/store", { method: "PATCH", body: JSON.stringify({ allowedDomains: next }) });
+      setDomains(updated.allowedDomains);
+    } catch (err) {
+      setDomainsError((err as Error).message);
+    } finally {
+      setSavingDomains(false);
+    }
+  }
+
+  function addDomain() {
+    const trimmed = newDomain.trim();
+    if (!trimmed || domains.includes(trimmed)) {
+      setNewDomain("");
+      return;
+    }
+    setNewDomain("");
+    void persistDomains([...domains, trimmed]);
+  }
+
+  function removeDomain(domain: string) {
+    // updateStoreSchema requires a non-empty array — the widget would
+    // otherwise accept requests from nowhere at all, which reads as
+    // "broken" rather than "locked down" from the merchant's side.
+    if (domains.length <= 1) {
+      setDomainsError(t("integration.domainsEmptyError"));
+      return;
+    }
+    void persistDomains(domains.filter((d) => d !== domain));
   }
 
   if (error) return <div className="empty-state">{error}</div>;
@@ -863,11 +909,42 @@ function IntegrationContent() {
           <div className="panel" style={{ padding: 24 }}>
             <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("integration.domainsTitle")}</h3>
             <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 14 }}>{t("integration.domainsDesc")}</p>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              {store.allowedDomains.map((d) => (
-                <li key={d}>{d}</li>
+            <ul style={{ margin: "0 0 12px", padding: 0, fontSize: 13, listStyle: "none" }}>
+              {domains.map((d) => (
+                <li key={d} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "6px 0" }}>
+                  <span>{d}</span>
+                  <button
+                    type="button"
+                    aria-label={t("integration.domainsRemove")}
+                    onClick={() => removeDomain(d)}
+                    disabled={savingDomains}
+                    style={{ background: "none", border: "none", color: "var(--mist-dim)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 4 }}
+                  >
+                    ✕
+                  </button>
+                </li>
               ))}
             </ul>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div className="field" style={{ flex: 1 }}>
+                <input
+                  type="text"
+                  value={newDomain}
+                  onChange={(e) => setNewDomain(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addDomain();
+                    }
+                  }}
+                  placeholder={t("integration.domainsAddPlaceholder")}
+                />
+              </div>
+              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={savingDomains || !newDomain.trim()} onClick={addDomain}>
+                {savingDomains ? t("common.saving") : t("integration.domainsAdd")}
+              </button>
+            </div>
+            {domainsError && <p className="error-text">{domainsError}</p>}
           </div>
 
           <div className="panel" style={{ padding: 24 }}>
