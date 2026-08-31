@@ -96,10 +96,10 @@ export function mountWidget(options: MountWidgetOptions): WidgetHandle {
           <div class="lf-zone" data-zone>
             <input type="file" accept="image/jpeg,image/png,image/webp" class="lf-finput" data-file-input>
             <div class="lf-example-card" data-example-card>
-              <svg class="lf-example-icon" viewBox="0 0 60 80" fill="none" aria-hidden="true">
-                <rect x="1" y="1" width="58" height="78" rx="10" fill="#f3f3f2" stroke="#dcdcda" stroke-width="1.5"/>
-                <circle cx="30" cy="29" r="11" fill="#c7c7c4"/>
-                <path d="M12 68c0-11.5 8-19 18-19s18 7.5 18 19" fill="#c7c7c4"/>
+              <svg class="lf-example-icon" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+                <rect x="1" y="1" width="42" height="42" rx="9" fill="#f3f3f2" stroke="#dcdcda" stroke-width="1.5"/>
+                <circle cx="22" cy="18" r="7.5" fill="#c7c7c4"/>
+                <path d="M9 37c0-8 6-13 13-13s13 5 13 13" fill="#c7c7c4"/>
               </svg>
               <div class="lf-photo-badge" data-photo-badge>${escapeHtml(T.examplePhoto)}</div>
             </div>

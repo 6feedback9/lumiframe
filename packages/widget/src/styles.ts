@@ -142,31 +142,37 @@ export const WIDGET_CSS = `
 .lf-zone.has-photo .lf-placeholder, .lf-zone.has-result .lf-placeholder { display: none; }
 .lf-placeholder-icon { width: 34px; height: 34px; margin-bottom: 10px; color: #b0b0af; }
 
-/* Small "example" corner card (product ask: label the zone with what a
-   good photo looks like). Two earlier passes here used a real uploaded
-   photo — first full-bleed behind the icon (merchant feedback: an upload
-   icon sitting on someone's face looks wrong regardless of contrast), then
-   as a small thumbnail — but baking a real person's photo/likeness into
-   the widget's shipped asset was never quite right for a generic "here's
-   the kind of shot to take" hint, and there's no image-generation tool
-   available in this environment to produce a synthetic one instead. A
-   plain inline SVG silhouette (drawn right in index.ts — no external
-   asset or network request at all) reads as "face + shoulders, selfie
-   framing" without depicting anyone real. */
+/* "Example" banner across the top of the zone (product ask: label the
+   zone with what a good photo looks like). Earlier passes here used a
+   real uploaded photo — first full-bleed behind the icon (merchant
+   feedback: an upload icon sitting on someone's face looks wrong
+   regardless of contrast), then a small corner card — but baking a real
+   person's photo/likeness into the widget's shipped asset was never quite
+   right for a generic "here's the kind of shot to take" hint, and there's
+   no image-generation tool available in this environment to produce a
+   synthetic one instead. A plain inline SVG silhouette (drawn right in
+   index.ts — no external asset or network request at all) reads as
+   "face + shoulders, selfie framing" without depicting anyone real.
+   Full-width strip, not a small corner square (product ask, second pass)
+   — spans the zone's own width via inset-x:0 rather than being sized in
+   its own right, so it reads as a labeled header for the drop area
+   instead of a competing visual element off to one side. */
 .lf-example-card {
-  position: absolute; top: 12px; right: 12px; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; gap: 6px; width: 60px;
+  position: absolute; top: 0; left: 0; right: 0; z-index: 1;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,.92);
+  border-bottom: 1px solid rgba(0,0,0,.06);
 }
 .lf-zone.has-photo .lf-example-card,
 .lf-zone.has-result .lf-example-card,
 .lf-zone.is-processing .lf-example-card { display: none; }
 .lf-example-icon {
-  width: 60px; height: 80px; border-radius: 9px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0;
 }
 .lf-photo-badge {
-  background: rgba(255,255,255,.94); color: #666; font-size: 8.5px; font-weight: 700;
-  letter-spacing: .04em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px;
+  background: transparent; color: #666; font-size: 10px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; padding: 0;
   white-space: nowrap;
 }
 
