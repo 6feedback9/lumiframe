@@ -160,13 +160,14 @@ export interface DetectProductOptions {
  * "Try on" button in that case (ARCHITECTURE.md §8).
  */
 export function detectProduct(doc: Document, options: DetectProductOptions = {}): AttachProductInput | null {
+  const domSelectorResult = options.domSelectors ? readSelectorProduct(doc, options.domSelectors) : null;
   const layers: (PartialProduct | null)[] = [
     options.explicit ?? null,
     options.platformAdapterResult ?? null,
     readJsonLdProduct(doc),
     readMicrodataProduct(doc),
     readOpenGraphProduct(doc),
-    options.domSelectors ? readSelectorProduct(doc, options.domSelectors) : null,
+    domSelectorResult,
   ];
 
   const merged: PartialProduct = {};
@@ -177,6 +178,22 @@ export function detectProduct(doc: Document, options: DetectProductOptions = {})
         (merged as Record<string, unknown>)[key] = value;
       }
     }
+  }
+
+  // productImageUrl is a special case, out of the normal priority order
+  // above: on a product with color/style swatches (e.g. 5 frame colors on
+  // one page), JSON-LD/microdata/OpenGraph are server-rendered for
+  // whichever variant was default when the page loaded and never update
+  // when a shopper clicks a different swatch client-side — a merchant who
+  // configured `productImageSelector` against the theme's live gallery
+  // image is the only one of these sources that can reflect the color the
+  // shopper is actually looking at right now, so it wins for this field
+  // specifically even though the static tags still win for title/price/sku
+  // (a merchant pointing at the live image says nothing about wanting
+  // selector-sourced pricing too, and those static fields don't have this
+  // problem the same way — see enrichFromShopify below for price's own fix).
+  if (domSelectorResult?.productImageUrl) {
+    merged.productImageUrl = domSelectorResult.productImageUrl;
   }
 
   if (!merged.productImageUrl) return null;

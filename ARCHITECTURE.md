@@ -247,6 +247,24 @@ If nothing resolves a required field (at minimum: a product image), the
 incomplete/garbage product snapshot. The Integration Checker (dashboard)
 surfaces exactly which of these five layers succeeded, per §16.
 
+Two behaviors worth calling out, both driven by the same problem — a
+product page with color/style swatches (multiple frame colors on one URL):
+structured data and OpenGraph are server-rendered once for the page's
+default variant and never update when a shopper clicks a different swatch
+client-side, so relying on them alone means every try-on uses whichever
+color happened to load first, regardless of what the shopper picked.
+- Detection re-runs on every `TryOn.open()` when the merchant hasn't
+  called `attach()` themselves — never cached from a previous open — so a
+  DOM selector pointed at the theme's live gallery image (layer 5) picks
+  up whatever's actually on screen right now.
+- For that reason, layer 5's `productImageUrl` specifically is promoted
+  above layers 3-4 rather than only filling gaps they leave — it's the
+  only one of these sources able to reflect the shopper's actual
+  selection. Title/price/sku keep the priority order above unchanged.
+An explicit `attach()` call stays sticky by design (a merchant integrating
+their own variant-change handler is trusted over any heuristic) — see
+`packages/sdk/README.md`'s "Products with multiple colors/styles" section.
+
 The button itself is auto-inserted by the SDK (`packages/sdk/src/index.ts`,
 `autoInject: true` by default) once detection succeeds — placed right after
 whatever matches a cart-button heuristic (`.add-to-cart`, `[name="add"]`,

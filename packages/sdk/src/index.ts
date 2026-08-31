@@ -249,6 +249,14 @@ class EventBus {
 class TryOnSdkImpl implements TryOnSdk {
   private options: TryOnInitOptions | null = null;
   private currentProduct: AttachProductInput | null = null;
+  // True only once a merchant has explicitly called attach() — at that
+  // point currentProduct is trusted and stays sticky (ARCHITECTURE.md §8:
+  // "a merchant who called attach() knows better than any heuristic").
+  // False while currentProduct merely holds the last auto-detected result:
+  // resolveProduct() re-detects fresh on every call in that case, so a
+  // shopper picking a different color swatch between opens gets the frame
+  // they're actually looking at, not whatever was on screen the first time.
+  private explicitProductAttached = false;
   private domSelectors: DomSelectorConfig | undefined;
   private bus = new EventBus();
   private isOpen = false;
@@ -281,6 +289,7 @@ class TryOnSdkImpl implements TryOnSdk {
       throw new Error("TryOn.attach requires at least { productId, productImageUrl }");
     }
     this.currentProduct = product;
+    this.explicitProductAttached = true;
     // A late attach() (e.g. a React product page's mount effect firing
     // after init()'s own DOMContentLoaded-timed attempt already ran and
     // found nothing to attach to) still deserves a button — try again now
@@ -291,12 +300,23 @@ class TryOnSdkImpl implements TryOnSdk {
   /**
    * Resolves the current product via the full detection cascade
    * (ARCHITECTURE.md §8) when no explicit product was attached or passed in.
+   *
+   * Auto-detected products are deliberately NOT cached across calls: a
+   * shopper can click a color/style swatch between one open() and the
+   * next, and detectProduct()'s own productImageUrl priority (a configured
+   * DOM selector over the static JSON-LD/OpenGraph tags) only helps if
+   * this actually re-reads the page each time. Only a merchant's own
+   * explicit attach() call is sticky — see explicitProductAttached's own
+   * comment.
    */
   private resolveProduct(explicit?: AttachProductInput): AttachProductInput | null {
     if (explicit) return explicit;
-    if (this.currentProduct) return this.currentProduct;
-    if (typeof document === "undefined") return null;
-    return detectProduct(document, { domSelectors: this.domSelectors });
+    if (this.explicitProductAttached && this.currentProduct) return this.currentProduct;
+    if (typeof document === "undefined") return this.currentProduct;
+    // Falls back to the last successfully detected product if this run
+    // found nothing — e.g. a themed re-render briefly removed the matched
+    // element between opens — rather than failing an open() outright.
+    return detectProduct(document, { domSelectors: this.domSelectors }) ?? this.currentProduct;
   }
 
   open(product?: AttachProductInput): void {
@@ -367,6 +387,7 @@ class TryOnSdkImpl implements TryOnSdk {
   destroy(): void {
     this.close();
     this.currentProduct = null;
+    this.explicitProductAttached = false;
     this.options = null;
     this.buttonInjected = false;
     this.cardButtonsInjected = false;

@@ -24,11 +24,38 @@ this implements and §3 for where it sits in the overall flow.
 </script>
 ```
 
-If `attach()` is never called, `TryOn.open()` runs the detection cascade in
-`detectProduct()` (JSON-LD → OpenGraph → merchant-configured DOM selectors)
-against the current page. If a platform adapter
-(`packages/integrations/shopify` etc.) is loaded, it takes priority over
-the generic cascade.
+If `attach()` is never called, `TryOn.open()` re-runs the detection cascade
+in `detectProduct()` (JSON-LD → microdata → OpenGraph → merchant-configured
+DOM selectors) against the current page **every time it's called** — not
+once and cached — so it reflects whatever's actually on screen at that
+moment. If a platform adapter (`packages/integrations/shopify` etc.) is
+loaded, it takes priority over the generic cascade. Calling `attach()`
+explicitly opts out of all of this: the product you passed is trusted as-is
+and stays sticky across opens until you call `attach()` again yourself.
+
+### Products with multiple colors/styles on one page
+
+If a product page has color swatches (a common pattern — see e.g. Quay's
+product pages), plain auto-detection alone will not track which one the
+shopper has selected: JSON-LD, microdata and OpenGraph tags are rendered
+once by the server for the page's default variant and never update when a
+swatch is clicked client-side. Configure a DOM selector pointing at the
+theme's live gallery image instead — it's re-read on every `TryOn.open()`
+and takes priority over the static tags specifically for the image field:
+
+```html
+<script>
+  TryOn.configureSelectors({
+    productImageSelector: "#gallery-img", // whatever element the theme swaps `src` on when a swatch is clicked
+  });
+</script>
+```
+
+This only works if the theme updates that element's `src` in place when the
+color changes (true for most Shopify themes' main gallery image); if a
+theme instead swaps in a wholly different `<img>` element per color, point
+the selector at whichever one is actually visible, or call `attach()`
+yourself from the theme's own variant-change handler with the new image URL.
 
 ## Auto-injected "Try on" button
 
