@@ -21,14 +21,58 @@ export interface CardMatch {
   product: AttachProductInput;
 }
 
-/** A lazy-loaded thumbnail often keeps its real URL in data-src (or the
- * first entry of data-srcset) until it scrolls into view — .src/.currentSrc
- * fall back to a 1x1 placeholder or an empty string until then. */
+/** Shopify's own `| image_url` filter, and plenty of themes' own markup,
+ * emit protocol-relative ("//cdn.shopify.com/...") or site-relative
+ * ("/cdn/...") image URLs — real, but not a URL `fetch()`/the API accepts
+ * as-is. Absolute http(s) URLs pass through unchanged. */
+function toAbsoluteUrl(url: string): string {
+  if (url.startsWith("//")) return `https:${url}`;
+  if (url.startsWith("/") && typeof window !== "undefined") return `${window.location.origin}${url}`;
+  return url;
+}
+
+/** A lazy-loaded thumbnail often keeps its real URL in data-src/data-srcset
+ * (or the plain srcset) until it scrolls into view — .currentSrc/.src fall
+ * back to a 1x1 placeholder or an empty string until then. Checks every
+ * place a theme might be keeping the real address, in order of how likely
+ * it is to already be resolved, and normalizes whichever one's found. */
 function resolveImageUrl(img: HTMLImageElement): string | undefined {
-  const lazySrc = img.getAttribute("data-src") ?? img.getAttribute("data-srcset")?.split(",")[0]?.trim().split(" ")[0];
-  const liveSrc = img.currentSrc || img.src;
-  if (liveSrc && !liveSrc.startsWith("data:")) return liveSrc;
-  return lazySrc || undefined;
+  const candidates = [
+    img.currentSrc,
+    img.getAttribute("src"),
+    img.getAttribute("data-src"),
+    img.getAttribute("data-srcset")?.split(",")[0]?.trim().split(/\s+/)[0],
+    img.getAttribute("srcset")?.split(",")[0]?.trim().split(/\s+/)[0],
+  ];
+  for (const raw of candidates) {
+    if (!raw || raw.startsWith("data:")) continue;
+    return toAbsoluteUrl(raw);
+  }
+  return undefined;
+}
+
+/**
+ * `link.querySelector("img")` (the direct-nesting case below) only finds a
+ * thumbnail when the theme puts it inside the product's own <a> — true on
+ * the themes this was first verified against, but not universal: a real
+ * store (Shopify's own Dawn-derived markup) instead puts the image as a
+ * *sibling* of the link, both inside a shared "card" wrapper div, and that
+ * pattern found zero matches for every product on the page. Falls back to
+ * climbing from the link (not the image) for a nearby ancestor that
+ * contains one — the same fix already shipped in the standalone Shopify
+ * app's own fallback-detection pass, ported back here so every integration
+ * gets it instead of just that one.
+ */
+function findNearbyImage(link: HTMLAnchorElement): HTMLImageElement | null {
+  const direct = link.querySelector("img");
+  if (direct) return direct;
+  let container: Element | null = link.parentElement;
+  for (let i = 0; i < 6 && container; i++) {
+    const img = container.querySelector<HTMLImageElement>("img");
+    if (img) return img;
+    container = container.parentElement;
+  }
+  return null;
 }
 
 function firstMatchText(root: ParentNode, selector: string): string | undefined {
@@ -87,8 +131,8 @@ function fromLinkHeuristic(doc: Document): CardMatch[] {
   const matches: CardMatch[] = [];
   for (const link of Array.from(doc.querySelectorAll<HTMLAnchorElement>(PRODUCT_LINK_SELECTOR))) {
     if (link.closest(CART_CONTAINER_SELECTOR)) continue; // a cart line item, not a catalog card — see above
-    const img = link.querySelector("img");
-    if (!img) continue; // the card's *title* link, not its thumbnail — the image link covers this same product
+    const img = findNearbyImage(link);
+    if (!img || img.closest(CART_CONTAINER_SELECTOR)) continue;
     const imageUrl = resolveImageUrl(img);
     if (!imageUrl) continue;
     if (seen.has(link.href)) continue; // thumbnail and a second nested link to the same product, seen once already

@@ -285,7 +285,17 @@ export async function enrichFromShopify(product: AttachProductInput): Promise<At
   // trying it needs nothing more than the URL already matching a product
   // page above, and 404s harmlessly (caught below) on anything else.
   try {
-    const res = await fetch(`${window.location.origin}/products/${match[1]}.js`, { credentials: "omit" });
+    // Same-origin, so the default ("same-origin") already sends only this
+    // site's own cookies — no third-party leakage to guard against by
+    // omitting them. Confirmed needed on a real store this session: a
+    // storefront-password-protected dev store (Shopify's default for any
+    // .myshopify.com store not yet launched) redirects an unauthenticated
+    // request to its password interstitial instead of the product JSON;
+    // only a request carrying the shopper's existing storefront_digest
+    // cookie gets through. `credentials: "omit"` blocked that cookie even
+    // though the browser had it, so this silently 404/redirected on that
+    // exact kind of store and the price correction below never applied.
+    const res = await fetch(`${window.location.origin}/products/${match[1]}.js`, { credentials: "same-origin" });
     if (!res.ok) return product;
     const shopifyProduct = await res.json();
     // Shopify returns price in the smallest currency unit (cents).
