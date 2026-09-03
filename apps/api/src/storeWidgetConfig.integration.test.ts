@@ -46,6 +46,7 @@ describe("PATCH /api/v1/store — widgetConfig persistence", () => {
       modalLayout: "compact" as const,
       cardButtonEnabled: true,
       cardButtonVariant: "drawer" as const,
+      categoryUrlKeywords: "glasses, sunglasses",
     };
 
     const save = await app.inject({

@@ -30,6 +30,22 @@ const DEFAULT_API_BASE_URL = "https://api.lumiframe.com";
 const CART_BUTTON_SELECTORS =
   '.add-to-cart, [name="add"], .btn-cart, .product-form__submit, [data-add-to-cart], button[type="submit"][name="add"]';
 
+/**
+ * True if `url` matches at least one of `keywords` (comma-separated,
+ * case-insensitive substring match) — or if `keywords` is unset/empty,
+ * in which case there's no restriction at all. See TryOnInitOptions'
+ * `categoryUrlKeywords` doc comment for what this is for.
+ */
+function matchesCategoryFilter(url: string, keywords: string | undefined): boolean {
+  if (!keywords?.trim()) return true;
+  const haystack = url.toLowerCase();
+  return keywords
+    .split(",")
+    .map((k) => k.trim().toLowerCase())
+    .filter(Boolean)
+    .some((k) => haystack.includes(k));
+}
+
 const BUTTON_STYLE_ID = "lumiframe-tryon-styles";
 let buttonStylesInjected = false;
 
@@ -435,6 +451,10 @@ class TryOnSdkImpl implements TryOnSdk {
     const product = this.resolveProduct();
     if (!product) return; // nothing resolved yet — try again from attach()
 
+    if (typeof window !== "undefined" && !matchesCategoryFilter(product.productUrl ?? window.location.href, this.options?.categoryUrlKeywords)) {
+      return; // this page's product doesn't match the merchant's category filter
+    }
+
     const position = this.options?.buttonPosition ?? "after";
     const button = this.createButton();
 
@@ -566,14 +586,22 @@ class TryOnSdkImpl implements TryOnSdk {
     this.cardButtonsInjected = true;
 
     const matches = detectCards(document);
-    matches.forEach((match, index) => {
+    // Own counter for "is this the first button actually placed", not
+    // `index` — a category filter can skip earlier matches, and the
+    // one-time explainer pulse (createCardButton's `isFirst`) should land
+    // on whichever card is genuinely first on screen, not just first in
+    // the unfiltered list.
+    let injectedCount = 0;
+    matches.forEach((match) => {
+      if (!matchesCategoryFilter(match.product.productUrl ?? "", this.options?.categoryUrlKeywords)) return;
       const img = match.image;
       if (img.closest(".lumiframe-card-wrap")) return; // already wrapped — e.g. detectCards ran twice
       const wrap = document.createElement("span");
       wrap.className = "lumiframe-card-wrap";
       img.replaceWith(wrap);
       wrap.appendChild(img);
-      wrap.appendChild(this.createCardButton(match.product, index === 0));
+      wrap.appendChild(this.createCardButton(match.product, injectedCount === 0));
+      injectedCount++;
     });
   }
 

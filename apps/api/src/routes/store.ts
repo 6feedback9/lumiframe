@@ -67,6 +67,13 @@ const updateStoreSchema = z.object({
       // separate color config.
       cardButtonEnabled: z.boolean().optional(),
       cardButtonVariant: z.enum(["corner", "drawer", "scrim"]).optional(),
+      // Restricts which pages show the widget at all, for a merchant whose
+      // store isn't eyewear-only (product ask: "чтобы это можно было
+      // реализовать через кабинет клиента" — no Liquid/theme editing, one
+      // sitewide snippet, everything else configured here). Comma-separated
+      // keywords, matched case-insensitively against the product URL by
+      // packages/sdk/src/index.ts — see its categoryUrlKeywords doc comment.
+      categoryUrlKeywords: z.string().max(500).optional(),
     })
     .optional(),
 });

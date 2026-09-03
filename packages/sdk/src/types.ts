@@ -106,6 +106,24 @@ export interface TryOnInitOptions {
    * slightly with a centered pill on hover; a compact corner pill on touch.
    */
   cardButtonVariant?: "corner" | "drawer" | "scrim";
+  /**
+   * Restricts where the widget shows itself at all — both the auto-injected
+   * product-page button and, per matching card, the catalog card buttons
+   * above. Comma-separated keywords checked (case-insensitively) against
+   * the product's own URL; a match on any one keyword is enough. Empty/unset
+   * (default) means "everywhere detection succeeds", the original behavior.
+   *
+   * Exists for a merchant whose store isn't eyewear-only: pasting the
+   * snippet once, sitewide, would otherwise put a "Try on" button on every
+   * product regardless of category. Configuring this from the dashboard —
+   * no Liquid/theme editing, no per-product template — is the deliberate
+   * point: product ask was "нужно придумать чтобы это можно было
+   * реализовать через кабинет клиента" after "не моя головная боль" (whose
+   * job it is to touch the merchant's theme) turned out to be the wrong
+   * answer. Manual `attach()`/`open()` calls are NOT filtered — a merchant
+   * wiring their own trigger has already made that placement decision.
+   */
+  categoryUrlKeywords?: string;
 }
 
 /**

@@ -56,8 +56,14 @@ export function IntegrationSnippet({ storeId, widgetConfig }: { storeId: string;
           wherever this snippet physically sits on the page (product ask:
           "как присваивать эту примерку именно очкам? если у магазина
           несколько категорий товаров"). A store with only glasses needs
-          nothing extra; a mixed-catalog store needs this wrapped in a
-          category check, or the button shows up on every product. */}
+          nothing extra. For a mixed-catalog one, the primary answer is now
+          the "На яких товарах показувати кнопку" panel above (runtime
+          filter, configured from the dashboard, no theme editing) — a
+          later, more direct product ask ("не моя головная боль" turned out
+          to be the wrong answer; "нужно придумать чтобы это можно было
+          реализовать через кабинет клиента"). This Liquid-template
+          alternative stays as a secondary option for whoever'd rather scope
+          it at the template level instead. */}
       <div style={{ marginTop: 14, padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid var(--line)" }}>
         <button
           type="button"

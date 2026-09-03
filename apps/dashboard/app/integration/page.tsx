@@ -205,6 +205,15 @@ function IntegrationContent() {
   const [savingImageSelector, setSavingImageSelector] = useState(false);
   const [savedImageSelector, setSavedImageSelector] = useState(false);
 
+  // Which pages the widget shows itself on at all, for a store that isn't
+  // eyewear-only (product ask: "чтобы это можно было реализовать через
+  // кабинет клиента" — no theme/Liquid editing, one sitewide snippet,
+  // everything configured from here). Same state/save shape as
+  // imageSelector above.
+  const [categoryKeywords, setCategoryKeywords] = useState("");
+  const [savingCategoryKeywords, setSavingCategoryKeywords] = useState(false);
+  const [savedCategoryKeywords, setSavedCategoryKeywords] = useState(false);
+
   useEffect(() => {
     apiFetch<StoreInfo>("/api/v1/store")
       .then((s) => {
@@ -213,6 +222,7 @@ function IntegrationContent() {
         setVisitorLimit(s.maxTryOnsPerVisitor ? String(s.maxTryOnsPerVisitor) : "");
         setDomains(s.allowedDomains);
         setImageSelector(s.widgetConfig?.productImageSelector ?? "");
+        setCategoryKeywords(s.widgetConfig?.categoryUrlKeywords ?? "");
       })
       .catch((err) => setError(err.message));
   }, []);
@@ -300,6 +310,22 @@ function IntegrationContent() {
       setError((err as Error).message);
     } finally {
       setSavingImageSelector(false);
+    }
+  }
+
+  async function saveCategoryKeywords() {
+    setSavingCategoryKeywords(true);
+    setSavedCategoryKeywords(false);
+    const trimmed = categoryKeywords.trim();
+    try {
+      await apiFetch("/api/v1/store", { method: "PATCH", body: JSON.stringify({ widgetConfig: { categoryUrlKeywords: trimmed } }) });
+      setConfig((prev) => ({ ...prev, categoryUrlKeywords: trimmed || undefined }));
+      setSavedCategoryKeywords(true);
+      setTimeout(() => setSavedCategoryKeywords(false), 2500);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingCategoryKeywords(false);
     }
   }
 
@@ -987,6 +1013,30 @@ function IntegrationContent() {
               </button>
             </div>
             {domainsError && <p className="error-text">{domainsError}</p>}
+          </div>
+
+          <div className="panel" style={{ padding: 24 }}>
+            <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("integration.categoryKeywordsTitle")}</h3>
+            <p style={{ fontSize: 12, color: "var(--mist)", marginBottom: 14 }}>{t("integration.categoryKeywordsDesc")}</p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div className="field" style={{ flex: 1 }}>
+                <input
+                  type="text"
+                  value={categoryKeywords}
+                  onChange={(e) => setCategoryKeywords(e.target.value)}
+                  placeholder={t("integration.categoryKeywordsPlaceholder")}
+                  maxLength={500}
+                />
+              </div>
+              <button className="btn" style={{ width: "auto", padding: "9px 16px" }} disabled={savingCategoryKeywords} onClick={saveCategoryKeywords}>
+                {savingCategoryKeywords ? t("common.saving") : savedCategoryKeywords ? "✓" : t("common.save")}
+              </button>
+            </div>
+            {categoryKeywords.trim() ? (
+              <p style={{ fontSize: 11, color: "var(--good)", marginTop: 10 }}>{t("integration.categoryKeywordsActive")}</p>
+            ) : (
+              <p style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 10 }}>{t("integration.categoryKeywordsInactive")}</p>
+            )}
           </div>
 
           <div className="panel" style={{ padding: 24 }}>

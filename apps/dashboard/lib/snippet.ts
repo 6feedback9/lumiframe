@@ -39,6 +39,11 @@ export interface WidgetConfig {
    * buttonColorStart/End/TextColor/Style above, no separate color config. */
   cardButtonEnabled?: boolean;
   cardButtonVariant?: "corner" | "drawer" | "scrim";
+  /** Comma-separated keywords — the widget only shows itself on a product
+   * page (or catalog card) whose URL contains at least one of them. Empty/
+   * unset means everywhere, unchanged from before — see packages/sdk's
+   * TryOnInitOptions.categoryUrlKeywords doc comment. */
+  categoryUrlKeywords?: string;
 }
 
 export function buildInitOptions(storeId: string, apiBaseUrl: string, config: WidgetConfig = {}): Record<string, unknown> {
@@ -68,6 +73,7 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.modalLayout && config.modalLayout !== "split") options.modalLayout = config.modalLayout;
   if (config.cardButtonEnabled) options.cardButtonEnabled = true;
   if (config.cardButtonVariant && config.cardButtonVariant !== "corner") options.cardButtonVariant = config.cardButtonVariant;
+  if (config.categoryUrlKeywords) options.categoryUrlKeywords = config.categoryUrlKeywords;
   return options;
 }
 
