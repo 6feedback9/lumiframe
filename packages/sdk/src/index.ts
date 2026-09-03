@@ -47,6 +47,34 @@ function matchesCategoryFilter(url: string, keywords: string | undefined): boole
 }
 
 /**
+ * True when `url` points at the page currently open — i.e. the "card"
+ * detectCards() matched isn't a different catalog entry at all, it's this
+ * same product page's own link+thumbnail (a real report, with the store's
+ * actual theme code confirmed: a related-products/recommendation block, or
+ * any other in-page element, can link back to the very product already on
+ * screen). injectCardButtons() runs on every page the snippet is on,
+ * product pages included, and tryAutoInject() already gives that exact
+ * product its own dedicated button — wrapping its own hero image in a
+ * second, redundant mini-card trigger on top of it is never correct, on
+ * any theme, regardless of which element happened to cause the match.
+ * Compares path only (no query/hash) so a tracking param on one side
+ * doesn't defeat an otherwise-real match.
+ */
+function isCurrentPageProduct(url: string | undefined): boolean {
+  if (!url || typeof window === "undefined") return false;
+  // Trailing slash is not a meaningful difference for this comparison
+  // (Shopify itself redirects "/products/x" <-> "/products/x/" — a
+  // catalog card's href and location.pathname can disagree on it even
+  // when they're the same product), so strip one before comparing.
+  const normalize = (path: string) => path.replace(/\/$/, "");
+  try {
+    return normalize(new URL(url, window.location.href).pathname) === normalize(window.location.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Best-effort language for the try-on window when the merchant hasn't set
  * `locale` explicitly — reads the page's own `<html lang>` (what a Shopify
  * theme sets from the store's actual language/market, and what any other
@@ -615,6 +643,7 @@ class TryOnSdkImpl implements TryOnSdk {
     let injectedCount = 0;
     matches.forEach((match) => {
       if (!matchesCategoryFilter(match.product.productUrl ?? "", this.options?.categoryUrlKeywords)) return;
+      if (isCurrentPageProduct(match.product.productUrl)) return;
       const img = match.image;
       if (img.closest(".lumiframe-card-wrap")) return; // already wrapped — e.g. detectCards ran twice
       const wrap = document.createElement("span");
