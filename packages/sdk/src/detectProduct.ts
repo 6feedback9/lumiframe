@@ -270,11 +270,20 @@ export function detectProduct(doc: Document, options: DetectProductOptions = {})
  * good price with nothing.
  */
 export async function enrichFromShopify(product: AttachProductInput): Promise<AttachProductInput> {
-  if (typeof window === "undefined" || !(window as unknown as { Shopify?: unknown }).Shopify) return product;
+  if (typeof window === "undefined") return product;
 
   const match = window.location.pathname.match(/\/products\/([^/?#]+)/);
   if (!match) return product;
 
+  // No longer gated on `window.Shopify` already being set — that global is
+  // populated by Shopify's own analytics script, which loads async and
+  // isn't guaranteed to have run yet by the time our own script does (real
+  // report: price rendered blank on a live store, the exact same product
+  // enriched correctly on other loads — a load-order race, not a real
+  // detection failure). `/products/<handle>.js` is a plain, always-present
+  // Shopify storefront endpoint that doesn't depend on that global at all;
+  // trying it needs nothing more than the URL already matching a product
+  // page above, and 404s harmlessly (caught below) on anything else.
   try {
     const res = await fetch(`${window.location.origin}/products/${match[1]}.js`, { credentials: "omit" });
     if (!res.ok) return product;
@@ -282,6 +291,8 @@ export async function enrichFromShopify(product: AttachProductInput): Promise<At
     // Shopify returns price in the smallest currency unit (cents).
     const price = typeof shopifyProduct.price === "number" ? shopifyProduct.price / 100 : undefined;
     if (price === undefined) return product;
+    // Best-effort only — read if window.Shopify happens to be there by now,
+    // but never required for the price correction above to apply.
     const currency = (window as unknown as { Shopify?: { currency?: { active?: string } } }).Shopify?.currency?.active;
     return { ...product, price, currency: currency ?? product.currency };
   } catch {

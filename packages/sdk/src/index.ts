@@ -46,6 +46,27 @@ function matchesCategoryFilter(url: string, keywords: string | undefined): boole
     .some((k) => haystack.includes(k));
 }
 
+/**
+ * Best-effort language for the try-on window when the merchant hasn't set
+ * `locale` explicitly — reads the page's own `<html lang>` (what a Shopify
+ * theme sets from the store's actual language/market, and what any other
+ * platform's own i18n setup does too), falling back to the browser's own
+ * language if that's missing. Real report: an English-language store still
+ * showed a Ukrainian window, because the widget only ever read this from
+ * config and otherwise defaulted flat to "uk" regardless of the page it was
+ * actually running on. "uk" stays the last-resort default when neither
+ * signal maps to a supported locale — this platform's own base audience.
+ */
+function detectPageLocale(): "en" | "uk" | "ru" {
+  if (typeof document === "undefined") return "uk";
+  const candidates = [document.documentElement.lang, typeof navigator !== "undefined" ? navigator.language : ""];
+  for (const raw of candidates) {
+    const primary = raw?.split(/[-_]/)[0]?.toLowerCase();
+    if (primary === "en" || primary === "uk" || primary === "ru") return primary;
+  }
+  return "uk";
+}
+
 const BUTTON_STYLE_ID = "lumiframe-tryon-styles";
 let buttonStylesInjected = false;
 
@@ -380,10 +401,10 @@ class TryOnSdkImpl implements TryOnSdk {
       product: enriched,
       apiBaseUrl: this.options!.apiBaseUrl!,
       storeId: this.options!.storeId,
-      // Default to Ukrainian, not English — this platform's merchants and
-      // their customers are overwhelmingly Ukrainian-speaking, and an
-      // unconfigured widget should read that way out of the box.
-      locale: this.options!.locale ?? "uk",
+      // An explicit `locale` in init() always wins; otherwise follow the
+      // page's own language (detectPageLocale) rather than a flat default —
+      // see its own doc comment for why.
+      locale: this.options!.locale ?? detectPageLocale(),
       showTryAnotherButton: this.options!.showTryAnotherButton,
       showBackButton: this.options!.showBackButton,
       modalHeading: this.options!.modalHeading,
