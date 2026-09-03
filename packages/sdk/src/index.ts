@@ -645,17 +645,28 @@ class TryOnSdkImpl implements TryOnSdk {
     // on whichever card is genuinely first on screen, not just first in
     // the unfiltered list.
     let injectedCount = 0;
+    // Each iteration wrapped on its own: one card whose DOM doesn't match
+    // this shape as cleanly as expected (a theme oddity detectCards()
+    // didn't fully account for) must not silently take every other,
+    // perfectly good card down with it — forEach has no built-in isolation
+    // between iterations, an uncaught throw on card #1 would otherwise
+    // abort the whole run and leave every card on the page with no button
+    // at all, not just the one that actually had a problem.
     matches.forEach((match) => {
-      if (!matchesCategoryFilter(match.product.productUrl ?? "", this.options?.categoryUrlKeywords)) return;
-      if (isCurrentPageProduct(match.product.productUrl)) return;
-      const img = match.image;
-      if (img.closest(".lumiframe-card-wrap")) return; // already wrapped — e.g. detectCards ran twice
-      const wrap = document.createElement("span");
-      wrap.className = "lumiframe-card-wrap";
-      img.replaceWith(wrap);
-      wrap.appendChild(img);
-      wrap.appendChild(this.createCardButton(match.product, injectedCount === 0));
-      injectedCount++;
+      try {
+        if (!matchesCategoryFilter(match.product.productUrl ?? "", this.options?.categoryUrlKeywords)) return;
+        if (isCurrentPageProduct(match.product.productUrl)) return;
+        const img = match.image;
+        if (img.closest(".lumiframe-card-wrap")) return; // already wrapped — e.g. detectCards ran twice
+        const wrap = document.createElement("span");
+        wrap.className = "lumiframe-card-wrap";
+        img.replaceWith(wrap);
+        wrap.appendChild(img);
+        wrap.appendChild(this.createCardButton(match.product, injectedCount === 0));
+        injectedCount++;
+      } catch (err) {
+        console.warn("[lumiframe] skipped one card button (unexpected page markup):", err);
+      }
     });
   }
 
