@@ -327,6 +327,10 @@ class TryOnSdkImpl implements TryOnSdk {
   private isOpen = false;
   private buttonInjected = false;
   private cardButtonsInjected = false;
+  // See ensureCardClickInterceptor()'s own doc comment for why a click on
+  // a card button needs this instead of just its own click listener.
+  private cardButtonProducts = new WeakMap<HTMLElement, AttachProductInput>();
+  private cardClickInterceptorInstalled = false;
 
   init(options: TryOnInitOptions): TryOnSdk {
     if (!options.storeId) {
@@ -677,14 +681,25 @@ class TryOnSdkImpl implements TryOnSdk {
       this.open(product);
     };
 
+    // Own click listener as the normal path (fires for a theme with no
+    // conflict), plus registered into cardButtonProducts so
+    // ensureCardClickInterceptor()'s coordinate check also catches this
+    // button on a theme where it wouldn't otherwise receive the click at
+    // all — see that method's doc comment.
+    const register = (el: HTMLElement): HTMLElement => {
+      this.cardButtonProducts.set(el, product);
+      this.ensureCardClickInterceptor();
+      el.addEventListener("click", open);
+      return el;
+    };
+
     if (variant === "drawer") {
       const el = document.createElement("button");
       el.type = "button";
       el.className = "lumiframe-card-drawer";
       el.innerHTML = `${GLASSES_ICON_SVG}<span>${label}</span>`;
       applyAccent(el);
-      el.addEventListener("click", open);
-      return el;
+      return register(el);
     }
 
     if (variant === "scrim") {
@@ -693,8 +708,7 @@ class TryOnSdkImpl implements TryOnSdk {
       el.className = "lumiframe-card-scrim";
       el.innerHTML = `<span class="lumiframe-card-scrim-pill">${GLASSES_ICON_SVG}<span>${label}</span></span>`;
       applyAccent(el);
-      el.addEventListener("click", open);
-      return el;
+      return register(el);
     }
 
     // "corner" (default)
@@ -703,8 +717,55 @@ class TryOnSdkImpl implements TryOnSdk {
     el.className = `lumiframe-card-badge${isFirst ? " lumiframe-card-first" : ""}`;
     el.innerHTML = `${GLASSES_ICON_SVG}<span>${label}</span>`;
     applyAccent(el);
-    el.addEventListener("click", open);
-    return el;
+    return register(el);
+  }
+
+  /**
+   * A real theme (Dawn-derived, confirmed against a live store's own CSS):
+   * the card's title link carries an invisible, full-card ::after overlay
+   * (the standard "make the whole card clickable" pattern) that the theme
+   * gives an explicit z-index. Our card button sits inside card__media,
+   * which the SAME theme separately gives its own explicit z-index — that
+   * makes card__media its own capped local stacking context, so no
+   * z-index we set on our own button, however high, can ever out-rank a
+   * sibling-branch element outside that context (that's how CSS stacking
+   * contexts work: a local z-index never escapes the context it's local
+   * to). The button still paints visibly on top — nothing opaque covers
+   * it — but the browser's hit-test for a *click* still resolves to the
+   * theme's invisible overlay sitting in the uncapped context one level
+   * up, so the click silently falls through to that link instead: a real
+   * report showed the button clearly, but clicking it just navigated to
+   * the product page. No CSS fix on our side can win that fight from
+   * inside the loser's own stacking context.
+   *
+   * So this doesn't try to win it: one page-wide, capture-phase click
+   * listener (installed once, lazily, the first time any card button
+   * exists) checks every click's real (x, y) against every live card
+   * button's own bounding box *before* the browser resolves whatever
+   * element it would have picked as the click's target, and short-circuits
+   * straight to opening the widget on a hit — independent of stacking
+   * context entirely, so it can't lose this fight on any theme.
+   */
+  private ensureCardClickInterceptor(): void {
+    if (this.cardClickInterceptorInstalled || typeof document === "undefined") return;
+    this.cardClickInterceptorInstalled = true;
+    document.addEventListener(
+      "click",
+      (event: MouseEvent) => {
+        const buttons = document.querySelectorAll<HTMLElement>(".lumiframe-card-badge, .lumiframe-card-drawer, .lumiframe-card-scrim");
+        for (const el of Array.from(buttons)) {
+          const product = this.cardButtonProducts.get(el);
+          if (!product) continue;
+          const rect = el.getBoundingClientRect();
+          if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) continue;
+          event.preventDefault();
+          event.stopPropagation();
+          this.open(product);
+          return;
+        }
+      },
+      true
+    );
   }
 
   on<E extends SdkEventName>(event: E, listener: SdkEventListener<E>): () => void {
