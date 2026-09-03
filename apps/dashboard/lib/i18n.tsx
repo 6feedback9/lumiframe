@@ -143,6 +143,8 @@ const DICT = {
     "integration.visitorLimitUnlimited": "Без обмежень",
     "integration.visitorLimitCurrent": "Поточне значення",
     "integration.snippetHelp": "Вставте це один раз, ближче до кінця шаблону сторінки товару. Кнопка «Try on» додається автоматично поруч із кнопкою «Додати в кошик» — без додаткового редагування теми.",
+    "integration.categoryHintTitle": "У вас у магазині є й інші категорії товарів, окрім окулярів?",
+    "integration.categoryHintDesc": "Віджет не знає, що таке «окуляри» — кнопка з'являється просто там, куди вставлено код. Якщо в магазині лише окуляри — нічого робити не треба. Якщо є інші категорії — оберніть код в умову за типом або тегом товару, щоб кнопка показувалась лише на потрібних сторінках (приклад для Shopify нижче — підставте свій тип/тег товару замість «Окуляри»/«eyewear»):",
 
     "customize.title": "Оформлення кнопки",
     "customize.desc": "Налаштуйте, як виглядає кнопка «Try on» на вашому сайті. Зміни застосуються після того, як ви скопіюєте оновлений код і вставите його замість старого.",
@@ -454,6 +456,8 @@ const DICT = {
     "integration.visitorLimitUnlimited": "No limit",
     "integration.visitorLimitCurrent": "Current value",
     "integration.snippetHelp": "Paste this once, near the bottom of your product page template. It inserts a “Try on” button next to your add-to-cart button automatically — no theme editing beyond this one snippet.",
+    "integration.categoryHintTitle": "Does your store sell more than just eyewear?",
+    "integration.categoryHintDesc": "The widget has no idea what \"eyewear\" is — the button just appears wherever this code is placed. If your store only sells glasses, there's nothing else to do. If it has other categories too, wrap the code in a check by product type or tag so the button only shows where it should (Shopify example below — swap in your own type/tag instead of \"Окуляри\"/\"eyewear\"):",
 
     "customize.title": "Button design",
     "customize.desc": "Customize how the “Try on” button looks on your site. Changes apply once you copy the updated snippet and paste it in place of the old one.",
