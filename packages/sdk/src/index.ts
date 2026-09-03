@@ -235,8 +235,10 @@ function ensureCardStylesInjected(): void {
 .lumiframe-card-badge span { display: none; font-size: 11px; font-weight: 700; color: #171923; margin-left: 6px; }
 @media (hover: hover) and (pointer: fine) {
   .lumiframe-card-badge { transition: width .2s ease; }
-  .lumiframe-card-wrap:hover .lumiframe-card-badge { width: 130px; border-radius: 15px; }
-  .lumiframe-card-wrap:hover .lumiframe-card-badge span { display: inline; }
+  .lumiframe-card-wrap:hover .lumiframe-card-badge,
+  .lumiframe-card-wrap.lumiframe-hover .lumiframe-card-badge { width: 130px; border-radius: 15px; }
+  .lumiframe-card-wrap:hover .lumiframe-card-badge span,
+  .lumiframe-card-wrap.lumiframe-hover .lumiframe-card-badge span { display: inline; }
 }
 @keyframes lumiframe-card-ring {
   0% { box-shadow: 0 2px 8px rgba(20,20,30,.16), 0 0 0 0 var(--lumiframe-pulse-color, rgba(115,183,255,.55)); }
@@ -261,7 +263,8 @@ function ensureCardStylesInjected(): void {
 }
 @media (hover: hover) and (pointer: fine) {
   .lumiframe-card-drawer { transform: translateY(100%); transition: transform .2s cubic-bezier(.2,.8,.2,1); }
-  .lumiframe-card-wrap:hover .lumiframe-card-drawer { transform: translateY(0); }
+  .lumiframe-card-wrap:hover .lumiframe-card-drawer,
+  .lumiframe-card-wrap.lumiframe-hover .lumiframe-card-drawer { transform: translateY(0); }
 }
 
 /* ── scrim ─────────────────────────────────────────────────────────── */
@@ -277,8 +280,10 @@ function ensureCardStylesInjected(): void {
 @media (hover: hover) and (pointer: fine) {
   .lumiframe-card-scrim { transition: background .2s ease; }
   .lumiframe-card-scrim-pill { opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease; }
-  .lumiframe-card-wrap:hover .lumiframe-card-scrim { background: rgba(17,19,25,.2); }
-  .lumiframe-card-wrap:hover .lumiframe-card-scrim-pill { opacity: 1; transform: translateY(0); }
+  .lumiframe-card-wrap:hover .lumiframe-card-scrim,
+  .lumiframe-card-wrap.lumiframe-hover .lumiframe-card-scrim { background: rgba(17,19,25,.2); }
+  .lumiframe-card-wrap:hover .lumiframe-card-scrim-pill,
+  .lumiframe-card-wrap.lumiframe-hover .lumiframe-card-scrim-pill { opacity: 1; transform: translateY(0); }
 }
 @media (hover: none) {
   .lumiframe-card-scrim { align-items: flex-start; justify-content: flex-end; padding: 8px; }
@@ -331,6 +336,16 @@ class TryOnSdkImpl implements TryOnSdk {
   // a card button needs this instead of just its own click listener.
   private cardButtonProducts = new WeakMap<HTMLElement, AttachProductInput>();
   private cardClickInterceptorInstalled = false;
+  // See ensureCardHoverTracking()'s own doc comment for why the drawer/
+  // scrim reveal (and the corner badge's expand) can't rely on CSS
+  // :hover either, for the exact same reason a plain click listener isn't
+  // enough — same real report, same theme, same root cause.
+  private cardWraps: HTMLElement[] = [];
+  private hoveredCardWrap: HTMLElement | null = null;
+  private cardHoverTrackingInstalled = false;
+  private cardHoverRafPending = false;
+  private lastPointerX = 0;
+  private lastPointerY = 0;
 
   init(options: TryOnInitOptions): TryOnSdk {
     if (!options.storeId) {
@@ -663,6 +678,8 @@ class TryOnSdkImpl implements TryOnSdk {
         img.replaceWith(wrap);
         wrap.appendChild(img);
         wrap.appendChild(this.createCardButton(match.product, injectedCount === 0));
+        this.cardWraps.push(wrap);
+        this.ensureCardHoverTracking();
         injectedCount++;
       } catch (err) {
         console.warn("[lumiframe] skipped one card button (unexpected page markup):", err);
@@ -776,6 +793,65 @@ class TryOnSdkImpl implements TryOnSdk {
         }
       },
       true
+    );
+  }
+
+  /**
+   * The drawer/scrim reveal and the corner badge's hover-expand
+   * (ensureCardStylesInjected()'s `:hover` rules) hit the exact same wall
+   * as a plain click listener did (ensureCardClickInterceptor()'s own doc
+   * comment): CSS `:hover` is native pointer hit-testing too, so on a
+   * theme where card__media's capped local stacking context loses to the
+   * card's own invisible ::after overlay, the browser considers the
+   * pointer "over" that overlay, not our wrap — `.lumiframe-card-wrap:hover`
+   * never matches at all, confirmed on a real store: the corner badge was
+   * visible (nothing covers it) but did nothing on hover.
+   *
+   * Same fix, extended to pointer movement instead of clicks: one shared
+   * `mousemove` listener (installed once, lazily, alongside the first
+   * card wrap) tracks the pointer's real (x, y) and, throttled to one
+   * check per animation frame, tests it against every live card wrap's
+   * own bounding box directly — independent of what the browser itself
+   * would have hit-tested — toggling a `.lumiframe-hover` class that the
+   * injected stylesheet responds to identically to `:hover`. Native
+   * `:hover` stays in the CSS too (harmless, and correct on any theme
+   * that doesn't have this trap) — this is a second path to the same
+   * class, not a replacement for a working one.
+   */
+  private ensureCardHoverTracking(): void {
+    if (this.cardHoverTrackingInstalled || typeof document === "undefined") return;
+    this.cardHoverTrackingInstalled = true;
+    const updateHover = () => {
+      this.cardHoverRafPending = false;
+      let match: HTMLElement | null = null;
+      for (const wrap of this.cardWraps) {
+        const rect = wrap.getBoundingClientRect();
+        if (
+          this.lastPointerX >= rect.left &&
+          this.lastPointerX <= rect.right &&
+          this.lastPointerY >= rect.top &&
+          this.lastPointerY <= rect.bottom
+        ) {
+          match = wrap;
+          break;
+        }
+      }
+      if (match !== this.hoveredCardWrap) {
+        this.hoveredCardWrap?.classList.remove("lumiframe-hover");
+        match?.classList.add("lumiframe-hover");
+        this.hoveredCardWrap = match;
+      }
+    };
+    document.addEventListener(
+      "mousemove",
+      (event: MouseEvent) => {
+        this.lastPointerX = event.clientX;
+        this.lastPointerY = event.clientY;
+        if (this.cardHoverRafPending) return;
+        this.cardHoverRafPending = true;
+        requestAnimationFrame(updateHover);
+      },
+      { passive: true }
     );
   }
 
