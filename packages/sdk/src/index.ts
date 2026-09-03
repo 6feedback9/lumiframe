@@ -31,14 +31,24 @@ const CART_BUTTON_SELECTORS =
   '.add-to-cart, [name="add"], .btn-cart, .product-form__submit, [data-add-to-cart], button[type="submit"][name="add"]';
 
 /**
- * True if `url` matches at least one of `keywords` (comma-separated,
- * case-insensitive substring match) — or if `keywords` is unset/empty,
- * in which case there's no restriction at all. See TryOnInitOptions'
- * `categoryUrlKeywords` doc comment for what this is for.
+ * True if any of `keywords` (comma-separated, case-insensitive substring
+ * match) is found in the product's URL *or* its title — or if `keywords`
+ * is unset/empty, in which case there's no restriction at all. See
+ * TryOnInitOptions' `categoryUrlKeywords` doc comment for what this is for.
+ *
+ * Checks the title as well as the URL (not just the URL, despite the
+ * option's name — kept for backward compatibility with configs already
+ * saved) because a real merchant's own naming convention is often the
+ * one honest, always-present signal: a real report set up a product
+ * titled "Окуляри The Collection Snowboard: Liquid" specifically to mark
+ * it as eyewear, on a store whose URLs are generic seed-data handles
+ * ("the-collection-snowboard-liquid") with no distinguishing word in them
+ * at all — a URL-only match had no way to ever succeed for that store,
+ * even though the merchant's own title made the intent completely clear.
  */
-function matchesCategoryFilter(url: string, keywords: string | undefined): boolean {
+function matchesCategoryFilter(product: { productUrl?: string; productTitle?: string }, keywords: string | undefined): boolean {
   if (!keywords?.trim()) return true;
-  const haystack = url.toLowerCase();
+  const haystack = `${product.productUrl ?? ""} ${product.productTitle ?? ""}`.toLowerCase();
   return keywords
     .split(",")
     .map((k) => k.trim().toLowerCase())
@@ -519,7 +529,10 @@ class TryOnSdkImpl implements TryOnSdk {
     const product = this.resolveProduct();
     if (!product) return; // nothing resolved yet — try again from attach()
 
-    if (typeof window !== "undefined" && !matchesCategoryFilter(product.productUrl ?? window.location.href, this.options?.categoryUrlKeywords)) {
+    if (
+      typeof window !== "undefined" &&
+      !matchesCategoryFilter({ productUrl: product.productUrl ?? window.location.href, productTitle: product.productTitle }, this.options?.categoryUrlKeywords)
+    ) {
       return; // this page's product doesn't match the merchant's category filter
     }
 
@@ -669,7 +682,7 @@ class TryOnSdkImpl implements TryOnSdk {
     // at all, not just the one that actually had a problem.
     matches.forEach((match) => {
       try {
-        if (!matchesCategoryFilter(match.product.productUrl ?? "", this.options?.categoryUrlKeywords)) return;
+        if (!matchesCategoryFilter(match.product, this.options?.categoryUrlKeywords)) return;
         if (isCurrentPageProduct(match.product.productUrl)) return;
         const img = match.image;
         if (img.closest(".lumiframe-card-wrap")) return; // already wrapped — e.g. detectCards ran twice
@@ -780,6 +793,19 @@ class TryOnSdkImpl implements TryOnSdk {
     document.addEventListener(
       "click",
       (event: MouseEvent) => {
+        // A real report: the widget's own close (×) button became
+        // unclickable once opened from a card button, on a page with many
+        // cards — this listener runs for every click for the rest of the
+        // page's life, with no notion of "the widget is already open", so
+        // if the close button's on-screen position happened to overlap ANY
+        // still-in-the-page card badge's bounding box (very plausible on a
+        // grid with a dozen-plus cards, mostly hidden behind the now-open
+        // modal but still exactly where they always were), that click got
+        // hijacked into a redundant this.open() no-op instead of ever
+        // reaching the widget's own handler. No card button click should
+        // do anything at all while a widget is already open — only a
+        // fresh, unopened state should ever start one.
+        if (this.isOpen) return;
         const buttons = document.querySelectorAll<HTMLElement>(".lumiframe-card-badge, .lumiframe-card-drawer, .lumiframe-card-scrim");
         for (const el of Array.from(buttons)) {
           const product = this.cardButtonProducts.get(el);

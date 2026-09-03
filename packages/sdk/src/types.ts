@@ -110,8 +110,9 @@ export interface TryOnInitOptions {
    * Restricts where the widget shows itself at all — both the auto-injected
    * product-page button and, per matching card, the catalog card buttons
    * above. Comma-separated keywords checked (case-insensitively) against
-   * the product's own URL; a match on any one keyword is enough. Empty/unset
-   * (default) means "everywhere detection succeeds", the original behavior.
+   * the product's own URL *and* its title; a match on either, on any one
+   * keyword, is enough. Empty/unset (default) means "everywhere detection
+   * succeeds", the original behavior.
    *
    * Exists for a merchant whose store isn't eyewear-only: pasting the
    * snippet once, sitewide, would otherwise put a "Try on" button on every
@@ -120,8 +121,14 @@ export interface TryOnInitOptions {
    * point: product ask was "нужно придумать чтобы это можно было
    * реализовать через кабинет клиента" after "не моя головная боль" (whose
    * job it is to touch the merchant's theme) turned out to be the wrong
-   * answer. Manual `attach()`/`open()` calls are NOT filtered — a merchant
-   * wiring their own trigger has already made that placement decision.
+   * answer. Also checks the title, not just the URL (despite the option's
+   * name, kept as-is for backward compatibility with configs already
+   * saved): a real report set up a product titled "Окуляри ..." on a store
+   * whose URLs are generic seed-data handles with no distinguishing word
+   * at all — URL-only matching had no way to ever succeed there, even
+   * though the merchant's own naming made the intent completely clear.
+   * Manual `attach()`/`open()` calls are NOT filtered — a merchant wiring
+   * their own trigger has already made that placement decision.
    */
   categoryUrlKeywords?: string;
 }
