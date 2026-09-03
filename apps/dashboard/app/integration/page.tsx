@@ -722,6 +722,23 @@ function IntegrationContent() {
             </label>
           </div>
 
+          {config.cardButtonEnabled && (
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--amber, #e0a94a)",
+                background: "rgba(224,169,74,0.1)",
+                border: "1px solid rgba(224,169,74,0.35)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                marginBottom: 20,
+                lineHeight: 1.6,
+              }}
+            >
+              {t("customize.cardPlacementWarning")}
+            </p>
+          )}
+
           <div className="field" style={{ marginBottom: 4 }}>
             <label>{t("customize.cardVariant")}</label>
           </div>

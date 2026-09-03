@@ -147,7 +147,7 @@ const DICT = {
     "integration.visitorLimitDesc": "Скільки разів один і той самий відвідувач може приміряти товари у вашому магазині. Визначається за IP-адресою. Порожньо — без обмежень.",
     "integration.visitorLimitUnlimited": "Без обмежень",
     "integration.visitorLimitCurrent": "Поточне значення",
-    "integration.snippetHelp": "Вставте це один раз, ближче до кінця шаблону сторінки товару. Кнопка «Try on» додається автоматично поруч із кнопкою «Додати в кошик» — без додаткового редагування теми.",
+    "integration.snippetHelp": "Вставте це один раз у спільний файл теми, який завантажується на кожній сторінці (для Shopify — Online Store → Themes → Edit code → Layout → theme.liquid, прямо перед </head>). Кнопка «Try on» сама з'являється на сторінці товару поруч із кнопкою «Додати в кошик» — і на мініатюрах у каталозі, якщо увімкнено нижче. Якщо вставити код лише в шаблон сторінки товару, кнопка в каталозі не з'явиться.",
     "integration.categoryHintTitle": "Альтернативний спосіб — через шаблон теми (код)",
     "integration.categoryHintDesc": "Замість налаштування «На яких товарах показувати кнопку» вище (рекомендуємо саме його — без коду) можна обмежити показ на рівні шаблону теми. Це вже потребує редагування коду теми — приклад для Shopify нижче, підставте свій тип/тег товару замість «Окуляри»/«eyewear»:",
 
@@ -217,6 +217,7 @@ const DICT = {
     "customize.cardVariantScrim": "Затемнення",
     "customize.cardVariantScrimDesc": "Фото злегка темніє, по центру з'являється кнопка",
     "customize.cardNote": "На мобільних кнопка завжди видима (без наведення) — для кутового значка перша картка каталогу один раз тихо підморгне, щоб пояснити її призначення.",
+    "customize.cardPlacementWarning": "Важливо: щоб ця кнопка з'явилася в каталозі, код на вкладці «Інтеграція» має бути вставлений один раз у спільний файл теми (theme.liquid), а не тільки в шаблон сторінки товару — інакше кнопка в каталозі не покажеться, навіть якщо цю опцію увімкнено.",
     "customize.cardPreviewOff": "Зараз вимкнено — увімкніть перемикач ліворуч, щоб побачити прев'ю.",
     "customize.cardPreviewProduct": "Назва товару",
     "customize.cardPreviewHint": "Наведіть курсор на фото товару, щоб побачити, як кнопка з'являється (на десктопі). На мобільних вона видима одразу.",
@@ -465,7 +466,7 @@ const DICT = {
     "integration.visitorLimitDesc": "How many times the same visitor can try on products in your store. Tracked by IP address. Leave empty for no limit.",
     "integration.visitorLimitUnlimited": "No limit",
     "integration.visitorLimitCurrent": "Current value",
-    "integration.snippetHelp": "Paste this once, near the bottom of your product page template. It inserts a “Try on” button next to your add-to-cart button automatically — no theme editing beyond this one snippet.",
+    "integration.snippetHelp": "Paste this once into a shared theme file that loads on every page (on Shopify: Online Store → Themes → Edit code → Layout → theme.liquid, right before </head>). It inserts a \"Try on\" button next to your add-to-cart button on the product page automatically — and on catalog thumbnails too, if enabled below. Pasting it only into the product page template means the catalog button (below) won't appear.",
     "integration.categoryHintTitle": "Alternative: scope it via your theme template (code)",
     "integration.categoryHintDesc": "Instead of the \"Which products show the button\" setting above (recommended — no code), you can also restrict it at the theme-template level. This one does need editing your theme's code — Shopify example below, swap in your own type/tag instead of \"Окуляри\"/\"eyewear\":",
 
@@ -535,6 +536,7 @@ const DICT = {
     "customize.cardVariantScrim": "Dim overlay",
     "customize.cardVariantScrimDesc": "The photo dims slightly with a button appearing in the center",
     "customize.cardNote": "On mobile the button is always visible (no hover) — for the corner mark, the catalog's first card pulses once to explain what it does.",
+    "customize.cardPlacementWarning": "Important: for this button to appear in your catalog, the snippet on the Integration tab must be pasted once into a shared theme file (theme.liquid), not just the product page template — otherwise the catalog button won't show even with this turned on.",
     "customize.cardPreviewOff": "Currently off — turn on the switch on the left to see a preview.",
     "customize.cardPreviewProduct": "Product name",
     "customize.cardPreviewHint": "Hover over the product photo to see the button appear (desktop). On mobile it's visible right away.",
