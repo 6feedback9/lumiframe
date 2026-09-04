@@ -60,6 +60,16 @@ export interface TryOnInitOptions {
   buttonSize?: number;
   /** Stretches the button's horizontal padding only, on top of `buttonSize` — makes it longer without also making it taller. 100 = default (no stretch). Range 100-300. */
   buttonWidth?: number;
+  /**
+   * Explicit text size in px, independent of `buttonSize` — unset (default)
+   * means the label still scales with `buttonSize` as before (15px at
+   * 100%), for a merchant who just wants "bigger/smaller button" from one
+   * slider. Set this when the two need to move independently instead: a
+   * wider/taller button (`buttonSize`/`buttonWidth`) whose label should
+   * stay compact, or vice versa (product ask: "размер шрифта в кнопке").
+   * Range 10-28.
+   */
+  buttonFontSize?: number;
   /** `"rounded"` (default) is a fully rounded pill. `"rectangular"` is a normal ~8px corner radius. */
   buttonShape?: "rounded" | "rectangular";
   /** Default `"none"`. `"pulse"` is a soft expanding ring in the accent color; `"shimmer"` is a light sweep across the button. */

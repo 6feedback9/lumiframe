@@ -43,6 +43,7 @@ describe("PATCH /api/v1/store — widgetConfig persistence", () => {
       buttonTextColor: "#ffffff",
       buttonStyle: "solid" as const,
       buttonSize: 120,
+      buttonFontSize: 18,
       modalLayout: "compact" as const,
       cardButtonEnabled: true,
       cardButtonVariant: "drawer" as const,

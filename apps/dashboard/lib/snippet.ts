@@ -17,6 +17,8 @@ export interface WidgetConfig {
   buttonSize?: number;
   /** Horizontal-only stretch on top of buttonSize. 100 = default (no stretch). */
   buttonWidth?: number;
+  /** Explicit label text size in px (10-28), independent of buttonSize. Unset — the label keeps scaling with buttonSize as before. */
+  buttonFontSize?: number;
   buttonShape?: "rounded" | "rectangular";
   buttonAnimation?: "none" | "pulse" | "shimmer";
   buttonPosition?: "before" | "after" | "floating";
@@ -58,6 +60,7 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.buttonStyle) options.buttonStyle = config.buttonStyle;
   if (config.buttonSize && config.buttonSize !== 100) options.buttonSize = config.buttonSize;
   if (config.buttonWidth && config.buttonWidth !== 100) options.buttonWidth = config.buttonWidth;
+  if (config.buttonFontSize) options.buttonFontSize = config.buttonFontSize;
   if (config.buttonShape && config.buttonShape !== "rounded") options.buttonShape = config.buttonShape;
   if (config.buttonAnimation && config.buttonAnimation !== "none") options.buttonAnimation = config.buttonAnimation;
   if (config.buttonPosition && config.buttonPosition !== "after") options.buttonPosition = config.buttonPosition;

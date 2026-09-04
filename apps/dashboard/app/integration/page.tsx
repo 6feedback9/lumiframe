@@ -353,7 +353,7 @@ function IntegrationContent() {
     color: isOutline ? config.buttonColorStart : config.buttonTextColor,
     fontFamily: config.buttonFont || "inherit",
     fontWeight: 600,
-    fontSize: 15 * sizeScale,
+    fontSize: config.buttonFontSize ?? 15 * sizeScale,
     cursor: "pointer",
     boxShadow: config.buttonGlow && config.buttonAnimation === "none" ? `0 0 18px 2px ${config.buttonColorStart}` : "none",
     animation: config.buttonAnimation === "pulse" ? "lumiframe-preview-pulse 1.8s ease-out infinite" : undefined,
@@ -500,6 +500,31 @@ function IntegrationContent() {
               onChange={(e) => setConfig({ ...config, buttonWidth: Number(e.target.value) })}
               style={{ width: "100%", accentColor: "var(--sky)" }}
             />
+          </div>
+
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>{t("customize.fontSize")} — {config.buttonFontSize ? `${config.buttonFontSize}px` : t("customize.fontSizeAuto")}</span>
+              {config.buttonFontSize !== undefined && (
+                <button
+                  type="button"
+                  onClick={() => setConfig({ ...config, buttonFontSize: undefined })}
+                  style={{ background: "none", border: "none", padding: 0, color: "var(--sky)", fontSize: 11.5, cursor: "pointer" }}
+                >
+                  {t("customize.fontSizeReset")}
+                </button>
+              )}
+            </label>
+            <input
+              type="range"
+              min={10}
+              max={28}
+              step={1}
+              value={config.buttonFontSize ?? 15}
+              onChange={(e) => setConfig({ ...config, buttonFontSize: Number(e.target.value) })}
+              style={{ width: "100%", accentColor: "var(--sky)" }}
+            />
+            <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.fontSizeHint")}</div>
           </div>
 
           <div className="field" style={{ marginBottom: 14 }}>

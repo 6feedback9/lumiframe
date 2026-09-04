@@ -30,6 +30,10 @@ const updateStoreSchema = z.object({
       // Horizontal-only stretch on top of buttonSize — makes the button
       // longer without also making it taller.
       buttonWidth: z.number().int().min(100).max(300).optional(),
+      // Explicit label text size, independent of buttonSize (product ask:
+      // "размер шрифта в кнопке") — see packages/sdk's own doc comment on
+      // why this exists alongside buttonSize rather than replacing it.
+      buttonFontSize: z.number().int().min(10).max(28).optional(),
       buttonShape: z.enum(["rounded", "rectangular"]).optional(),
       buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
       // Button placement + try-on modal layout (product ask: merchant

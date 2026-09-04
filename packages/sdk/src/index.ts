@@ -169,8 +169,17 @@ function ensureButtonStylesInjected(): void {
 
 /* Size (TryOnInitOptions.buttonSize, a 70-160 percent scale, default 100)
    is applied inline via --lumiframe-scale below instead of a class, so it
-   can vary continuously rather than in fixed steps. */
-.lumiframe-tryon-button { font-size: calc(1em * var(--lumiframe-scale, 1)); }
+   can vary continuously rather than in fixed steps. The fallback base was
+   1em (the page's own inherited font-size) until a real report ("нужно
+   больше настроек, размер шрифта в кнопке") traced back to exactly that:
+   the button's text size silently depended on whatever font-size the
+   surrounding page happened to have at the anchor point, not on anything
+   the dashboard's buttonSize slider actually controlled — a fixed 15px
+   base (matching the dashboard preview, which already hardcoded 15px)
+   makes buttonSize alone predictable again. buttonFontSize
+   (TryOnInitOptions, 10-28px) sets --lumiframe-font-size directly when a
+   merchant wants the label to stop scaling with buttonSize entirely. */
+.lumiframe-tryon-button { font-size: var(--lumiframe-font-size, calc(15px * var(--lumiframe-scale, 1))); }
 
 /* Width (TryOnInitOptions.buttonWidth, a 100-300 percent scale, default 100)
    stretches horizontal padding only, independent of --lumiframe-scale above
@@ -580,6 +589,7 @@ class TryOnSdkImpl implements TryOnSdk {
       buttonStyle,
       buttonSize,
       buttonWidth,
+      buttonFontSize,
       buttonShape,
       buttonAnimation,
     } = this.options ?? {};
@@ -597,6 +607,10 @@ class TryOnSdkImpl implements TryOnSdk {
     // it taller (product ask: the uniform size scale alone couldn't do this).
     const widthScale = Math.max(1, (buttonWidth ?? 100) / 100);
     button.style.setProperty("--lumiframe-width-scale", String(widthScale));
+    // Explicit override (10-28px) — unset leaves the CSS's own
+    // calc(15px * scale) fallback in charge, so buttonSize alone still
+    // moves the label for a merchant who never touches this.
+    if (buttonFontSize) button.style.setProperty("--lumiframe-font-size", `${buttonFontSize}px`);
     if (buttonShape) button.style.setProperty("--lumiframe-radius", buttonShape === "rectangular" ? "8px" : "999px");
 
     if (buttonColorStart || buttonColorEnd) {
