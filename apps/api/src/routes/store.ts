@@ -35,6 +35,7 @@ const updateStoreSchema = z.object({
       // why this exists alongside buttonSize rather than replacing it.
       buttonFontSize: z.number().int().min(10).max(28).optional(),
       buttonFontWeight: z.number().int().min(300).max(900).optional(),
+      buttonFullWidth: z.boolean().optional(),
       buttonShape: z.enum(["rounded", "rectangular"]).optional(),
       buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
       // Button placement + try-on modal layout (product ask: merchant

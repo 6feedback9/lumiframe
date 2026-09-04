@@ -141,6 +141,23 @@ function ensureButtonStylesInjected(): void {
 .lumiframe-tryon-button:hover { opacity: 0.9; }
 .lumiframe-tryon-button:active { transform: scale(0.98); }
 
+/* Full width (TryOnInitOptions.buttonFullWidth) — a real report: even
+   with buttonSize/buttonFontSize matched exactly to a theme's own "Add to
+   cart" button, ours stayed its own natural content width while
+   "Add to cart"/"Buy it now" filled their shared column edge to edge, so
+   the two sat inline at very different lengths instead of stacking at the
+   same width. inline-flex never claims more than its content needs — an
+   explicit width:100% (display switched to flex so that width is actually
+   honored as a block-level box, not shrunk back down by its inline-flex
+   default) is the only way to guarantee the same edge-to-edge length as
+   theme buttons instead of hoping their shared container's own CSS
+   happens to stretch ours too, which needn't be true on any given theme. */
+.lumiframe-tryon-button.lumiframe-full-width {
+  display: flex;
+  width: 100%;
+  align-self: stretch;
+}
+
 /* Style "outline" (TryOnInitOptions.buttonStyle) — no fill at all, just a
    border + matching text in the accent color. --lumiframe-accent-1 is set
    alongside --lumiframe-accent whenever a button color is configured
@@ -601,13 +618,15 @@ class TryOnSdkImpl implements TryOnSdk {
       buttonWidth,
       buttonFontSize,
       buttonFontWeight,
+      buttonFullWidth,
       buttonShape,
       buttonAnimation,
     } = this.options ?? {};
 
     const animation = buttonAnimation ?? "none";
     const styleClass = buttonStyle === "outline" ? " lumiframe-style-outline" : "";
-    button.className = `lumiframe-tryon-button${styleClass}${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
+    const widthClass = buttonFullWidth ? " lumiframe-full-width" : "";
+    button.className = `lumiframe-tryon-button${styleClass}${widthClass}${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
 
     // Continuous size (70-160% of the default), not fixed sm/md/lg steps —
     // fixed-px padding on .lumiframe-tryon-button scales along with this,

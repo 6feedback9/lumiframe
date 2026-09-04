@@ -21,6 +21,8 @@ export interface WidgetConfig {
   buttonFontSize?: number;
   /** Explicit label font-weight (300-900). Unset defaults to 600. */
   buttonFontWeight?: number;
+  /** Stretches the button to fill its container's full width, matching a theme's own "Add to cart" edge-to-edge instead of the button's natural content width. Default false. */
+  buttonFullWidth?: boolean;
   buttonShape?: "rounded" | "rectangular";
   buttonAnimation?: "none" | "pulse" | "shimmer";
   buttonPosition?: "before" | "after" | "floating";
@@ -64,6 +66,7 @@ export function buildInitOptions(storeId: string, apiBaseUrl: string, config: Wi
   if (config.buttonWidth && config.buttonWidth !== 100) options.buttonWidth = config.buttonWidth;
   if (config.buttonFontSize) options.buttonFontSize = config.buttonFontSize;
   if (config.buttonFontWeight && config.buttonFontWeight !== 600) options.buttonFontWeight = config.buttonFontWeight;
+  if (config.buttonFullWidth) options.buttonFullWidth = true;
   if (config.buttonShape && config.buttonShape !== "rounded") options.buttonShape = config.buttonShape;
   if (config.buttonAnimation && config.buttonAnimation !== "none") options.buttonAnimation = config.buttonAnimation;
   if (config.buttonPosition && config.buttonPosition !== "after") options.buttonPosition = config.buttonPosition;

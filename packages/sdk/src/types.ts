@@ -76,6 +76,15 @@ export interface TryOnInitOptions {
    * this to 400 to match one instead of the bolder default. Range 300-900.
    */
   buttonFontWeight?: number;
+  /**
+   * Stretches the button to fill its container's full width — matching a
+   * theme's own "Add to cart"/"Buy it now" (usually edge-to-edge in their
+   * shared column) rather than the button's own natural content width.
+   * Default `false`. Real report: buttonSize/buttonFontSize matched a
+   * theme's button exactly in height and text, but ours still sat at its
+   * own shorter content width next to full-width neighbors.
+   */
+  buttonFullWidth?: boolean;
   /** `"rounded"` (default) is a fully rounded pill. `"rectangular"` is a normal ~8px corner radius. */
   buttonShape?: "rounded" | "rectangular";
   /** Default `"none"`. `"pulse"` is a soft expanding ring in the accent color; `"shimmer"` is a light sweep across the button. */

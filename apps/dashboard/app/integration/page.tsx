@@ -343,7 +343,8 @@ function IntegrationContent() {
       ? config.buttonColorStart
       : `linear-gradient(135deg, ${config.buttonColorStart}, ${config.buttonColorEnd})`;
   const previewStyle: React.CSSProperties = {
-    display: "inline-flex",
+    display: config.buttonFullWidth ? "flex" : "inline-flex",
+    width: config.buttonFullWidth ? "100%" : undefined,
     alignItems: "center",
     justifyContent: "center",
     // Fixed px, not em — mirrors packages/sdk's own CSS fix: em here would
@@ -555,6 +556,20 @@ function IntegrationContent() {
             />
             <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.fontWeightHint")}</div>
           </div>
+
+          <div className="field" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
+            <input
+              type="checkbox"
+              id="buttonFullWidth"
+              checked={!!config.buttonFullWidth}
+              onChange={(e) => setConfig({ ...config, buttonFullWidth: e.target.checked })}
+              style={{ width: "auto" }}
+            />
+            <label htmlFor="buttonFullWidth" style={{ margin: 0 }}>
+              {t("customize.fullWidth")}
+            </label>
+          </div>
+          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: -10, marginBottom: 14 }}>{t("customize.fullWidthHint")}</p>
 
           <div className="field" style={{ marginBottom: 14 }}>
             <label>{t("customize.shape")}</label>
