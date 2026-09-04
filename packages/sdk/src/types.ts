@@ -70,6 +70,12 @@ export interface TryOnInitOptions {
    * Range 10-28.
    */
   buttonFontSize?: number;
+  /**
+   * Explicit label font-weight, unset defaults to 600 (semi-bold). Real
+   * themes' own buttons are usually plain body-text weight (400) — set
+   * this to 400 to match one instead of the bolder default. Range 300-900.
+   */
+  buttonFontWeight?: number;
   /** `"rounded"` (default) is a fully rounded pill. `"rectangular"` is a normal ~8px corner radius. */
   buttonShape?: "rounded" | "rectangular";
   /** Default `"none"`. `"pulse"` is a soft expanding ring in the accent color; `"shimmer"` is a light sweep across the button. */

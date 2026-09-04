@@ -126,13 +126,13 @@ function ensureButtonStylesInjected(): void {
   justify-content: center;
   gap: 0.5em;
   margin: 0.75em 0;
-  padding: 0.75em calc(1.5em * var(--lumiframe-width-scale, 1));
+  padding: calc(13px * var(--lumiframe-scale, 1)) calc(24px * var(--lumiframe-scale, 1) * var(--lumiframe-width-scale, 1));
   border: none;
   border-radius: var(--lumiframe-radius, 999px);
   background: var(--lumiframe-accent, linear-gradient(135deg, #73b7ff, #9f8cff));
   color: var(--lumiframe-accent-contrast, #fff);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--lumiframe-font-weight, 600);
   line-height: 1;
   cursor: pointer;
   position: relative;
@@ -178,7 +178,17 @@ function ensureButtonStylesInjected(): void {
    base (matching the dashboard preview, which already hardcoded 15px)
    makes buttonSize alone predictable again. buttonFontSize
    (TryOnInitOptions, 10-28px) sets --lumiframe-font-size directly when a
-   merchant wants the label to stop scaling with buttonSize entirely. */
+   merchant wants the label to stop scaling with buttonSize entirely.
+
+   Padding (above, on .lumiframe-tryon-button itself) deliberately does NOT
+   use em units any more either, for the same reason: em is relative to the
+   element's OWN font-size, so once a merchant sets buttonFontSize the old
+   em-based padding silently stopped responding to buttonSize at all —
+   exactly the wall a real report hit trying to match a real theme's own
+   "Add to cart" button (fixed px padding, not font-relative): "с теми
+   настройками что ты добавил в кабинет этого не сделать". Fixed-px base
+   scaled only by --lumiframe-scale/--lumiframe-width-scale keeps
+   buttonSize and buttonFontSize fully independent from each other. */
 .lumiframe-tryon-button { font-size: var(--lumiframe-font-size, calc(15px * var(--lumiframe-scale, 1))); }
 
 /* Width (TryOnInitOptions.buttonWidth, a 100-300 percent scale, default 100)
@@ -590,6 +600,7 @@ class TryOnSdkImpl implements TryOnSdk {
       buttonSize,
       buttonWidth,
       buttonFontSize,
+      buttonFontWeight,
       buttonShape,
       buttonAnimation,
     } = this.options ?? {};
@@ -599,7 +610,9 @@ class TryOnSdkImpl implements TryOnSdk {
     button.className = `lumiframe-tryon-button${styleClass}${animation !== "none" ? ` lumiframe-anim-${animation}` : ""}`;
 
     // Continuous size (70-160% of the default), not fixed sm/md/lg steps —
-    // em-based padding on .lumiframe-tryon-button scales along with this.
+    // fixed-px padding on .lumiframe-tryon-button scales along with this,
+    // independent of font-size (see that CSS rule's own doc comment for why
+    // it's no longer em-based).
     const scale = Math.max(0.5, (buttonSize ?? 100) / 100);
     button.style.setProperty("--lumiframe-scale", String(scale));
     // Width (100-300%) stretches horizontal padding only, on top of the
@@ -611,6 +624,11 @@ class TryOnSdkImpl implements TryOnSdk {
     // calc(15px * scale) fallback in charge, so buttonSize alone still
     // moves the label for a merchant who never touches this.
     if (buttonFontSize) button.style.setProperty("--lumiframe-font-size", `${buttonFontSize}px`);
+    // Explicit override (300-900) — unset leaves the CSS's own 600
+    // fallback, unchanged from before. A real report needed exactly this
+    // to match a theme's own "Add to cart" button, which used its body
+    // text's normal (400) weight, not our bolder default.
+    if (buttonFontWeight) button.style.setProperty("--lumiframe-font-weight", String(buttonFontWeight));
     if (buttonShape) button.style.setProperty("--lumiframe-radius", buttonShape === "rectangular" ? "8px" : "999px");
 
     if (buttonColorStart || buttonColorEnd) {

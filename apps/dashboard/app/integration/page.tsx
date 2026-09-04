@@ -346,13 +346,17 @@ function IntegrationContent() {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: `${0.75 * sizeScale}em ${1.5 * sizeScale * widthScale}em`,
+    // Fixed px, not em — mirrors packages/sdk's own CSS fix: em here would
+    // be relative to fontSize below, so once a merchant sets buttonFontSize
+    // independently, em-based padding silently stopped responding to
+    // buttonSize at all. See that CSS rule's own doc comment.
+    padding: `${13 * sizeScale}px ${24 * sizeScale * widthScale}px`,
     border: isOutline ? `2px solid ${config.buttonColorStart}` : "none",
     borderRadius: config.buttonShape === "rectangular" ? 8 : 999,
     background: previewBackground,
     color: isOutline ? config.buttonColorStart : config.buttonTextColor,
     fontFamily: config.buttonFont || "inherit",
-    fontWeight: 600,
+    fontWeight: config.buttonFontWeight ?? 600,
     fontSize: config.buttonFontSize ?? 15 * sizeScale,
     cursor: "pointer",
     boxShadow: config.buttonGlow && config.buttonAnimation === "none" ? `0 0 18px 2px ${config.buttonColorStart}` : "none",
@@ -525,6 +529,31 @@ function IntegrationContent() {
               style={{ width: "100%", accentColor: "var(--sky)" }}
             />
             <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.fontSizeHint")}</div>
+          </div>
+
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>{t("customize.fontWeight")} — {config.buttonFontWeight ?? 600}</span>
+              {config.buttonFontWeight !== undefined && (
+                <button
+                  type="button"
+                  onClick={() => setConfig({ ...config, buttonFontWeight: undefined })}
+                  style={{ background: "none", border: "none", padding: 0, color: "var(--sky)", fontSize: 11.5, cursor: "pointer" }}
+                >
+                  {t("customize.fontSizeReset")}
+                </button>
+              )}
+            </label>
+            <input
+              type="range"
+              min={300}
+              max={900}
+              step={100}
+              value={config.buttonFontWeight ?? 600}
+              onChange={(e) => setConfig({ ...config, buttonFontWeight: Number(e.target.value) })}
+              style={{ width: "100%", accentColor: "var(--sky)" }}
+            />
+            <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.fontWeightHint")}</div>
           </div>
 
           <div className="field" style={{ marginBottom: 14 }}>

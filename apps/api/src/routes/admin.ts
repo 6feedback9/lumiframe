@@ -49,6 +49,7 @@ const setWidgetConfigSchema = z.object({
   buttonSize: z.number().int().min(70).max(160).optional(),
   buttonWidth: z.number().int().min(100).max(300).optional(),
   buttonFontSize: z.number().int().min(10).max(28).optional(),
+  buttonFontWeight: z.number().int().min(300).max(900).optional(),
   buttonShape: z.enum(["rounded", "rectangular"]).optional(),
   buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
   buttonPosition: z.enum(["before", "after", "floating"]).optional(),
