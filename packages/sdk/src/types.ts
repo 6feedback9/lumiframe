@@ -40,8 +40,13 @@ export interface TryOnInitOptions {
    * after the anchor. `"before"` puts it just above. `"floating"` ignores
    * the anchor entirely and pins the button to the bottom-right corner of
    * the viewport — useful on a page where no anchor placement looks right.
+   * `"inline"` puts it in the *same row* as the anchor instead of its own
+   * row above/below — wraps both in a shared flex row and splits the
+   * space evenly between them (product ask: "добавить примерку в один
+   * контейнер с кнопками" — a merchant who wants "Try on" sitting right
+   * next to "Add to cart", not stacked with it).
    */
-  buttonPosition?: "before" | "after" | "floating";
+  buttonPosition?: "before" | "after" | "floating" | "inline";
   /**
    * Button appearance overrides (dashboard's "Button design" page writes
    * these into the generated snippet from Store.widgetConfig). Any CSS

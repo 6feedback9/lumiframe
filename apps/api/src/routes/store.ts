@@ -41,7 +41,7 @@ const updateStoreSchema = z.object({
       // Button placement + try-on modal layout (product ask: merchant
       // picks where the button lands, and how the try-on window itself is
       // laid out — packages/sdk + packages/widget apply all of these).
-      buttonPosition: z.enum(["before", "after", "floating"]).optional(),
+      buttonPosition: z.enum(["before", "after", "floating", "inline"]).optional(),
       buttonAnchorSelector: z.string().max(300).optional(),
       // CSS selector for the page's live product image, for stores with
       // color/style swatches (product ask, from a real Shopify store this

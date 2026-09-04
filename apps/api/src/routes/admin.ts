@@ -53,7 +53,7 @@ const setWidgetConfigSchema = z.object({
   buttonFullWidth: z.boolean().optional(),
   buttonShape: z.enum(["rounded", "rectangular"]).optional(),
   buttonAnimation: z.enum(["none", "pulse", "shimmer"]).optional(),
-  buttonPosition: z.enum(["before", "after", "floating"]).optional(),
+  buttonPosition: z.enum(["before", "after", "floating", "inline"]).optional(),
   buttonAnchorSelector: z.string().max(300).optional(),
   showTryAnotherButton: z.boolean().optional(),
   showBackButton: z.boolean().optional(),

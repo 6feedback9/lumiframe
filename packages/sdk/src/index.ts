@@ -184,6 +184,17 @@ function ensureButtonStylesInjected(): void {
   box-shadow: 0 8px 28px rgba(0,0,0,0.22);
 }
 
+/* "inline" (TryOnInitOptions.buttonPosition) — the anchor and our button
+   share one row, split evenly. min-width: 0 lets a flex item shrink below
+   its own content's natural width instead of overflowing the row; width:
+   auto overrides a theme class like Dawn's .button--full-width (width:
+   100%), which would otherwise claim the whole row for the anchor alone
+   even as a flex child. */
+.lumiframe-inline-wrap { display: flex; gap: 0.75em; align-items: stretch; }
+.lumiframe-inline-wrap > * { flex: 1 1 0%; min-width: 0; width: auto; }
+.lumiframe-inline-wrap .lumiframe-tryon-button { margin: 0; }
+.lumiframe-inline-wrap .lumiframe-tryon-button.lumiframe-full-width { width: auto; }
+
 /* Size (TryOnInitOptions.buttonSize, a 70-160 percent scale, default 100)
    is applied inline via --lumiframe-scale below instead of a class, so it
    can vary continuously rather than in fixed steps. The fallback base was
@@ -591,6 +602,24 @@ class TryOnSdkImpl implements TryOnSdk {
       : (document.querySelector<HTMLElement>(CART_BUTTON_SELECTORS) ?? document.querySelector<HTMLElement>("h1"));
 
     if (!anchor?.parentElement) return; // no safe place found — merchant can place a manual trigger instead
+
+    if (position === "inline") {
+      // Wraps the anchor and our button together in a new shared flex row,
+      // splitting the space evenly between them — the anchor's own theme
+      // classes (e.g. Dawn's `.button--full-width`, `width: 100%`) would
+      // otherwise still claim the whole row for itself even inside a flex
+      // container, so both get their width reset to defer to `flex` below
+      // instead. Reparents the anchor (moves it into the new wrapper) —
+      // safe here since insertBefore()/appendChild() preserve its existing
+      // listeners and state, just changing its position in the tree.
+      const wrap = document.createElement("div");
+      wrap.className = "lumiframe-inline-wrap";
+      anchor.parentElement.insertBefore(wrap, anchor);
+      wrap.appendChild(button);
+      wrap.appendChild(anchor);
+      this.buttonInjected = true;
+      return;
+    }
 
     anchor.insertAdjacentElement(position === "before" ? "beforebegin" : "afterend", button);
     this.buttonInjected = true;

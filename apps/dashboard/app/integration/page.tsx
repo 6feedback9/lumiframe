@@ -39,6 +39,7 @@ const ANIMATION_OPTIONS = [
 const POSITION_OPTIONS = [
   { value: "after", labelKey: "customize.positionAfter" },
   { value: "before", labelKey: "customize.positionBefore" },
+  { value: "inline", labelKey: "customize.positionInline" },
   { value: "floating", labelKey: "customize.positionFloating" },
 ] as const;
 
@@ -477,87 +478,93 @@ function IntegrationContent() {
           </div>
           )}
 
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>
-              {t("customize.size")} — {config.buttonSize ?? 100}%
-            </label>
-            <input
-              type="range"
-              min={70}
-              max={160}
-              step={5}
-              value={config.buttonSize ?? 100}
-              onChange={(e) => setConfig({ ...config, buttonSize: Number(e.target.value) })}
-              style={{ width: "100%", accentColor: "var(--sky)" }}
-            />
+          {/* Compact 2-up grid for the four size sliders — each used to be
+              its own full-width row with a hint paragraph underneath
+              (product ask: "слишком все эти настройки разстянул на весь
+              экран, сделай компактно"). Hints moved into a `title` tooltip
+              on the label instead of a permanent paragraph — still
+              reachable on hover/focus, not taking a line of its own. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 14px", marginBottom: 14 }}>
+            <div className="field">
+              <label>
+                {t("customize.size")} — {config.buttonSize ?? 100}%
+              </label>
+              <input
+                type="range"
+                min={70}
+                max={160}
+                step={5}
+                value={config.buttonSize ?? 100}
+                onChange={(e) => setConfig({ ...config, buttonSize: Number(e.target.value) })}
+                style={{ width: "100%", accentColor: "var(--sky)" }}
+              />
+            </div>
+
+            <div className="field">
+              <label>
+                {t("customize.width")} — {config.buttonWidth ?? 100}%
+              </label>
+              <input
+                type="range"
+                min={100}
+                max={300}
+                step={10}
+                value={config.buttonWidth ?? 100}
+                onChange={(e) => setConfig({ ...config, buttonWidth: Number(e.target.value) })}
+                style={{ width: "100%", accentColor: "var(--sky)" }}
+              />
+            </div>
+
+            <div className="field">
+              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }} title={t("customize.fontSizeHint")}>
+                <span>{t("customize.fontSize")} — {config.buttonFontSize ? `${config.buttonFontSize}px` : t("customize.fontSizeAuto")}</span>
+                {config.buttonFontSize !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, buttonFontSize: undefined })}
+                    style={{ background: "none", border: "none", padding: 0, color: "var(--sky)", fontSize: 11.5, cursor: "pointer" }}
+                  >
+                    {t("customize.fontSizeReset")}
+                  </button>
+                )}
+              </label>
+              <input
+                type="range"
+                min={10}
+                max={28}
+                step={1}
+                value={config.buttonFontSize ?? 15}
+                onChange={(e) => setConfig({ ...config, buttonFontSize: Number(e.target.value) })}
+                style={{ width: "100%", accentColor: "var(--sky)" }}
+              />
+            </div>
+
+            <div className="field">
+              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }} title={t("customize.fontWeightHint")}>
+                <span>{t("customize.fontWeight")} — {config.buttonFontWeight ?? 600}</span>
+                {config.buttonFontWeight !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, buttonFontWeight: undefined })}
+                    style={{ background: "none", border: "none", padding: 0, color: "var(--sky)", fontSize: 11.5, cursor: "pointer" }}
+                  >
+                    {t("customize.fontSizeReset")}
+                  </button>
+                )}
+              </label>
+              <input
+                type="range"
+                min={300}
+                max={900}
+                step={100}
+                value={config.buttonFontWeight ?? 600}
+                onChange={(e) => setConfig({ ...config, buttonFontWeight: Number(e.target.value) })}
+                style={{ width: "100%", accentColor: "var(--sky)" }}
+              />
+            </div>
           </div>
 
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>
-              {t("customize.width")} — {config.buttonWidth ?? 100}%
-            </label>
-            <input
-              type="range"
-              min={100}
-              max={300}
-              step={10}
-              value={config.buttonWidth ?? 100}
-              onChange={(e) => setConfig({ ...config, buttonWidth: Number(e.target.value) })}
-              style={{ width: "100%", accentColor: "var(--sky)" }}
-            />
-          </div>
-
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{t("customize.fontSize")} — {config.buttonFontSize ? `${config.buttonFontSize}px` : t("customize.fontSizeAuto")}</span>
-              {config.buttonFontSize !== undefined && (
-                <button
-                  type="button"
-                  onClick={() => setConfig({ ...config, buttonFontSize: undefined })}
-                  style={{ background: "none", border: "none", padding: 0, color: "var(--sky)", fontSize: 11.5, cursor: "pointer" }}
-                >
-                  {t("customize.fontSizeReset")}
-                </button>
-              )}
-            </label>
-            <input
-              type="range"
-              min={10}
-              max={28}
-              step={1}
-              value={config.buttonFontSize ?? 15}
-              onChange={(e) => setConfig({ ...config, buttonFontSize: Number(e.target.value) })}
-              style={{ width: "100%", accentColor: "var(--sky)" }}
-            />
-            <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.fontSizeHint")}</div>
-          </div>
-
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{t("customize.fontWeight")} — {config.buttonFontWeight ?? 600}</span>
-              {config.buttonFontWeight !== undefined && (
-                <button
-                  type="button"
-                  onClick={() => setConfig({ ...config, buttonFontWeight: undefined })}
-                  style={{ background: "none", border: "none", padding: 0, color: "var(--sky)", fontSize: 11.5, cursor: "pointer" }}
-                >
-                  {t("customize.fontSizeReset")}
-                </button>
-              )}
-            </label>
-            <input
-              type="range"
-              min={300}
-              max={900}
-              step={100}
-              value={config.buttonFontWeight ?? 600}
-              onChange={(e) => setConfig({ ...config, buttonFontWeight: Number(e.target.value) })}
-              style={{ width: "100%", accentColor: "var(--sky)" }}
-            />
-            <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.fontWeightHint")}</div>
-          </div>
-
-          <div className="field" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
+          <div className="field" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }} title={t("customize.fullWidthHint")}>
             <input
               type="checkbox"
               id="buttonFullWidth"
@@ -569,57 +576,59 @@ function IntegrationContent() {
               {t("customize.fullWidth")}
             </label>
           </div>
-          <p style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: -10, marginBottom: 14 }}>{t("customize.fullWidthHint")}</p>
 
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("customize.shape")}</label>
-            <select
-              value={config.buttonShape ?? "rounded"}
-              onChange={(e) => setConfig({ ...config, buttonShape: e.target.value as WidgetConfig["buttonShape"] })}
-              style={SELECT_STYLE}
-            >
-              {SHAPE_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {t(s.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("customize.font")}</label>
-            <select value={config.buttonFont ?? ""} onChange={(e) => setConfig({ ...config, buttonFont: e.target.value || undefined })} style={SELECT_STYLE}>
-              {FONT_OPTIONS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {t(f.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("customize.animation")}</label>
-            <select
-              value={config.buttonAnimation}
-              onChange={(e) => setConfig({ ...config, buttonAnimation: e.target.value as WidgetConfig["buttonAnimation"] })}
-              style={SELECT_STYLE}
-            >
-              {ANIMATION_OPTIONS.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {t(a.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {config.buttonAnimation === "none" && (
-            <div className="field" style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }}>
-              <input type="checkbox" id="glow" checked={!!config.buttonGlow} onChange={(e) => setConfig({ ...config, buttonGlow: e.target.checked })} style={{ width: "auto" }} />
-              <label htmlFor="glow" style={{ margin: 0 }}>
-                {t("customize.glow")}
-              </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 14px", marginBottom: 14 }}>
+            <div className="field">
+              <label>{t("customize.shape")}</label>
+              <select
+                value={config.buttonShape ?? "rounded"}
+                onChange={(e) => setConfig({ ...config, buttonShape: e.target.value as WidgetConfig["buttonShape"] })}
+                style={SELECT_STYLE}
+              >
+                {SHAPE_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {t(s.labelKey)}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+
+            <div className="field">
+              <label>{t("customize.font")}</label>
+              <select value={config.buttonFont ?? ""} onChange={(e) => setConfig({ ...config, buttonFont: e.target.value || undefined })} style={SELECT_STYLE}>
+                {FONT_OPTIONS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {t(f.labelKey)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="field" style={{ marginBottom: 14, display: "flex", alignItems: "flex-end", gap: 14 }}>
+            <div style={{ flex: 1 }}>
+              <label>{t("customize.animation")}</label>
+              <select
+                value={config.buttonAnimation}
+                onChange={(e) => setConfig({ ...config, buttonAnimation: e.target.value as WidgetConfig["buttonAnimation"] })}
+                style={SELECT_STYLE}
+              >
+                {ANIMATION_OPTIONS.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {t(a.labelKey)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {config.buttonAnimation === "none" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, height: 40 }}>
+                <input type="checkbox" id="glow" checked={!!config.buttonGlow} onChange={(e) => setConfig({ ...config, buttonGlow: e.target.checked })} style={{ width: "auto" }} />
+                <label htmlFor="glow" style={{ margin: 0, whiteSpace: "nowrap" }}>
+                  {t("customize.glow")}
+                </label>
+              </div>
+            )}
+          </div>
 
           <h3 style={{ margin: "6px 0 14px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.placementTitle")}</h3>
 

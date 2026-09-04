@@ -46,6 +46,7 @@ describe("PATCH /api/v1/store — widgetConfig persistence", () => {
       buttonFontSize: 18,
       buttonFontWeight: 400,
       buttonFullWidth: true,
+      buttonPosition: "inline" as const,
       modalLayout: "compact" as const,
       cardButtonEnabled: true,
       cardButtonVariant: "drawer" as const,

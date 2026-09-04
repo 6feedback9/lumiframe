@@ -25,7 +25,7 @@ export interface WidgetConfig {
   buttonFullWidth?: boolean;
   buttonShape?: "rounded" | "rectangular";
   buttonAnimation?: "none" | "pulse" | "shimmer";
-  buttonPosition?: "before" | "after" | "floating";
+  buttonPosition?: "before" | "after" | "floating" | "inline";
   buttonAnchorSelector?: string;
   /** CSS selector for the page's live product image, for stores with color/style
    * swatches — see packages/sdk/README.md's "Products with multiple colors/styles". */
