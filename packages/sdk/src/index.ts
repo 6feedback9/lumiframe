@@ -638,38 +638,39 @@ class TryOnSdkImpl implements TryOnSdk {
       // listeners and state, just changing its position in the tree.
       const wrap = document.createElement("div");
       wrap.className = "lumiframe-inline-wrap";
-      // The anchor's own real, already-rendered height — read BEFORE any
-      // of this moves it into our wrap, so nothing here (our flex context,
-      // our button) can influence what's being copied. Real report: even
-      // with buttonSize/buttonFontSize hand-tuned to a theme's own numbers
-      // (padding, line-height, border), our button still came out visibly
-      // taller than the theme's real button once buttonWidth was also in
-      // play — CSS alone can approximate a theme's height, never guarantee
-      // landing on its exact pixel value, since it can't see whatever else
-      // that theme's own CSS does. Copying the anchor's real, live height
-      // instead sidesteps needing to reverse-engineer why.
-      const anchorHeight = anchor.getBoundingClientRect().height;
-      // Same reasoning for corner rounding — real report right after the
-      // height fix: "углы более закругленные у моей кнопки... она уже
-      // [квадратна]" (buttonShape's own two-option 999px/8px toggle was
-      // never going to land on a theme's own actual radius, e.g. Dawn's
-      // buttons_radius: 2). Reading the anchor's real computed
-      // border-radius sidesteps that the same way.
-      const anchorRadius = typeof window !== "undefined" ? window.getComputedStyle(anchor).borderRadius : "";
-      // Same again for border thickness — real report right after the
-      // radius fix: "ободок по ширине визуально вышлядит шире чем у
-      // кнопки add to cart" (only visible with buttonStyle: "outline",
-      // which draws its own border) — a hardcoded 2px was never going to
-      // match a theme's own (1px on this store). Only meaningful for that
-      // one style (solid/gradient render border: none regardless), but
-      // reading it unconditionally is harmless either way.
-      const anchorBorderWidth = typeof window !== "undefined" ? window.getComputedStyle(anchor).borderWidth : "";
+      // Copies the anchor's real, live height/border-radius/border-width
+      // onto our button rather than approximating them with buttonSize/
+      // buttonShape math — CSS alone can't see whatever a theme's own CSS
+      // does (real reports: our button came out visibly taller, more
+      // rounded, and thicker-bordered than the anchor even with those
+      // hand-tuned close to its numbers).
+      //
+      // Real report AFTER that fix shipped: the border vanished entirely
+      // on the live store, though a from-scratch reproduction with the
+      // exact same init options rendered it correctly — a live theme has
+      // far more CSS/JS to finish settling than a bare test page, and our
+      // own <script> tag (a plain, non-deferred tag placed near the end of
+      // body) can run its DOMContentLoaded-timed first attempt before a
+      // theme's own deferred product-form scripting has fully hydrated the
+      // button it's about to copy from. One synchronous read is never
+      // guaranteed to land after that finishes on every theme, so this
+      // reads and re-applies again a frame later (and once more after a
+      // short delay, for a theme slower than one frame to settle) instead
+      // of trusting a single snapshot — cheap and idempotent either way.
+      const syncToAnchor = () => {
+        if (typeof window === "undefined") return;
+        const height = anchor.getBoundingClientRect().height;
+        const style = window.getComputedStyle(anchor);
+        if (height > 0) button.style.height = `${height}px`;
+        if (style.borderRadius) button.style.borderRadius = style.borderRadius;
+        if (style.borderWidth) button.style.borderWidth = style.borderWidth;
+      };
       anchor.parentElement.insertBefore(wrap, anchor);
       wrap.appendChild(button);
       wrap.appendChild(anchor);
-      if (anchorHeight > 0) button.style.height = `${anchorHeight}px`;
-      if (anchorRadius) button.style.borderRadius = anchorRadius;
-      if (anchorBorderWidth) button.style.borderWidth = anchorBorderWidth;
+      syncToAnchor();
+      if (typeof requestAnimationFrame === "function") requestAnimationFrame(syncToAnchor);
+      if (typeof setTimeout === "function") setTimeout(syncToAnchor, 300);
       this.buttonInjected = true;
       return;
     }
