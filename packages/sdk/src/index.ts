@@ -195,6 +195,19 @@ function ensureButtonStylesInjected(): void {
 .lumiframe-inline-wrap .lumiframe-tryon-button { margin: 0; }
 .lumiframe-inline-wrap .lumiframe-tryon-button.lumiframe-full-width { width: auto; }
 
+/* Real report, live store: buttonWidth cranked up (a knob meant to stretch
+   a STANDALONE button out to a theme's typical button length) combined
+   with "inline" placement made our button visibly wider than its neighbor
+   instead of splitting the row evenly — flex-basis: 0% can't shrink a
+   border-box item below its own padding, so a bigger buttonWidth-driven
+   padding acts as a bigger floor before the even 50/50 grow-split even
+   starts. Once the row itself is doing the "match the neighbor's length"
+   job, buttonWidth's padding stretch is redundant AND actively unbalances
+   the split — so it's ignored here, padding scales with buttonSize only. */
+.lumiframe-inline-wrap .lumiframe-tryon-button {
+  padding: calc(13px * var(--lumiframe-scale, 1)) calc(24px * var(--lumiframe-scale, 1));
+}
+
 /* Size (TryOnInitOptions.buttonSize, a 70-160 percent scale, default 100)
    is applied inline via --lumiframe-scale below instead of a class, so it
    can vary continuously rather than in fixed steps. The fallback base was

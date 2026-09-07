@@ -513,6 +513,13 @@ function IntegrationContent() {
                 onChange={(e) => setConfig({ ...config, buttonWidth: Number(e.target.value) })}
                 style={{ width: "100%", accentColor: "var(--sky)" }}
               />
+              {/* Real report: this stretch fought the even 50/50 split "в
+                  одному ряду" already does on its own — ignored by the SDK
+                  in that mode now (see index.ts), so the slider says so
+                  instead of silently doing nothing. */}
+              {config.buttonPosition === "inline" && (
+                <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.widthInlineHint")}</div>
+              )}
             </div>
 
             <div className="field">
