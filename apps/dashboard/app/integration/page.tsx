@@ -656,12 +656,15 @@ function IntegrationContent() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 14px", marginBottom: 14 }}>
-            <div className="field">
-              <label>{t("customize.shape")}</label>
+            <div className="field" style={isInline ? { opacity: 0.45 } : undefined} title={isInline ? t("customize.inlineLockedNote") : undefined}>
+              <label>
+                {t("customize.shape")} {isInline && "🔒"}
+              </label>
               <select
                 value={config.buttonShape ?? "rounded"}
+                disabled={isInline}
                 onChange={(e) => setConfig({ ...config, buttonShape: e.target.value as WidgetConfig["buttonShape"] })}
-                style={SELECT_STYLE}
+                style={{ ...SELECT_STYLE, cursor: isInline ? "not-allowed" : "pointer" }}
               >
                 {SHAPE_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>

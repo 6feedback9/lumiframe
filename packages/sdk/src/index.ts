@@ -649,10 +649,18 @@ class TryOnSdkImpl implements TryOnSdk {
       // that theme's own CSS does. Copying the anchor's real, live height
       // instead sidesteps needing to reverse-engineer why.
       const anchorHeight = anchor.getBoundingClientRect().height;
+      // Same reasoning for corner rounding — real report right after the
+      // height fix: "углы более закругленные у моей кнопки... она уже
+      // [квадратна]" (buttonShape's own two-option 999px/8px toggle was
+      // never going to land on a theme's own actual radius, e.g. Dawn's
+      // buttons_radius: 2). Reading the anchor's real computed
+      // border-radius sidesteps that the same way.
+      const anchorRadius = typeof window !== "undefined" ? window.getComputedStyle(anchor).borderRadius : "";
       anchor.parentElement.insertBefore(wrap, anchor);
       wrap.appendChild(button);
       wrap.appendChild(anchor);
       if (anchorHeight > 0) button.style.height = `${anchorHeight}px`;
+      if (anchorRadius) button.style.borderRadius = anchorRadius;
       this.buttonInjected = true;
       return;
     }
