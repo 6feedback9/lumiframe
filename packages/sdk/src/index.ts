@@ -197,8 +197,11 @@ function ensureButtonStylesInjected(): void {
    0 still lets a flex item shrink below its own content's natural width
    instead of overflowing the row; width: auto overrides a theme class like
    Dawn's .button--full-width (width: 100%), which would otherwise claim
-   the whole row for the anchor alone even as a flex child. */
-.lumiframe-inline-wrap { display: flex; gap: 0.75em; align-items: stretch; }
+   the whole row for the anchor alone even as a flex child. align-items:
+   center, not stretch — our button's own height is now pinned directly to
+   the anchor's real measured height in tryAutoInject() below, so stretch
+   would just be an extra, unnecessary source of drift on top of that. */
+.lumiframe-inline-wrap { display: flex; gap: 0.75em; align-items: center; }
 .lumiframe-inline-wrap > * { flex: 0 1 50%; min-width: 0; width: auto; }
 .lumiframe-inline-wrap .lumiframe-tryon-button { margin: 0; }
 .lumiframe-inline-wrap .lumiframe-tryon-button.lumiframe-full-width { width: auto; }
@@ -635,9 +638,21 @@ class TryOnSdkImpl implements TryOnSdk {
       // listeners and state, just changing its position in the tree.
       const wrap = document.createElement("div");
       wrap.className = "lumiframe-inline-wrap";
+      // The anchor's own real, already-rendered height — read BEFORE any
+      // of this moves it into our wrap, so nothing here (our flex context,
+      // our button) can influence what's being copied. Real report: even
+      // with buttonSize/buttonFontSize hand-tuned to a theme's own numbers
+      // (padding, line-height, border), our button still came out visibly
+      // taller than the theme's real button once buttonWidth was also in
+      // play — CSS alone can approximate a theme's height, never guarantee
+      // landing on its exact pixel value, since it can't see whatever else
+      // that theme's own CSS does. Copying the anchor's real, live height
+      // instead sidesteps needing to reverse-engineer why.
+      const anchorHeight = anchor.getBoundingClientRect().height;
       anchor.parentElement.insertBefore(wrap, anchor);
       wrap.appendChild(button);
       wrap.appendChild(anchor);
+      if (anchorHeight > 0) button.style.height = `${anchorHeight}px`;
       this.buttonInjected = true;
       return;
     }
