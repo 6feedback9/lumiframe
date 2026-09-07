@@ -663,7 +663,35 @@ class TryOnSdkImpl implements TryOnSdk {
         const style = window.getComputedStyle(anchor);
         if (height > 0) button.style.height = `${height}px`;
         if (style.borderRadius) button.style.borderRadius = style.borderRadius;
-        if (style.borderWidth) button.style.borderWidth = style.borderWidth;
+
+        // Real report AFTER the border-width copy above shipped: still no
+        // border at all, confirmed from the merchant's own devtools
+        // console — the anchor's computed border-width really was 0px.
+        // Root cause, found in this store's real base.css: Shopify's Dawn
+        // theme (and themes built on it) set `border: 0` on `.button`
+        // outright and fake the visible edge with a box-shadow on a
+        // `::after` pseudo-element instead, specifically so a border
+        // doesn't affect the button's own box size. getComputedStyle on
+        // the anchor ITSELF can never see that — only its `::after` does.
+        // Falls back to reading that pseudo-element's box-shadow and
+        // copying it directly onto our own button (which doesn't need the
+        // pseudo-element trick — a plain box-shadow around our own edges
+        // looks the same) whenever the anchor's own border-width comes
+        // back at 0, so a real (non-Dawn) border still just gets copied
+        // the simple way above it.
+        const borderWidthPx = parseFloat(style.borderWidth) || 0;
+        if (borderWidthPx > 0) {
+          button.style.borderWidth = style.borderWidth;
+          button.style.boxShadow = "none";
+        } else {
+          const afterShadow = window.getComputedStyle(anchor, "::after").boxShadow;
+          const beforeShadow = window.getComputedStyle(anchor, "::before").boxShadow;
+          const fakeBorderShadow = [afterShadow, beforeShadow].find((s) => s && s !== "none");
+          if (fakeBorderShadow) {
+            button.style.borderWidth = "0";
+            button.style.boxShadow = fakeBorderShadow;
+          }
+        }
       };
       anchor.parentElement.insertBefore(wrap, anchor);
       wrap.appendChild(button);
