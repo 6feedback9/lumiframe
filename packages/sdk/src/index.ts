@@ -185,13 +185,21 @@ function ensureButtonStylesInjected(): void {
 }
 
 /* "inline" (TryOnInitOptions.buttonPosition) — the anchor and our button
-   share one row, split evenly. min-width: 0 lets a flex item shrink below
-   its own content's natural width instead of overflowing the row; width:
-   auto overrides a theme class like Dawn's .button--full-width (width:
-   100%), which would otherwise claim the whole row for the anchor alone
-   even as a flex child. */
+   share one row, split evenly. flex-basis: 50% (not the more usual 0%) is
+   deliberate: a real report found flex-basis: 0% still doesn't give a true
+   50/50 split — a border-box flex item can never shrink below its own
+   padding+border, so whichever button had the bigger padding (buttonSize/
+   buttonWidth on ours vs. the theme's own on the anchor) got a head start
+   before the "grow" stage even distributed the rest, skewing the split by
+   however much the two paddings differed. Starting both at a fixed 50%
+   basis with no grow/shrink sidesteps that "padding floor" entirely — each
+   gets exactly half the row regardless of either side's padding. min-width:
+   0 still lets a flex item shrink below its own content's natural width
+   instead of overflowing the row; width: auto overrides a theme class like
+   Dawn's .button--full-width (width: 100%), which would otherwise claim
+   the whole row for the anchor alone even as a flex child. */
 .lumiframe-inline-wrap { display: flex; gap: 0.75em; align-items: stretch; }
-.lumiframe-inline-wrap > * { flex: 1 1 0%; min-width: 0; width: auto; }
+.lumiframe-inline-wrap > * { flex: 0 1 50%; min-width: 0; width: auto; }
 .lumiframe-inline-wrap .lumiframe-tryon-button { margin: 0; }
 .lumiframe-inline-wrap .lumiframe-tryon-button.lumiframe-full-width { width: auto; }
 
