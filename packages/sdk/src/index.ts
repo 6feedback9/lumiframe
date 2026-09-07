@@ -656,11 +656,20 @@ class TryOnSdkImpl implements TryOnSdk {
       // buttons_radius: 2). Reading the anchor's real computed
       // border-radius sidesteps that the same way.
       const anchorRadius = typeof window !== "undefined" ? window.getComputedStyle(anchor).borderRadius : "";
+      // Same again for border thickness — real report right after the
+      // radius fix: "ободок по ширине визуально вышлядит шире чем у
+      // кнопки add to cart" (only visible with buttonStyle: "outline",
+      // which draws its own border) — a hardcoded 2px was never going to
+      // match a theme's own (1px on this store). Only meaningful for that
+      // one style (solid/gradient render border: none regardless), but
+      // reading it unconditionally is harmless either way.
+      const anchorBorderWidth = typeof window !== "undefined" ? window.getComputedStyle(anchor).borderWidth : "";
       anchor.parentElement.insertBefore(wrap, anchor);
       wrap.appendChild(button);
       wrap.appendChild(anchor);
       if (anchorHeight > 0) button.style.height = `${anchorHeight}px`;
       if (anchorRadius) button.style.borderRadius = anchorRadius;
+      if (anchorBorderWidth) button.style.borderWidth = anchorBorderWidth;
       this.buttonInjected = true;
       return;
     }
