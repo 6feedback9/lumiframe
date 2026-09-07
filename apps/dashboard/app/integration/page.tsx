@@ -338,6 +338,12 @@ function IntegrationContent() {
   // --lumiframe-width-scale, so "make it longer" doesn't also make it taller.
   const widthScale = (config.buttonWidth ?? 100) / 100;
   const isOutline = config.buttonStyle === "outline";
+  // "в одному ряду" pins the button's height to the anchor's own real
+  // height and splits the row a fixed 50/50 — Size/Width/FullWidth below
+  // can't change either of those anymore, so they lock instead of quietly
+  // doing nothing (product ask: "настройки должны блокироваться чтобы
+  // клиент видел, что для этого параметра настройка не доступна").
+  const isInline = config.buttonPosition === "inline";
   const previewBackground = isOutline
     ? "transparent"
     : config.buttonStyle === "solid"
@@ -434,7 +440,43 @@ function IntegrationContent() {
 
           {tab === "button" && (
             <>
+          {/* Placement moved to the very top of the tab (product ask: "при
+              выборе розташування кнопки добавь в самое начало, чтобы клиент
+              постепенно это настраивал") — placement decides which of the
+              settings below even apply (см. lumiframe-inline-locked ниже),
+              so picking it first, before size/style, is the natural order
+              rather than something to discover after already tuning them. */}
+          <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>{t("customize.placementTitle")}</h3>
+
           <div className="field" style={{ marginBottom: 14 }}>
+            <label>{t("customize.position")}</label>
+            <select
+              value={config.buttonPosition ?? "after"}
+              onChange={(e) => setConfig({ ...config, buttonPosition: e.target.value as WidgetConfig["buttonPosition"] })}
+              style={SELECT_STYLE}
+            >
+              {POSITION_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {t(p.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {config.buttonPosition !== "floating" && (
+            <div className="field" style={{ marginBottom: 14 }}>
+              <label>{t("customize.anchorSelector")}</label>
+              <input
+                value={config.buttonAnchorSelector ?? ""}
+                onChange={(e) => setConfig({ ...config, buttonAnchorSelector: e.target.value || undefined })}
+                placeholder=".add-to-cart"
+                maxLength={300}
+              />
+              <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.anchorSelectorHint")}</div>
+            </div>
+          )}
+
+          <div className="field" style={{ marginBottom: 20, paddingBottom: 20, borderBottom: "1px solid var(--line)" }}>
             <label>{t("customize.label")}</label>
             <input value={config.buttonText ?? ""} onChange={(e) => setConfig({ ...config, buttonText: e.target.value })} maxLength={60} />
           </div>
@@ -483,9 +525,34 @@ function IntegrationContent() {
               (product ask: "слишком все эти настройки разстянул на весь
               экран, сделай компактно"). Hints moved into a `title` tooltip
               on the label instead of a permanent paragraph — still
-              reachable on hover/focus, not taking a line of its own. */}
+              reachable on hover/focus, not taking a line of its own.
+
+              Size and Width are DISABLED (not just hinted) in "inline"
+              position — product ask: "если в одном блоке с кнопками то
+              настройки должны блокироваться чтобы клиент видел, что для
+              этого параметра настройка не доступна". Both are genuinely
+              inert there: height is pinned to the anchor's own real height
+              (see index.ts), and width is a fixed 50/50 split — neither
+              slider can change the button's footprint anymore, only
+              buttonFontSize/buttonFontWeight (still free to use) affect
+              anything visible while inline. */}
+          {isInline && (
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--mist-dim)",
+                background: "var(--surface-2, rgba(255,255,255,0.04))",
+                border: "1px solid var(--line)",
+                borderRadius: 8,
+                padding: "8px 10px",
+                marginBottom: 10,
+              }}
+            >
+              🔒 {t("customize.inlineLockedNote")}
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 14px", marginBottom: 14 }}>
-            <div className="field">
+            <div className="field" style={isInline ? { opacity: 0.45 } : undefined}>
               <label>
                 {t("customize.size")} — {config.buttonSize ?? 100}%
               </label>
@@ -495,12 +562,13 @@ function IntegrationContent() {
                 max={160}
                 step={5}
                 value={config.buttonSize ?? 100}
+                disabled={isInline}
                 onChange={(e) => setConfig({ ...config, buttonSize: Number(e.target.value) })}
-                style={{ width: "100%", accentColor: "var(--sky)" }}
+                style={{ width: "100%", accentColor: "var(--sky)", cursor: isInline ? "not-allowed" : "pointer" }}
               />
             </div>
 
-            <div className="field">
+            <div className="field" style={isInline ? { opacity: 0.45 } : undefined}>
               <label>
                 {t("customize.width")} — {config.buttonWidth ?? 100}%
               </label>
@@ -510,16 +578,10 @@ function IntegrationContent() {
                 max={300}
                 step={10}
                 value={config.buttonWidth ?? 100}
+                disabled={isInline}
                 onChange={(e) => setConfig({ ...config, buttonWidth: Number(e.target.value) })}
-                style={{ width: "100%", accentColor: "var(--sky)" }}
+                style={{ width: "100%", accentColor: "var(--sky)", cursor: isInline ? "not-allowed" : "pointer" }}
               />
-              {/* Real report: this stretch fought the even 50/50 split "в
-                  одному ряду" already does on its own — ignored by the SDK
-                  in that mode now (see index.ts), so the slider says so
-                  instead of silently doing nothing. */}
-              {config.buttonPosition === "inline" && (
-                <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.widthInlineHint")}</div>
-              )}
             </div>
 
             <div className="field">
@@ -571,17 +633,26 @@ function IntegrationContent() {
             </div>
           </div>
 
-          <div className="field" style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexDirection: "row" }} title={t("customize.fullWidthHint")}>
+          <div
+            className="field"
+            style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexDirection: "row", opacity: isInline ? 0.45 : 1 }}
+            title={isInline ? t("customize.inlineLockedNote") : t("customize.fullWidthHint")}
+          >
             <input
               type="checkbox"
               id="buttonFullWidth"
               checked={!!config.buttonFullWidth}
+              disabled={isInline}
               onChange={(e) => setConfig({ ...config, buttonFullWidth: e.target.checked })}
-              style={{ width: "auto" }}
+              style={{ width: "auto", cursor: isInline ? "not-allowed" : "pointer" }}
             />
             <label htmlFor="buttonFullWidth" style={{ margin: 0 }}>
               {t("customize.fullWidth")}
             </label>
+            {/* Also genuinely inert in "inline" — the row's fixed 50/50
+                split already governs width (product ask: settings that
+                don't apply should visibly lock, not silently no-op). */}
+            {isInline && <span style={{ fontSize: 11 }}>🔒</span>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 14px", marginBottom: 14 }}>
@@ -636,36 +707,6 @@ function IntegrationContent() {
               </div>
             )}
           </div>
-
-          <h3 style={{ margin: "6px 0 14px", fontSize: 15, borderTop: "1px solid var(--line)", paddingTop: 20 }}>{t("customize.placementTitle")}</h3>
-
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>{t("customize.position")}</label>
-            <select
-              value={config.buttonPosition ?? "after"}
-              onChange={(e) => setConfig({ ...config, buttonPosition: e.target.value as WidgetConfig["buttonPosition"] })}
-              style={SELECT_STYLE}
-            >
-              {POSITION_OPTIONS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {t(p.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {config.buttonPosition !== "floating" && (
-            <div className="field" style={{ marginBottom: 14 }}>
-              <label>{t("customize.anchorSelector")}</label>
-              <input
-                value={config.buttonAnchorSelector ?? ""}
-                onChange={(e) => setConfig({ ...config, buttonAnchorSelector: e.target.value || undefined })}
-                placeholder=".add-to-cart"
-                maxLength={300}
-              />
-              <div style={{ fontSize: 11, color: "var(--mist-dim)", marginTop: 4 }}>{t("customize.anchorSelectorHint")}</div>
-            </div>
-          )}
             </>
           )}
 
